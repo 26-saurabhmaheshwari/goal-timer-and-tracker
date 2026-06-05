@@ -71,24 +71,31 @@
   .ltrack{height:14px;border-radius:8px;background:rgba(255,255,255,.12);overflow:hidden}
   .lfill{height:100%;border-radius:8px;background:linear-gradient(90deg,#37b36b,#f5c451 55%,#ef6b5a);transition:width .6s}
   .lsub{font-size:11.5px;color:#aeb6c6;margin-top:7px}
-  .lgrid{display:flex;flex-wrap:wrap;gap:3px;margin-top:11px}
+  .lgrid{display:flex;flex-wrap:wrap;gap:3px;margin-top:20px}
   .lgrid i{width:7px;height:7px;border-radius:2px;background:rgba(255,255,255,.14)}
   .lgrid i.on{background:#ffce73}
-  .lgrid i.now{background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.35)}
-  .lchips{display:flex;gap:16px;flex-wrap:wrap;margin-top:11px;font-size:11.5px;color:#aeb6c6;font-weight:600}
+  .lgrid i.now{position:relative;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.35)}
+  .lperson{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);width:9px;height:13px;overflow:visible;animation:lblink 1.5s ease-in-out infinite}
+  .lperson circle{fill:#fff}
+  .lperson path{stroke:#fff;stroke-width:1;stroke-linecap:round;fill:none}
+  @keyframes lblink{0%,100%{opacity:.2}50%{opacity:1}}
+  .lchips{display:flex;gap:10px 16px;flex-wrap:wrap;margin-top:14px;font-size:11.5px;color:#aeb6c6;font-weight:600}
   .lchips b{color:#fff;font-weight:700;font-size:13px}
-  /* 8h coins + battery */
+  .lweeks{margin-top:18px;font-size:13px;line-height:1.55;color:#cfd6e4}
+  .lweeks b{color:#fff;font-weight:800}
+  .lnote{margin-top:12px;font-size:12.5px;font-style:italic;color:#ffd27a;font-weight:600;line-height:1.5}
+  /* 8h discretionary phone-battery */
   .usagebox{margin-bottom:18px}
-  .coins{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px}
-  .coin{flex:1;min-width:104px;display:flex;flex-direction:column;gap:2px;padding:12px 16px;border-radius:14px;color:#fff;box-shadow:0 1px 4px rgba(20,30,60,.10)}
-  .coin.used{background:#37b36b}.coin.wasted{background:#ef6b5a}.coin.free{background:#8a93a3}
-  .coin .cv{font-size:22px;font-weight:700;letter-spacing:-.5px}
-  .coin .cl{font-size:11.5px;font-weight:600;opacity:.92}
-  .battery{display:flex;align-items:center;gap:3px}
-  .bbody{flex:1;display:flex;height:30px;border:2px solid #cbd2dc;border-radius:8px;overflow:hidden;background:#f1f3f7}
+  .batt-hand{font-size:13.5px;font-weight:700;color:var(--ink);margin-bottom:9px}
+  .batt-hand b{font-size:21px;color:#2c7d47;letter-spacing:-.5px}
+  .batt{display:flex;align-items:center;gap:4px}
+  .batt-body{position:relative;flex:1;height:44px;border:3px solid #b9c1cd;border-radius:10px;background:#eef1f5;overflow:hidden}
+  .batt-fill{position:absolute;top:0;left:0;height:100%;display:flex}
   .bseg{height:100%;transition:width .4s}
-  .bcap{width:6px;height:15px;background:#cbd2dc;border-radius:0 3px 3px 0}
-  .bhint{font-size:11.5px;color:var(--muted);margin-top:8px;font-weight:600}
+  .batt-cells{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(90deg,transparent 0 calc(5% - 2px),rgba(40,50,70,.22) calc(5% - 2px) 5%)}
+  .batt-cap{width:7px;height:22px;background:#b9c1cd;border-radius:0 4px 4px 0}
+  .batt-meta{display:flex;gap:18px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);font-weight:600;margin-top:9px}
+  .batt-meta i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px}
   .insights{margin-top:16px}
   .insights h2{font-size:15px;font-weight:700;margin-bottom:12px}
   .ibox{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
@@ -155,6 +162,31 @@
   .gcard-name{font-size:14.5px;font-weight:700;color:var(--ink);width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .gcard-sub{font-size:12.5px;color:var(--muted)}
   .gcard-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center}
+  .ghint{font-size:11px;font-weight:700;color:#1b2440;opacity:.62;letter-spacing:.1px}
+  .gcard-overdue{animation:gpulse 1.8s ease-in-out infinite}
+  @keyframes gpulse{0%,100%{box-shadow:0 0 0 0 rgba(239,77,77,.0);border-color:#ef4d4d}50%{box-shadow:0 0 0 4px rgba(239,77,77,.28);border-color:#ef4d4d}}
+  .obreak{margin-top:12px;padding:10px 12px;background:#f6f8fc;border-radius:10px}
+  .obreak-h{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:6px}
+  .orow{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12.5px;padding:3px 0}
+  .orow .op{font-weight:700;color:#1b2440;min-width:54px}
+  .orow .om{color:var(--muted);flex:1}
+  .orow .ot{font-weight:700;color:#1b2440}
+  .logsum{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 14px}
+  .logsum .chip{font-size:12px;font-weight:600;background:#f0f3f9;border-radius:999px;padding:5px 11px;color:#1b2440}
+  .logsum .chip b{color:#4C6EF5}
+  .logsum .chip.tot{background:#1b2440;color:#fff}
+  .logsum .chip.tot b{color:#9fc1ff}
+  [hidden]{display:none!important}
+  .typetabs{display:flex;gap:8px;background:#f0f3f9;padding:5px;border-radius:12px}
+  .typetabs button{flex:1;border:0;background:transparent;font-size:13px;font-weight:700;color:var(--muted);padding:9px 6px;border-radius:9px;cursor:pointer;font-family:inherit;transition:.15s}
+  .typetabs button.active{background:#fff;color:#1b2440;box-shadow:0 1px 3px rgba(20,30,60,.12)}
+  .tgroup{display:flex;flex-direction:column;gap:14px}
+  .chk{flex-direction:row!important;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#1b2440;cursor:pointer}
+  .chk input{width:16px;height:16px;flex:0 0 auto}
+  .chk .hint{margin:0;font-weight:500}
+  .unitlab{align-self:center;font-size:13px;font-weight:600;color:var(--muted);white-space:nowrap}
+  .time2{display:flex;gap:8px;align-items:center}
+  .sechead{margin:26px 0 4px;font-size:17px}
   .gbadge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;color:#fff}
   .gwhen{font-size:11.5px;color:var(--muted);font-weight:600}
   .gcard-acts{position:absolute;top:8px;right:8px;display:flex;gap:5px;opacity:0;transition:.15s}
@@ -214,13 +246,12 @@
 <div class="wrap">
   <header>
     <div>
-      <h1>Project Time Distribution</h1>
-      <div class="sub" id="sub">Jan – May 2026 · interactive overview</div>
+      <h1>Make It Count</h1>
+      <div class="sub" id="sub">your finite hours, on purpose</div>
     </div>
     <div class="tabs" id="viewNav">
       <button data-v="overview" class="active">Overview</button>
       <button data-v="log">Log Data</button>
-      <button data-v="online">Online / Offline</button>
       <button data-v="goals">Goals</button>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
@@ -232,11 +263,11 @@
   <div id="lifeBar" class="lifebar"></div>
 
 <div id="viewOverview">
+  <div class="usagebox" id="kpis" style="margin-bottom:16px"></div>
   <div class="tabs" id="tabs" style="margin-bottom:18px"></div>
 
   <!-- ===== 2026 (year) ===== -->
   <div id="ovYear">
-    <div class="usagebox" id="kpis"></div>
     <div style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap">
       <div class="card" style="flex:1;min-width:300px;margin:0">
         <h2>2026 — category split</h2>
@@ -288,44 +319,60 @@
   <div class="grid">
     <div class="card">
       <h2>Log time</h2>
-      <div class="hint">Add an entry — saved on this device (localStorage). Periods are 10-day blocks.</div>
+      <div class="hint">Pick what you're logging, then fill the few fields. Saved on this device · periods are 10-day blocks.</div>
       <form id="logForm" class="form">
-        <div class="frow">
-          <label>Month
-            <select id="fMonth"></select>
-          </label>
-          <label>Period
-            <select id="fPeriod">
-              <option value="P1">Days 1–10</option>
-              <option value="P2">Days 11–20</option>
-              <option value="P3">Days 21–end</option>
-            </select>
-          </label>
+        <div class="typetabs" id="typeTabs">
+          <button type="button" data-t="project" class="active">⏱ Project</button>
+          <button type="button" data-t="goal">🎯 Goal</button>
+          <button type="button" data-t="screen">📱 Screen</button>
         </div>
         <div class="frow">
-          <label>Task name
-            <input id="fTask" type="text" list="taskList" placeholder="pick or type a task" required>
-            <datalist id="taskList"></datalist>
-          </label>
-          <label>Category
-            <select id="fCat"></select>
-          </label>
+          <label>Month <select id="fMonth"></select></label>
+          <label>Period <select id="fPeriod">
+            <option value="P1">Days 1–10</option>
+            <option value="P2">Days 11–20</option>
+            <option value="P3">Days 21–end</option>
+          </select></label>
         </div>
-        <div class="frow">
-          <label>New category (optional)
-            <input id="fNewCat" type="text" placeholder="leave blank to use dropdown">
-          </label>
-          <label>Time logged
-            <span class="time2"><input id="fHrs" type="number" min="0" placeholder="h"> <input id="fMin" type="number" min="0" max="59" placeholder="m"></span>
-          </label>
+
+        <div class="tgroup" data-type="project">
+          <div class="frow">
+            <label>Task <input id="fTask" type="text" list="taskList" placeholder="pick or type a task"><datalist id="taskList"></datalist></label>
+            <label>Category <select id="fCat"></select></label>
+          </div>
+          <div class="frow">
+            <label>New category (optional) <input id="fNewCat" type="text" placeholder="blank = use dropdown"></label>
+            <label>Time <span class="time2"><input id="fHrs" type="number" min="0" placeholder="h"> <input id="fMin" type="number" min="0" max="59" placeholder="m"></span></label>
+          </div>
         </div>
-        <button type="submit" class="btn">+ Add entry</button>
+
+        <div class="tgroup" data-type="goal" hidden>
+          <div class="frow">
+            <label>Goal <select id="fGoal"></select></label>
+            <label>Amount <span class="time2"><input id="fGoalAmt" type="number" min="0" step="0.1" placeholder="amount"> <span class="unitlab" id="fGoalUnit"></span></span></label>
+          </div>
+          <div class="hint" id="fGoalLogHint" style="margin:-4px 0 0"></div>
+        </div>
+
+        <div class="tgroup" data-type="screen" hidden>
+          <div class="frow">
+            <label>Device <select id="fDevice"><option value="phone">📱 Phone (all waste)</option><option value="laptop">💻 Laptop</option></select></label>
+            <label>Hours <input id="fScrHrs" type="number" min="0" step="0.1" placeholder="e.g. 12.5"></label>
+          </div>
+          <div class="frow" id="fScrWasteRow" hidden>
+            <label>% wasted <input id="fScrWaste" type="number" min="0" max="100" placeholder="e.g. 40"></label>
+            <label></label>
+          </div>
+        </div>
+
+        <button type="submit" class="btn" id="fSubmit">+ Add entry</button>
         <span id="formMsg" class="fmsg"></span>
       </form>
     </div>
     <div class="card">
       <h2 id="logDonutTitle">—</h2>
-      <div class="hint">Breakdown for the selected period below.</div>
+      <div class="hint">Month total across all 3 periods, then the selected period below.</div>
+      <div class="logsum" id="logSummary"></div>
       <div class="donutbox">
         <div class="donutcanvas">
           <canvas id="logDonut"></canvas>
@@ -349,27 +396,10 @@
       <div class="table" id="entryTable"></div>
     </div>
   </div>
-</div><!-- /viewLog -->
 
-<div id="viewOnline" hidden>
+  <h2 class="sechead">📱 Screen time — online vs the life you logged</h2>
+  <div class="hint" style="margin:-6px 0 12px">Log it above with the <b>📱 Screen</b> type. This reflects the month you've selected.</div>
   <div class="grid">
-    <div class="card">
-      <h2>Log screen time</h2>
-      <div class="hint">Manual — pull totals from iOS Screen Time / macOS Screen Time and enter monthly hours. Phone = waste; laptop split by how much was real work.</div>
-      <form id="onForm" class="form">
-        <div class="frow">
-          <label>Month <select id="oMonth"></select></label>
-          <label>Phone hours (all waste) <input id="oPhone" type="number" min="0" step="0.1" placeholder="e.g. 62"></label>
-        </div>
-        <div class="frow">
-          <label>Laptop hours <input id="oLap" type="number" min="0" step="0.1" placeholder="e.g. 40"></label>
-          <label>Laptop % wasted <input id="oLapWaste" type="number" min="0" max="100" placeholder="e.g. 40"></label>
-        </div>
-        <button type="submit" class="btn">Save month</button>
-        <span id="onMsg" class="fmsg"></span>
-      </form>
-      <div class="periodtabs" id="onMonthTabs" style="margin-top:16px"></div>
-    </div>
     <div class="card">
       <h2 id="onTitle">—</h2>
       <div class="hint">Online = phone + laptop. Offline = everything you logged that month.</div>
@@ -386,7 +416,7 @@
     </div>
     <div class="ibox" id="onWhatIf"></div>
   </div>
-</div><!-- /viewOnline -->
+</div><!-- /viewLog -->
 
 <div id="viewGoals" hidden>
   <button id="goalCreateBtn" class="btn" style="margin-bottom:14px">＋ Create goal</button>
@@ -408,7 +438,8 @@
       </div>
       <div class="frow">
         <label>Deadline <input id="gBy" type="date"></label>
-        <label></label>
+        <label>1 <span id="gUnitLab">unit</span> = <input id="gMinPer" type="number" min="0" step="any" placeholder="minutes — blank = no time"> min
+          <span class="hint" style="margin:0">how this goal maps to tracked time</span></label>
       </div>
       <label style="max-width:260px">Section <select id="gSec">
         <option value="active">Active goal</option>
@@ -486,7 +517,7 @@ function renderKPIs(){
     days+=d; pool+=DAILY_H*d;
     usedH+=total(M.cats)/60;
     const o=onl[ym];
-    if(o){ wasteKnown=true; wastedH+=(o.phone + o.lap*((o.lapWaste||0)/100)); }
+    if(o){ wasteKnown=true; wastedH+=onlineAgg(o).wasteH; }
   });
   document.getElementById('kpis').innerHTML =
     usageHTML(pool, usedH, wasteKnown?wastedH:null, `2026 so far · ${pool}h discretionary (${DAILY_H}h/day × ${days} days)`);
@@ -542,35 +573,48 @@ function renderDonut(i){
 // ---- Usage: of 8h/day discretionary time → used / wasted / free ----
 const DAILY_H = 8;
 function ymOf(label){ const [mn,y]=label.split(' '); return `${y}-${String(MONTH_NAMES.indexOf(mn)+1).padStart(2,'0')}`; }
-// Builds the coins-row + 3-segment battery markup. wasted=null → unknown.
-function usageHTML(pool, used, wasted, label){
+// Phone-battery: green=used, red=wasted, empty cells=free ("still in your hands"). wasted=null → unknown.
+function usageHTML(pool, used, wasted, label, past){
   const w = wasted==null?0:wasted;
   const free = Math.max(0, pool - used - w);
   const p = v => pool>0 ? Math.round(v/pool*100) : 0;
-  const seg = (v,c) => `<div class="bseg" style="width:${pool>0?(v/pool*100):0}%;background:${c}"></div>`;
-  return `<div class="coins">
-      <div class="coin used"><span class="cv">${used.toFixed(0)}h</span><span class="cl">Personal used · ${p(used)}%</span></div>
-      <div class="coin wasted"><span class="cv">${wasted==null?'—':w.toFixed(0)+'h'}</span><span class="cl">Wasted · ${wasted==null?'add online':p(w)+'%'}</span></div>
-      <div class="coin free"><span class="cv">${free.toFixed(0)}h</span><span class="cl">Free · ${p(free)}%</span></div>
+  const pw = v => pool>0 ? (v/pool*100) : 0;
+  const hand = past
+    ? `📒 <b>${used.toFixed(0)}h</b> tracked of ${pool.toFixed(0)}h · ${p(used)}% of the month's discretionary time`
+    : `⚡ <b>${free.toFixed(0)}h</b> still in your hands · ${p(free)}% of ${pool.toFixed(0)}h left to spend`;
+  return `<div class="batt-hand">${hand}</div>
+    <div class="batt">
+      <div class="batt-body">
+        <div class="batt-fill">
+          <div class="bseg" style="width:${pw(used)}%;background:#37b36b"></div>
+          <div class="bseg" style="width:${pw(w)}%;background:#ef6b5a"></div>
+        </div>
+        <div class="batt-cells"></div>
+      </div>
+      <div class="batt-cap"></div>
     </div>
-    <div class="battery"><div class="bbody">${seg(used,'#37b36b')}${seg(w,'#ef6b5a')}${seg(free,'#c4ccd6')}</div><div class="bcap"></div></div>
-    <div class="bhint">${label}</div>`;
+    <div class="batt-meta">
+      <span><i style="background:#37b36b"></i>Used ${used.toFixed(0)}h · ${p(used)}%</span>
+      <span><i style="background:#ef6b5a"></i>Wasted ${wasted==null?'— add online':w.toFixed(0)+'h · '+p(w)+'%'}</span>
+      <span>${label}</span>
+    </div>`;
 }
 function renderUsage(i){
   const M=MONTHS[i], ym=ymOf(M.m), days=daysIn(ym);
   const pool=DAILY_H*days;
   const usedH=total(M.cats)/60;
   const o=loadOnline()[ym];
-  const wastedH= o ? (o.phone + o.lap*((o.lapWaste||0)/100)) : null;
+  const wastedH= o ? onlineAgg(o).wasteH : null;
+  const past = new Date(ym+'-'+String(days).padStart(2,'0')+'T23:59:59') < new Date();
   document.getElementById('usageHint').textContent = `${M.m} — your ${pool}h of discretionary time (${DAILY_H}h × ${days} days)`;
-  document.getElementById('usage').innerHTML = usageHTML(pool, usedH, wastedH, `${pool}h available · ${DAILY_H}h/day × ${days} days`);
+  document.getElementById('usage').innerHTML = usageHTML(pool, usedH, wastedH, `${pool}h available · ${DAILY_H}h/day × ${days} days`, past);
 }
 
 // ---- Tabs ----
 function renderTabs(){
   const yearBtn = `<button data-o="year" class="${ovTab==='year'?'active':''}">2026</button>`;
-  const monthBtns = MONTHS.map((x,i)=>
-    `<button data-i="${i}" class="${ovTab==='monthly'&&i===current?'active':''}">${x.m.split(' ')[0]}</button>`).join('');
+  const monthBtns = MONTHS.map((x,i)=>({i,m:x.m})).reverse().map(o=>
+    `<button data-i="${o.i}" class="${ovTab==='monthly'&&o.i===current?'active':''}">${o.m.split(' ')[0]}</button>`).join('');
   document.getElementById('tabs').innerHTML = yearBtn + monthBtns;
   document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{
     if(b.dataset.o==='year'){ setOv('year'); }
@@ -709,31 +753,107 @@ function ymList(){ // Jun 2026 .. May 2027
   return out;
 }
 function pkey(e){ return `${e.ym}-${e.period}`; }
+function ymLabel(key){ const [y,m]=key.split('-'); return `${MONTH_NAMES[+m-1]} ${y}`; }
 function plabel(k){ const [y,m,p]=[k.slice(0,4),k.slice(5,7),k.slice(8)]; return `${MONTH_NAMES[+m-1]} ${PERIOD_LABEL[p]}`; }
 
+let logType='project';
+function eid(){ return Date.now()+''+Math.floor(performance.now()); }
 function initLogForm(){
   document.getElementById('fMonth').innerHTML = ymList().map(o=>`<option value="${o.key}">${o.label}</option>`).join('');
-  refreshCatOptions(); refreshTaskOptions();
+  refreshCatOptions(); refreshTaskOptions(); refreshGoalOptions();
   const clearTask=()=>{document.getElementById('fTask').value=''; refreshTaskOptions();};
   document.getElementById('fCat').addEventListener('change', clearTask);
   document.getElementById('fNewCat').addEventListener('input', refreshTaskOptions);
-  document.getElementById('logForm').addEventListener('submit', e=>{
-    e.preventDefault();
-    const hrs=+document.getElementById('fHrs').value||0, min=+document.getElementById('fMin').value||0;
-    const mins=hrs*60+min;
-    const newCat=document.getElementById('fNewCat').value.trim();
-    const cat= newCat || document.getElementById('fCat').value;
-    const task=document.getElementById('fTask').value.trim();
-    if(!task||mins<=0){ flash('Enter a task and a time > 0', true); return; }
-    const all=loadEntries();
-    all.push({id:Date.now()+''+Math.floor(performance.now()), ym:document.getElementById('fMonth').value,
-      period:document.getElementById('fPeriod').value, task, cat, mins});
-    saveEntries(all);
-    logSel = `${document.getElementById('fMonth').value}-${document.getElementById('fPeriod').value}`;
-    document.getElementById('fTask').value=''; document.getElementById('fHrs').value=''; document.getElementById('fMin').value=''; document.getElementById('fNewCat').value='';
-    refreshCatOptions(); refreshTaskOptions(); flash(`Added “${task}” (${fmtShort(mins)})`);
-    renderLog();
-  });
+  document.querySelectorAll('#typeTabs button').forEach(b=>b.onclick=()=>setLogType(b.dataset.t));
+  document.getElementById('fGoal').addEventListener('change', syncGoalFields);
+  document.getElementById('fGoalAmt').addEventListener('input', syncGoalFields);
+  document.getElementById('fDevice').addEventListener('change', ()=>{
+    document.getElementById('fScrWasteRow').hidden = document.getElementById('fDevice').value!=='laptop'; });
+  document.getElementById('onRedirect').innerHTML = ALLCATS.map(c=>`<option ${c==='Career'?'selected':''}>${c}</option>`).join('');
+  document.getElementById('onRedirect').addEventListener('change', ()=>renderOnline());
+  document.getElementById('logForm').addEventListener('submit', onLogSubmit);
+  setLogType('project');
+}
+function setLogType(t){
+  logType=t;
+  document.querySelectorAll('#typeTabs button').forEach(b=>b.classList.toggle('active', b.dataset.t===t));
+  document.querySelectorAll('#logForm .tgroup').forEach(g=>g.hidden = g.dataset.type!==t);
+  document.getElementById('fSubmit').textContent = {project:'+ Add entry', goal:'+ Add goal progress', screen:'+ Add screen time'}[t];
+  if(t==='goal') syncGoalFields();
+  if(t==='screen') document.getElementById('fScrWasteRow').hidden = document.getElementById('fDevice').value!=='laptop';
+  document.getElementById('formMsg').textContent='';
+}
+function refreshGoalOptions(){
+  const g=loadGoals(), cur=document.getElementById('fGoal').value;
+  document.getElementById('fGoal').innerHTML = g.map(x=>`<option value="${x.id}" ${x.id===cur?'selected':''}>${x.name} — ${x.cat}</option>`).join('');
+  syncGoalFields();
+}
+function syncGoalFields(){
+  const x=loadGoals().find(o=>o.id===document.getElementById('fGoal').value);
+  const unitEl=document.getElementById('fGoalUnit'), hint=document.getElementById('fGoalLogHint');
+  if(!x){ unitEl.textContent=''; hint.textContent=''; return; }
+  unitEl.textContent=x.unit||'';
+  const mpu=goalMinPer(x), amt=+document.getElementById('fGoalAmt').value||0;
+  if(mpu>0) hint.textContent = amt>0
+    ? `→ also tracks ${fmtShort(goalMins(x,amt))} as “${x.name}” under ${x.cat}`
+    : `1 ${x.unit||'unit'} = ${mpu} min · auto-tracks under ${x.cat}`;
+  else hint.textContent = `No time mapping yet — edit this goal and set “minutes per unit” to auto-track time.`;
+}
+function onLogSubmit(e){
+  e.preventDefault();
+  const ym=document.getElementById('fMonth').value, period=document.getElementById('fPeriod').value;
+  if(logType==='project') submitProject(ym,period);
+  else if(logType==='goal') submitGoal(ym,period);
+  else if(logType==='screen') submitScreen(ym,period);
+}
+function submitProject(ym,period){
+  const hrs=+document.getElementById('fHrs').value||0, min=+document.getElementById('fMin').value||0;
+  const mins=hrs*60+min;
+  const newCat=document.getElementById('fNewCat').value.trim();
+  const cat= newCat || document.getElementById('fCat').value;
+  const task=document.getElementById('fTask').value.trim();
+  if(!task||mins<=0){ flash('Enter a task and a time > 0', true); return; }
+  const all=loadEntries();
+  all.push({id:eid(), ym, period, type:'project', task, cat, mins});
+  saveEntries(all);
+  logSel = `${ym}-${period}`;
+  document.getElementById('fTask').value=''; document.getElementById('fHrs').value=''; document.getElementById('fMin').value=''; document.getElementById('fNewCat').value='';
+  refreshCatOptions(); refreshTaskOptions(); flash(`Added “${task}” (${fmtShort(mins)})`);
+  renderLog();
+}
+function submitGoal(ym,period){
+  const g=loadGoals(), x=g.find(o=>o.id===document.getElementById('fGoal').value);
+  const amt=+document.getElementById('fGoalAmt').value||0;
+  if(!x){ flash('Pick a goal', true); return; }
+  if(amt<=0){ flash('Enter an amount > 0', true); return; }
+  x.cur=(+x.cur||0)+amt; saveGoals(g);
+  let extra='';
+  const mins=goalMins(x,amt);
+  if(mins>0){ const all=loadEntries(); all.push({id:eid(), ym, period, type:'goal', goalId:x.id, amt, task:x.name, cat:x.cat, mins}); saveEntries(all); logSel=`${ym}-${period}`; extra=` · ${fmtShort(mins)} tracked ✓`; }
+  document.getElementById('fGoalAmt').value='';
+  flash(`+${amt} ${x.unit||''} → “${x.name}”${extra}`);
+  syncGoalFields(); renderGoals(); renderLog();
+}
+function submitScreen(ym,period){
+  const dev=document.getElementById('fDevice').value;
+  const hours=+document.getElementById('fScrHrs').value||0;
+  if(hours<=0){ flash('Enter hours > 0', true); return; }
+  const o=loadOnline();
+  const rec=(o[ym]&&typeof o[ym]==='object')?{...o[ym]}:{};
+  rec.periods={...(rec.periods||{})};
+  const cur={phone:0,lap:0,lapWaste:0, ...(rec.periods[period]||{})};
+  if(dev==='phone'){ cur.phone=(+cur.phone||0)+hours; }
+  else {
+    const wpct=+document.getElementById('fScrWaste').value||0;
+    const prevLap=+cur.lap||0, prevWasteH=prevLap*((+cur.lapWaste||0)/100);
+    const newLap=prevLap+hours, newWasteH=prevWasteH+hours*(wpct/100);
+    cur.lap=newLap; cur.lapWaste=newLap>0?Math.round(newWasteH/newLap*100):0;
+  }
+  rec.periods[period]=cur; o[ym]=rec; saveOnline(o);
+  document.getElementById('fScrHrs').value=''; document.getElementById('fScrWaste').value='';
+  logSel=`${ym}-${period}`;
+  flash(`Added ${hours}h ${dev==='phone'?'📱 phone':'💻 laptop'} screen time`);
+  renderLog();
 }
 function flash(msg, err){ const el=document.getElementById('formMsg'); el.textContent=msg; el.style.color=err?'#dc2626':'#16a34a'; }
 function refreshCatOptions(){
@@ -748,7 +868,14 @@ function refreshTaskOptions(){
   const custom=[...new Set(loadEntries().filter(e=>e.cat===cat).map(e=>e.task))].filter(t=>!base.includes(t));
   document.getElementById('taskList').innerHTML=[...base,...custom].map(t=>`<option value="${t.replace(/"/g,'&quot;')}">`).join('');
 }
-function deleteEntry(id){ saveEntries(loadEntries().filter(e=>e.id!==id)); refreshCatOptions(); renderLog(); }
+function deleteEntry(id){
+  const all=loadEntries(); const e=all.find(x=>x.id===id);
+  if(e && e.type==='goal' && e.goalId && e.amt!=null){ // roll the goal's count back down
+    const g=loadGoals(), gx=g.find(o=>o.id===e.goalId);
+    if(gx){ gx.cur=Math.max(0,(+gx.cur||0)-(+e.amt||0)); saveGoals(g); if(document.getElementById('secActive')) renderGoals(); }
+  }
+  saveEntries(all.filter(x=>x.id!==id)); refreshCatOptions(); renderLog();
+}
 window.deleteEntry=deleteEntry;
 
 function renderLog(){
@@ -761,6 +888,19 @@ function renderLog(){
     ? keys.map(k=>`<button data-k="${k}" class="${k===logSel?'active':''}">${plabel(k)}</button>`).join('')
     : '';
   document.querySelectorAll('#periodTabs button').forEach(b=>b.onclick=()=>{logSel=b.dataset.k; renderLog();});
+
+  // month rollup — all 3 periods aggregated for the selected month
+  const sumEl=document.getElementById('logSummary');
+  if(sumEl){
+    const selYm = logSel ? logSel.replace(/-P\d$/,'') : null;
+    if(selYm){
+      const byP={P1:0,P2:0,P3:0}; let mtot=0;
+      all.filter(e=>e.ym===selYm).forEach(e=>{ if(byP[e.period]!=null) byP[e.period]+=e.mins; mtot+=e.mins; });
+      const lbl=ymLabel(selYm);
+      sumEl.innerHTML = `<span class="chip tot">${lbl} total <b>${fmtShort(mtot)}</b></span>`
+        + ['P1','P2','P3'].map(p=>`<span class="chip">${PERIOD_LABEL[p]} <b>${fmtShort(byP[p])}</b></span>`).join('');
+    } else sumEl.innerHTML='';
+  }
 
   // entries table (for selected period)
   const rows = all.filter(e=>pkey(e)===logSel);
@@ -795,11 +935,13 @@ function renderLog(){
       scales:{y:{beginAtZero:true,grid:{color:'#eef1f6'},ticks:{callback:v=>v+'h'}},x:{grid:{display:false}}}}};
   if(logTrendChart){logTrendChart.data=tcfg.data;logTrendChart.options=tcfg.options;logTrendChart.update();}
   else logTrendChart=new Chart(document.getElementById('logTrend'),tcfg);
+
+  renderOnline();
 }
 
 // ================= ONLINE / OFFLINE =================
 const LS_ONLINE='ptd_online_v1';
-let onSel=null, onSplitChart;
+let onSplitChart;
 // May 2026 phone screen-time from the phone usage screenshot: 20h 30m total
 const SEED_ONLINE={'2026-05':{phone:20.5, lap:0, lapWaste:0}};
 function loadOnline(){ try{ const v=JSON.parse(localStorage.getItem(LS_ONLINE)); return {...SEED_ONLINE, ...(v||{})}; }catch(e){ return {...SEED_ONLINE}; } }
@@ -807,45 +949,42 @@ function saveOnline(o){ localStorage.setItem(LS_ONLINE, JSON.stringify(o)); fbSy
 function daysIn(ym){ const y=+ym.slice(0,4), m=+ym.slice(5,7); return new Date(y,m,0).getDate(); }
 function loggedTotalMins(ym){ return loadEntries().filter(e=>e.ym===ym).reduce((a,e)=>a+e.mins,0); }
 function loggedCatMins(ym,cat){ return loadEntries().filter(e=>e.ym===ym&&e.cat===cat).reduce((a,e)=>a+e.mins,0); }
-
-function initOnline(){
-  document.getElementById('oMonth').innerHTML = ymList().map(o=>`<option value="${o.key}">${o.label}</option>`).join('');
-  document.getElementById('onRedirect').innerHTML = ALLCATS.map(c=>`<option ${c==='Career'?'selected':''}>${c}</option>`).join('');
-  document.getElementById('onRedirect').addEventListener('change', ()=>renderOnline());
-  document.getElementById('onForm').addEventListener('submit', e=>{
-    e.preventDefault();
-    const ym=document.getElementById('oMonth').value;
-    const o=loadOnline();
-    o[ym]={phone:+document.getElementById('oPhone').value||0, lap:+document.getElementById('oLap').value||0,
-           lapWaste:+document.getElementById('oLapWaste').value||0};
-    saveOnline(o); onSel=ym;
-    document.getElementById('onMsg').textContent='Saved ✓'; document.getElementById('onMsg').style.color='#16a34a';
-    renderOnline();
-  });
+// Aggregate a month's online data across its 3 periods. Backward-compat: a legacy
+// flat {phone,lap,lapWaste} record (no .periods) is treated as the whole month.
+const ONLINE_PERIODS=['P1','P2','P3'];
+function onlineAgg(d){
+  if(!d) return {phone:0,lap:0,wasteH:0};
+  const per=d.periods;
+  if(per && Object.keys(per).length){
+    let phone=0,lap=0,wasteH=0;
+    for(const k of ONLINE_PERIODS){ const p=per[k]; if(!p) continue;
+      phone+=(+p.phone||0); lap+=(+p.lap||0); wasteH+=(+p.phone||0)+(+p.lap||0)*((+p.lapWaste||0)/100); }
+    return {phone,lap,wasteH};
+  }
+  return {phone:+d.phone||0, lap:+d.lap||0, wasteH:(+d.phone||0)+(+d.lap||0)*((+d.lapWaste||0)/100)};
 }
-function renderOnline(){
-  const data=loadOnline(); const keys=Object.keys(data).sort();
-  if(!onSel||!keys.includes(onSel)) onSel=keys.at(-1)||null;
-  document.getElementById('onMonthTabs').innerHTML = keys.length
-    ? keys.map(k=>`<button data-k="${k}" class="${k===onSel?'active':''}">${ymList().find(o=>o.key===k)?.label||k}</button>`).join('')
-    : '<span class="muted-sm">No months logged yet — add one above.</span>';
-  document.querySelectorAll('#onMonthTabs button').forEach(b=>b.onclick=()=>{onSel=b.dataset.k;renderOnline();});
 
+function renderOnline(){
+  const data=loadOnline();
+  const ym = logSel ? logSel.slice(0,7) : (Object.keys(data).sort().at(-1)||null);
   const ti=document.getElementById('onTitle');
-  if(!onSel){ ti.textContent='No data yet'; document.getElementById('onKpis').innerHTML=''; document.getElementById('onWhatIf').innerHTML=''; if(onSplitChart){onSplitChart.destroy();onSplitChart=null;} return; }
-  const d=data[onSel], days=daysIn(onSel);
-  const online=d.phone+d.lap, wasted=d.phone + d.lap*(d.lapWaste/100);
-  const offlineH = loggedTotalMins(onSel)/60;
+  if(!ym){ ti.textContent='No data yet'; document.getElementById('onKpis').innerHTML=''; document.getElementById('onWhatIf').innerHTML=''; if(onSplitChart){onSplitChart.destroy();onSplitChart=null;} return; }
+  const d=data[ym], days=daysIn(ym);
+  const ag=onlineAgg(d);
+  const online=ag.phone+ag.lap, wasted=ag.wasteH;
+  const lapWastePct = ag.lap>0 ? Math.round((ag.wasteH-ag.phone)/ag.lap*100) : 0;
+  const offlineH = loggedTotalMins(ym)/60;
   const pctMonth=(online/(24*days)*100), pctWake=(online/(16*days)*100);
-  ti.textContent = (ymList().find(o=>o.key===onSel)?.label||onSel)+' — screen time';
+  ti.textContent = ymLabel(ym)+' — screen time';
   const k=[
-    {l:'Online total', v:online.toFixed(1)+'h', d:`phone ${d.phone}h + laptop ${d.lap}h`},
+    {l:'Online total', v:online.toFixed(1)+'h', d:`phone ${ag.phone.toFixed(1)}h + laptop ${ag.lap.toFixed(1)}h`},
     {l:'% of the month', v:pctMonth.toFixed(1)+'%', d:`of all ${24*days}h`},
-    {l:'Wasted', v:wasted.toFixed(1)+'h', d:`phone + ${d.lapWaste}% of laptop`, cls:'down'},
+    {l:'Wasted', v:wasted.toFixed(1)+'h', d:`phone + ${lapWastePct}% of laptop`, cls:'down'},
     {l:'% of waking life', v:pctWake.toFixed(1)+'%', d:`assuming 16h awake/day`, cls:'down'},
   ];
   document.getElementById('onKpis').innerHTML = k.map(x=>`<div class="kpi"><div class="label">${x.l}</div>
-    <div class="val">${x.v}</div><div class="delta ${x.cls||''}">${x.d}</div></div>`).join('');
+    <div class="val">${x.v}</div><div class="delta ${x.cls||''}">${x.d}</div></div>`).join('')
+    + onlinePeriodBreakdown(d);
 
   const sc={type:'bar',data:{labels:['Online (screen)','Offline (logged)'],
     datasets:[{data:[+online.toFixed(1),+offlineH.toFixed(1)],backgroundColor:['#EF5350','#8DC63F'],borderRadius:8,maxBarThickness:80}]},
@@ -855,7 +994,7 @@ function renderOnline(){
 
   // what-if
   const cat=document.getElementById('onRedirect').value;
-  const curH=loggedCatMins(onSel,cat)/60;
+  const curH=loggedCatMins(ym,cat)/60;
   const newH=curH+wasted;
   const mult = curH>0 ? (newH/curH).toFixed(1)+'×' : '∞';
   const yearWaste=wasted*12, yearDays=(yearWaste/24).toFixed(1);
@@ -863,14 +1002,23 @@ function renderOnline(){
     [`Wasted ${wasted.toFixed(1)}h this month`, `That's <b>${pctWake.toFixed(0)}%</b> of your waking hours — gone to a screen.`, '#EF5350'],
     [`${cat}: ${curH.toFixed(1)}h → ${newH.toFixed(1)}h`, `Redirect the waste and ${cat} would be <b>${mult}</b> what it is now.`, COLORS[cat]||'#4C6EF5'],
     [`Over a year: ~${yearWaste.toFixed(0)}h`, `≈ <b>${yearDays} full 24h days</b> annually. Reclaim even half and it's life-changing for ${cat}.`, '#F5A623'],
-    [`Phone is 100% waste`, `Every phone hour is pure leak. Laptop at least had ${(100-d.lapWaste)}% real use — the phone had none.`, '#8B2FE0'],
+    [`Phone is 100% waste`, `Every phone hour is pure leak. Laptop at least had ${(100-lapWastePct)}% real use — the phone had none.`, '#8B2FE0'],
   ];
   document.getElementById('onWhatIf').innerHTML = cards.map(([h,b,c])=>
     `<div class="icard" style="border-left-color:${c}"><b>${h}</b><br>${b}</div>`).join('');
 }
+function onlinePeriodBreakdown(d){
+  const per=d&&d.periods; if(!per||!Object.keys(per).length) return '';
+  const rows=ONLINE_PERIODS.filter(k=>per[k]).map(k=>{ const p=per[k];
+    const on=(+p.phone||0)+(+p.lap||0);
+    return `<div class="orow"><span class="op">${PERIOD_LABEL[k]}</span>
+      <span class="om">📱 ${(+p.phone||0).toFixed(1)}h · 💻 ${(+p.lap||0).toFixed(1)}h</span>
+      <span class="ot">${on.toFixed(1)}h</span></div>`; }).join('');
+  return `<div class="obreak" style="grid-column:1/-1"><div class="obreak-h">By period</div>${rows}</div>`;
+}
 
 // ================= LIFE BAR =================
-const LS_DOB='ptd_dob_v1', LIFE_TARGET=75;
+const LS_DOB='ptd_dob_v1', LIFE_TARGET=80;
 function loadDob(){ return localStorage.getItem(LS_DOB) || '1990-01-26'; }
 function lifeColor(t){ // green -> yellow(.55) -> red, same stops as the old bar
   const g=[55,179,107], y=[245,196,81], r=[239,107,90];
@@ -886,6 +1034,13 @@ function renderLifeBar(){
   const pct=Math.min(100, yrs/LIFE_TARGET*100);
   const leftY=Math.max(0, LIFE_TARGET-yrs);
   const leftDays=Math.round(leftY*365.25);
+  const WK=52.1775;
+  const totalWeeks=Math.round(LIFE_TARGET*WK), livedWeeks=Math.max(0,Math.round(yrs*WK)), leftWeeks=Math.max(0,Math.round(leftDays/7));
+  const birthdays=Math.max(0,Math.floor(leftY));
+  const months=Math.max(0,Math.round(leftY*12));
+  const PARENT_YRS=20; // rough window you may still have your parents around
+  const parentVisits=Math.max(0,Math.round(Math.min(leftY,PARENT_YRS)*52)); // ~weekly
+  const famVac=Math.max(0,Math.round(Math.min(leftY,PARENT_YRS)*1.5)); // ~1–2 trips/yr
   const msgs=leftY<=0?'Every extra day is a bonus — spend it well.'
     :pct<33?'So much runway. Build something that outlives you.'
     :pct<60?'Prime years. Don\'t trade them for noise.'
@@ -898,15 +1053,31 @@ function renderLifeBar(){
     </div>
     <div class="lgrid">${Array.from({length:LIFE_TARGET},(_,i)=>{
         const lived=Math.floor(yrs);
-        if(i===lived) return `<i class="now"></i>`;
+        if(i===lived) return `<i class="now"><svg class="lperson" viewBox="0 0 8 12"><circle cx="4" cy="2" r="1.7"/><path d="M4 3.7V8 M4 4.8L1.6 6.6 M4 4.8L6.4 6.6 M4 8L2.2 11 M4 8L5.8 11"/></svg></i>`;
         if(i<lived) return `<i class="on" style="background:${lifeColor(i/(LIFE_TARGET-1))}"></i>`;
         return `<i></i>`;
       }).join('')}</div>
+    <div class="lweeks">If a life is about <b>${totalWeeks.toLocaleString()} weeks</b>, you've already lived <b>${livedWeeks.toLocaleString()}</b>. Roughly <b>${leftWeeks.toLocaleString()}</b> remain — how many will you spend waiting for the "right time"?</div>
     <div class="lchips">
-      <span><b>${Math.floor(leftY)}</b> birthdays left</span>
-      <span><b>${Math.round(leftY)}</b> summers left</span>
-      <span><b>${Math.round(leftDays/7).toLocaleString()}</b> weekends left</span>
-    </div>`;
+      <span><b>${birthdays}</b> birthdays left</span>
+      <span><b>${months.toLocaleString()}</b> months left</span>
+      <span><b>${leftWeeks.toLocaleString()}</b> weekends left</span>
+      <span><b>${leftDays.toLocaleString()}</b> days left</span>
+      <span><b>~${parentVisits.toLocaleString()}</b> weekends left with your parents</span>
+      <span><b>~${famVac}</b> family trips left</span>
+    </div>
+    <div class="lnote">${lifeNote(birthdays,leftDays)}</div>`;
+}
+function lifeNote(birthdays,leftDays){
+  const N=[
+    'Life isn’t short — it’s just more finite than it feels on a random Tuesday.',
+    'The last time you’ll do many things is coming, and you won’t know it’s the last time.',
+    `${birthdays} chances to start over. How many will you actually take?`,
+    'You think you have time. The calendar quietly disagrees.',
+    'A few dozen family vacations, a few hundred conversations with your closest friends — that’s the real budget.',
+    'Don’t count the days. Make the days count.'
+  ];
+  return N[Math.floor(Date.now()/86400000)%N.length];
 }
 window.editDob=function(){
   const cur=loadDob();
@@ -917,7 +1088,7 @@ window.editDob=function(){
 };
 
 // ================= GOALS (named, with units + deadline) =================
-const LS_GOALS='ptd_goals2_v1';
+const LS_GOALS='ptd_goals2_v1', LS_VIEW='ptd_view_v1';
 const SEED_GOALS=[
   {id:'g1',name:'N. MAHOTSAV',     cat:'Spiritual',cur:590, target:1250, unit:'Paath',     start:'2026-01-01',by:'2026-09-01',sec:'active'},
   {id:'g2',name:'ONS-7100',        cat:'Spiritual',cur:2163,target:7100, unit:'mala',      start:'2026-01-01',by:'2026-12-31',sec:'active'},
@@ -930,30 +1101,45 @@ const SEED_GOALS=[
 ];
 // pace colour: blue=ahead, green=on track, orange=lagging, red=behind
 function expFrac(x){ if(!x.by) return null; const end=new Date(x.by+'T00:00:00'); const start=new Date(((x.start)||((end.getFullYear())+'-01-01'))+'T00:00:00'); const now=new Date(); if(now<=start) return 0; if(now>=end) return 1; return (now-start)/(end-start); }
-function paceColor(x){ const af=x.target>0?x.cur/x.target:0; if(af>=1) return '#5b9bd5'; const ef=expFrac(x); if(ef==null) return '#5cb85c'; const d=af-ef; if(d>=0.05) return '#5b9bd5'; if(d>=-0.10) return '#5cb85c'; if(d>=-0.25) return '#f0ad4e'; return '#e57373'; }
-function arrowColor(x){ if(x.sec==='active'&&x.target>0) return paceColor(x); return x.sec==='backlog'?'#d99a2b':x.sec==='dream'?'#9b59b6':'#5cb85c'; }
 let goalEdit=null;
 function loadGoals(){ try{ const v=JSON.parse(localStorage.getItem(LS_GOALS)); return Array.isArray(v)?v:SEED_GOALS; }catch(e){ return SEED_GOALS; } }
 function saveGoals(g){ localStorage.setItem(LS_GOALS, JSON.stringify(g)); fbSyncPush(); }
 function fmtBy(by){ if(!by) return ''; const d=new Date(by+'T00:00:00'); return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
 function monthsUntil(by){ if(!by) return null; const d=new Date(by+'T00:00:00'), now=new Date(); let m=(d.getFullYear()-now.getFullYear())*12+(d.getMonth()-now.getMonth()); if(d.getDate()<now.getDate())m--; return m; }
+function daysLeft(by){ if(!by) return null; const d=new Date(by+'T00:00:00'), now=new Date(); return Math.ceil((d-now)/86400000); }
+function paceRank(l){ return {Lagging:0,Behind:1,'On track':2,Ahead:3,Done:4}[l] ?? 5; }
+function paceHint(x){ // "~N/day needed" to finish by deadline
+  if(x.target<=0||x.cur>=x.target) return '';
+  const dl=daysLeft(x.by); if(dl==null) return '';
+  if(dl<=0) return 'past deadline';
+  const per=(x.target-x.cur)/dl;
+  return per>=1 ? `~${Math.ceil(per)}/day to finish` : `~${Math.ceil(per*7)}/wk to finish`;
+}
 function goalFormShow(on){ document.getElementById('goalFormCard').hidden=!on; document.getElementById('goalCreateBtn').hidden=on; }
-function goalFormReset(){ goalEdit=null; document.getElementById('goalForm').reset(); document.getElementById('goalFormTitle').textContent='Add a goal'; document.getElementById('gCancel').style.display='none'; goalFormShow(false); }
+function goalFormReset(){ goalEdit=null; document.getElementById('goalForm').reset(); document.getElementById('gUnitLab').textContent='unit'; document.getElementById('goalFormTitle').textContent='Add a goal'; document.getElementById('gCancel').style.display='none'; goalFormShow(false); }
 function initGoals(){
   document.getElementById('gCat').innerHTML = ALLCATS.map(c=>`<option>${c}</option>`).join('');
   document.getElementById('goalCreateBtn').onclick=()=>{ goalEdit=null; document.getElementById('goalForm').reset(); document.getElementById('goalFormTitle').textContent='Add a goal'; document.getElementById('gCancel').style.display=''; document.getElementById('goalMsg').textContent=''; goalFormShow(true); };
   document.getElementById('gCancel').onclick=()=>{ goalFormReset(); document.getElementById('goalMsg').textContent=''; };
+  document.getElementById('gUnit').addEventListener('input', ()=>{
+    const u=document.getElementById('gUnit').value.trim();
+    document.getElementById('gUnitLab').textContent = u||'unit';
+    const mp=document.getElementById('gMinPer');
+    if(mp.value==='') mp.placeholder = /min/i.test(u)?'1 (1 min = 1 min)' : /hour|hr/i.test(u)?'60 (1 hr = 60 min)' : 'minutes — blank = no time';
+  });
   document.getElementById('goalForm').addEventListener('submit', e=>{
     e.preventDefault();
     const name=document.getElementById('gName').value.trim(); if(!name) return;
+    const mpRaw=document.getElementById('gMinPer').value;
     const o={ name, cat:document.getElementById('gCat').value,
       cur:+document.getElementById('gCur').value||0, target:+document.getElementById('gTarget').value||0,
       unit:document.getElementById('gUnit').value.trim(), start:document.getElementById('gStart').value, by:document.getElementById('gBy').value,
-      sec:document.getElementById('gSec').value };
+      sec:document.getElementById('gSec').value, minPerUnit: mpRaw===''?null:(+mpRaw||0) };
     const g=loadGoals();
-    if(goalEdit){ const i=g.findIndex(x=>x.id===goalEdit); if(i>=0) g[i]={...g[i],...o}; }
-    else { o.id='g'+Date.now(); g.push(o); }
-    saveGoals(g); document.getElementById('goalMsg').textContent='Saved ✓'; goalFormReset(); renderGoals();
+    if(goalEdit){ const i=g.findIndex(x=>x.id===goalEdit); if(i>=0){ g[i]={...g[i],...o}; saveGoals(g); syncGoalEntries(g[i]); } }
+    else { o.id='g'+Date.now(); g.push(o); saveGoals(g); }
+    document.getElementById('goalMsg').textContent='Saved ✓'; goalFormReset(); renderGoals();
+    if(document.getElementById('entryTable')) renderLog();
   });
 }
 function paceLabel(x){
@@ -963,33 +1149,44 @@ function paceLabel(x){
   const d=af-ef;
   if(d>=0.05) return 'Ahead'; if(d>=-0.10) return 'On track'; if(d>=-0.25) return 'Behind'; return 'Lagging';
 }
-function pctColor(p){
-  if(p<=0) return '#5b626f';      // grey
-  if(p<=25) return '#b83b37';     // red
-  if(p<=50) return '#bd6e16';     // orange
-  if(p<=75) return '#a8850c';     // yellow
-  return '#2c7d47';               // green
+function paceColor(label){
+  switch(label){
+    case 'Done':     return '#2ecd6f'; // green
+    case 'Ahead':    return '#2ecd6f'; // green
+    case 'On track': return '#2ecd6f'; // green
+    case 'Behind':   return '#eab308'; // yellow
+    case 'Lagging':  return '#ef4d4d'; // red
+    default:         return '#8a93a3'; // grey — not started / no target
+  }
 }
 function goalCard(x){
   const raw = x.target>0 ? Math.round(x.cur/x.target*100) : 0;
   const pct = Math.min(100, raw);
-  const col = pctColor(raw);
+  const started = x.target>0 && x.cur>0;
+  const pace = paceLabel(x);
+  const col = started ? paceColor(pace) : '#8a93a3';
+  const badge = started ? pace : 'Not started';
   const r=34, c=2*Math.PI*r, off=c*(1-pct/100);
   const m = monthsUntil(x.by);
+  const dl = daysLeft(x.by);
+  const overdue = x.target>0 && x.cur<x.target && dl!=null && dl<0;
   const when = x.by ? (m>0?`${m} mo left`:m===0?'this month':'overdue') : 'no deadline';
-  return `<div class="gcard" style="background:linear-gradient(135deg,${col}48,${col}1a);border-color:${col}66">
+  const hint = paceHint(x);
+  return `<div class="gcard${overdue?' gcard-overdue':''}" style="background:linear-gradient(135deg,${col}73,${col}33);border-color:${col}99">
     <div class="gring">
       <svg viewBox="0 0 76 76">
         <circle class="gring-bg" cx="38" cy="38" r="${r}"/>
-        <circle class="gring-fg" cx="38" cy="38" r="${r}" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/>
+        <circle class="gring-fg" cx="38" cy="38" r="${r}" style="stroke:${col}" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/>
       </svg>
       <div class="gring-txt">${raw}%</div>
     </div>
     <div class="gcard-body">
       <div class="gcard-name" title="${x.name}">${x.name}</div>
       <div class="gcard-sub">${x.cur}${x.target>0?` / ${x.target}`:''} ${x.unit}</div>
+      ${goalMinPer(x)>0?`<div class="ghint">⏱ ≈ ${fmtShort(Math.round((+x.cur||0)*goalMinPer(x)))} tracked · 1 ${x.unit||'unit'} = ${goalMinPer(x)} min</div>`:''}
+      ${hint?`<div class="ghint">${hint}</div>`:''}
       <div class="gcard-meta">
-        <span class="gbadge" style="background:${col}">${paceLabel(x)}</span>
+        <span class="gbadge" style="background:${col}">${badge}</span>
         <span class="gwhen">${when}</span>
       </div>
     </div>
@@ -1001,8 +1198,13 @@ function goalCard(x){
   </div>`;
 }
 function renderSec(sec, el){
-  const rows=loadGoals().filter(g=>g.sec===sec)
-    .sort((a,b)=>((b.target>0?b.cur/b.target:0)-(a.target>0?a.cur/a.target:0)));
+  const rows=loadGoals().filter(g=>g.sec===sec);
+  if(sec==='active') rows.sort((a,b)=>{ // attention first: lagging, then nearest deadline
+    const r=paceRank(paceLabel(a))-paceRank(paceLabel(b)); if(r) return r;
+    const da=daysLeft(a.by), db=daysLeft(b.by);
+    return (da==null?1e9:da)-(db==null?1e9:db);
+  });
+  else rows.sort((a,b)=>((b.target>0?b.cur/b.target:0)-(a.target>0?a.cur/a.target:0)));
   document.getElementById(el).innerHTML = rows.length
     ? `<div class="gcards">${rows.map(goalCard).join('')}</div>`
     : '<div class="empty">Nothing here yet. Add one above.</div>';
@@ -1018,30 +1220,61 @@ function renderGoalStats(){
     <div><b>${avg}%</b><span>avg progress</span></div>
     <div><b>${done}</b><span>completed</span></div>`;
 }
-function renderGoals(){ renderGoalStats(); renderSec('active','secActive'); renderSec('backlog','secBacklog'); renderSec('dream','secDream'); }
-window.goalAdd=function(id){ const g=loadGoals(), x=g.find(o=>o.id===id); if(!x) return; const a=prompt(`Add to "${x.name}" (${x.unit}):`,''); if(a==null) return; x.cur=(+x.cur||0)+(+a||0); saveGoals(g); renderGoals(); };
+function renderGoals(){ renderGoalStats(); renderSec('active','secActive'); renderSec('backlog','secBacklog'); renderSec('dream','secDream'); if(document.getElementById('fGoal')) refreshGoalOptions(); }
+function goalMinPer(x){ if(x.minPerUnit!=null && x.minPerUnit!=='') return +x.minPerUnit||0; const u=(x.unit||'').toLowerCase(); if(/min/.test(u)) return 1; if(/hour|hr/.test(u)) return 60; return 0; }
+function goalMins(x,amt){ return Math.round(goalMinPer(x)*amt); }
+// Propagate a goal's name/category/mapping to all its linked time entries (so editing a goal updates the time tracker, incl. via Firebase).
+function syncGoalEntries(g){
+  const all=loadEntries(); let changed=false; const mpu=goalMinPer(g);
+  all.forEach(e=>{ if(e.type==='goal' && e.goalId===g.id){
+    if(e.task!==g.name){ e.task=g.name; changed=true; }
+    if(e.cat!==g.cat){ e.cat=g.cat; changed=true; }
+    if(e.amt!=null){ const m=Math.round((+e.amt||0)*mpu); if(m!==e.mins){ e.mins=m; changed=true; } }
+  }});
+  if(changed) saveEntries(all);
+}
+function logTimeEntry(cat,task,mins){
+  const now=new Date(); const ym=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const day=now.getDate(); const period=day<=10?'P1':day<=20?'P2':'P3';
+  const all=loadEntries(); all.push({id:Date.now()+''+Math.floor(performance.now()), ym, period, task, cat, mins}); saveEntries(all);
+}
+window.goalAdd=function(id){
+  const g=loadGoals(), x=g.find(o=>o.id===id); if(!x) return;
+  const a=prompt(`Add to "${x.name}" (${x.unit}):`,''); if(a==null) return;
+  const amt=+a||0; if(amt<=0) return;
+  x.cur=(+x.cur||0)+amt; saveGoals(g);
+  const mins=goalMins(x,amt);
+  if(mins>0){ const now=new Date(); const ym=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0'); const day=now.getDate(); const period=day<=10?'P1':day<=20?'P2':'P3';
+    const all=loadEntries(); all.push({id:eid(), ym, period, type:'goal', goalId:x.id, amt, task:x.name, cat:x.cat, mins}); saveEntries(all); logSel=`${ym}-${period}`; }
+  renderGoals(); if(document.getElementById('entryTable')) renderLog();
+};
+function flashGoalLog(name,mins){ const el=document.getElementById('goalStats'); if(!el) return; const n=document.createElement('div'); n.className='hint'; n.style.color='#16a34a'; n.textContent=`Logged ${fmtShort(mins)} of ${name} as tracked time ✓`; el.parentNode.insertBefore(n, el.nextSibling); setTimeout(()=>n.remove(), 4000); }
 window.goalEditStart=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x) return; goalEdit=id; goalFormShow(true);
   document.getElementById('gName').value=x.name; document.getElementById('gCat').value=x.cat;
   document.getElementById('gCur').value=x.cur; document.getElementById('gTarget').value=x.target;
   document.getElementById('gUnit').value=x.unit; document.getElementById('gStart').value=x.start||''; document.getElementById('gBy').value=x.by||'';
+  document.getElementById('gMinPer').value=(x.minPerUnit==null?'':x.minPerUnit); document.getElementById('gUnitLab').textContent=x.unit||'unit';
   document.getElementById('gSec').value=x.sec; document.getElementById('goalFormTitle').textContent='Edit goal';
   document.getElementById('gCancel').style.display=''; document.getElementById('viewGoals').scrollIntoView({behavior:'smooth'}); };
-window.goalDel=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x||!confirm(`Delete "${x.name}"?`)) return; saveGoals(loadGoals().filter(o=>o.id!==id)); renderGoals(); };
+window.goalDel=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x||!confirm(`Delete "${x.name}"? This also removes its tracked time entries.`)) return;
+  saveGoals(loadGoals().filter(o=>o.id!==id));
+  const ents=loadEntries(), kept=ents.filter(e=>!(e.type==='goal'&&e.goalId===id)); if(kept.length!==ents.length) saveEntries(kept);
+  renderGoals(); if(document.getElementById('entryTable')) renderLog(); };
 
 // ---- view switch ----
 function setView(v){
   document.getElementById('viewOverview').hidden = v!=='overview';
   document.getElementById('viewLog').hidden = v!=='log';
-  document.getElementById('viewOnline').hidden = v!=='online';
   document.getElementById('viewGoals').hidden = v!=='goals';
-  const subs={overview:'Jan – May 2026 · interactive overview', log:'Log & track from June 2026 · saved on this device',
-    online:'Screen time vs real life · the cost of being online', goals:'Targets vs what you actually did'};
+  document.getElementById('lifeBar').hidden = v!=='overview';
+  const subs={overview:'your finite hours, on purpose', log:'log time, goals & screen use · saved on this device',
+    goals:'targets vs what you actually did'};
   document.getElementById('sub').textContent = subs[v];
   document.querySelectorAll('#viewNav button').forEach(b=>b.classList.toggle('active', b.dataset.v===v));
   if(v==='overview'){ renderSuggestions(); setOv(ovTab); }
   if(v==='log') renderLog();
-  if(v==='online') renderOnline();
   if(v==='goals') renderGoals();
+  try{ localStorage.setItem(LS_VIEW, v); }catch(e){}
 }
 document.querySelectorAll('#viewNav button').forEach(b=>b.onclick=()=>setView(b.dataset.v));
 
@@ -1082,7 +1315,8 @@ document.addEventListener('fb-empty', ()=>fbSyncPush());
 // init
 renderLifeBar(); renderKPIs(); renderTabs(); renderTotalTrend(); renderSuggestions(); renderTips();
 setOv('year');
-initLogForm(); initOnline(); initGoals();
+initLogForm(); initGoals();
+(function(){ try{ const sv=localStorage.getItem(LS_VIEW); if(sv&&sv!=='overview') setView(sv); }catch(e){} })();
 </script>
 </body>
 </html>
