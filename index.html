@@ -942,10 +942,17 @@ function paceLabel(x){
   const d=af-ef;
   if(d>=0.05) return 'Ahead'; if(d>=-0.10) return 'On track'; if(d>=-0.25) return 'Behind'; return 'Lagging';
 }
+function pctColor(p){
+  if(p<=0) return '#7b8494';      // grey
+  if(p<=25) return '#d9534f';     // red
+  if(p<=50) return '#e08a36';     // orange
+  if(p<=75) return '#d4ad2b';     // yellow
+  return '#3a9d5d';               // green
+}
 function goalCard(x){
   const raw = x.target>0 ? Math.round(x.cur/x.target*100) : 0;
   const pct = Math.min(100, raw);
-  const col = arrowColor(x);
+  const col = pctColor(raw);
   const r=34, c=2*Math.PI*r, off=c*(1-pct/100);
   const m = monthsUntil(x.by);
   const when = x.by ? (m>0?`${m} mo left`:m===0?'this month':'overdue') : 'no deadline';
