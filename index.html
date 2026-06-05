@@ -309,13 +309,16 @@
 <script>
 // ---- DATA (minutes) ----
 const COLORS = {Spiritual:'#4C6EF5',Youth:'#8DC63F',Family:'#F5A623',Mental:'#EF5350',Hobby:'#8B2FE0',Career:'#B9BFC7'};
-const MONTHS = [
+const SEED_MONTHS = [
   {m:'Jan 2026', cats:{Spiritual:900, Youth:690, Family:120}},                 // 28h30m
   {m:'Feb 2026', cats:{Spiritual:670, Youth:580, Family:100}},                 // 22h30m
   {m:'Mar 2026', cats:{Spiritual:903, Youth:274, Hobby:100}},                  // 21h17m (Mental merged into Hobby)
   {m:'Apr 2026', cats:{Spiritual:1027,Youth:591, Family:48}},                  // 27h46m
   {m:'May 2026', cats:{Spiritual:1634,Youth:995, Family:108, Career:30}},      // 46h07m
 ];
+const LS_MONTHS = 'ptd_months_v1';
+function loadMonths(){ try{ const v=JSON.parse(localStorage.getItem(LS_MONTHS)); return (Array.isArray(v)&&v.length)?v:SEED_MONTHS; }catch(e){ return SEED_MONTHS; } }
+let MONTHS = loadMonths();
 const ALLCATS = ['Spiritual','Youth','Family','Career','Hobby'];
 const TASK_CAT = {
   'ONS':'Spiritual','TDS-SK-Mala':'Spiritual','Bala-AH3':'Spiritual','Vishnu Sahasranam':'Spiritual',
@@ -731,7 +734,7 @@ function setView(v){
 document.querySelectorAll('#viewNav button').forEach(b=>b.onclick=()=>setView(b.dataset.v));
 
 // --- Firebase sync glue ---
-function fbBlob(){ return {version:1, entries:loadEntries(), online:loadOnline(), goals:loadGoals()}; }
+function fbBlob(){ return {version:1, months:MONTHS, entries:loadEntries(), online:loadOnline(), goals:loadGoals()}; }
 function fbSyncPush(){ window.fbPushRaw && window.fbPushRaw(fbBlob()); }
 window.fbToggle = function(){ if(window.__fbIn){ window.fbSignOut(); } else { window.fbSignIn(); } };
 document.addEventListener('fb-auth', e=>{
@@ -743,7 +746,7 @@ document.addEventListener('fb-auth', e=>{
 document.addEventListener('fb-data', e=>{
   const d=e.detail||{}; let changed=false;
   const set=(k,v)=>{ if(v===undefined||v===null) return; const s=JSON.stringify(v); if(localStorage.getItem(k)!==s){ localStorage.setItem(k,s); changed=true; } };
-  set(LS_KEY,d.entries); set(LS_ONLINE,d.online); set(LS_GOALS,d.goals);
+  set(LS_MONTHS,d.months); set(LS_KEY,d.entries); set(LS_ONLINE,d.online); set(LS_GOALS,d.goals);
   if(changed) location.reload();
 });
 document.addEventListener('fb-empty', ()=>fbSyncPush());
