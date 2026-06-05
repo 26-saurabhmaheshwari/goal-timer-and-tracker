@@ -93,7 +93,7 @@
   .gtar{font-size:12.5px;color:var(--muted);margin-top:2px}
   .gprog{width:300px;max-width:40vw;flex:0 0 auto}
   .gtrack2{position:relative;height:30px;border-radius:8px;background:#eef1f6;border:1px solid #dfe4ee;overflow:hidden}
-  .gfill2{position:absolute;left:0;top:0;bottom:0;border-radius:7px 0 0 7px;transition:width .4s}
+  .gfill2{position:absolute;left:0;top:0;bottom:0;border-radius:7px 0 0 7px;transition:width .4s;background-image:linear-gradient(to bottom,rgba(255,255,255,.45),rgba(255,255,255,0) 48%,rgba(0,0,0,.06)),repeating-linear-gradient(45deg,rgba(255,255,255,.22) 0 9px,rgba(255,255,255,0) 9px 18px)}
   .glabel{position:absolute;left:10px;top:0;bottom:0;display:flex;align-items:center;font-size:12.5px;font-weight:700;color:#1f2733}
   .gpct{width:46px;text-align:right;font-weight:700;font-size:15px;flex:0 0 auto}
   .gacts{display:flex;gap:4px;flex:0 0 auto}
@@ -308,7 +308,8 @@
 </div><!-- /viewOnline -->
 
 <div id="viewGoals" hidden>
-  <div class="card">
+  <button id="goalCreateBtn" class="btn" style="margin-bottom:14px">＋ Create goal</button>
+  <div class="card" id="goalFormCard" hidden>
     <h2 id="goalFormTitle">Add a goal</h2>
     <div class="hint">Named goal with its own unit, target and deadline. Progress = current ÷ target.</div>
     <form id="goalForm" class="form">
@@ -322,7 +323,11 @@
       </div>
       <div class="frow">
         <label>Unit <input id="gUnit" placeholder="Paath / mala / Minutes / Parikramas"></label>
+        <label>Start <input id="gStart" type="date"></label>
+      </div>
+      <div class="frow">
         <label>Deadline <input id="gBy" type="date"></label>
+        <label></label>
       </div>
       <label style="max-width:260px">Section <select id="gSec">
         <option value="active">Active goal</option>
@@ -753,30 +758,35 @@ function renderOnline(){
 // ================= GOALS (named, with units + deadline) =================
 const LS_GOALS='ptd_goals2_v1';
 const SEED_GOALS=[
-  {id:'g1',name:'N. MAHOTSAV',     cat:'Spiritual',cur:590, target:1250, unit:'Paath',     by:'2026-09-01',sec:'active'},
-  {id:'g2',name:'ONS-7100',        cat:'Spiritual',cur:2163,target:7100, unit:'mala',      by:'2026-12-31',sec:'active'},
-  {id:'g3',name:'NM - Devi Kavach',cat:'Spiritual',cur:62,  target:121,  unit:'Paath',     by:'2026-12-31',sec:'active'},
-  {id:'g4',name:'Sundarkand',      cat:'Spiritual',cur:4,   target:75,   unit:'Paath',     by:'2026-12-31',sec:'active'},
-  {id:'g5',name:'Gau Pradakshina', cat:'Spiritual',cur:52,  target:12500,unit:'Parikramas',by:'2026-12-31',sec:'active'},
-  {id:'g6',name:'Walk-51',         cat:'Youth',    cur:230, target:3060, unit:'Minutes',   by:'2026-12-31',sec:'active'},
-  {id:'g7',name:'Rejuvenate-51',   cat:'Youth',    cur:15,  target:3060, unit:'Minutes',   by:'2026-12-31',sec:'active'},
-  {id:'g8',name:'Study-51',        cat:'Career',   cur:30,  target:3060, unit:'Minutes',   by:'2026-12-31',sec:'active'},
+  {id:'g1',name:'N. MAHOTSAV',     cat:'Spiritual',cur:590, target:1250, unit:'Paath',     start:'2026-01-01',by:'2026-09-01',sec:'active'},
+  {id:'g2',name:'ONS-7100',        cat:'Spiritual',cur:2163,target:7100, unit:'mala',      start:'2026-01-01',by:'2026-12-31',sec:'active'},
+  {id:'g3',name:'NM - Devi Kavach',cat:'Spiritual',cur:62,  target:121,  unit:'Paath',     start:'2026-01-01',by:'2026-12-31',sec:'active'},
+  {id:'g4',name:'Sundarkand',      cat:'Spiritual',cur:4,   target:75,   unit:'Paath',     start:'2026-01-01',by:'2026-12-31',sec:'active'},
+  {id:'g5',name:'Gau Pradakshina', cat:'Spiritual',cur:52,  target:12500,unit:'Parikramas',start:'2026-01-01',by:'2026-12-31',sec:'active'},
+  {id:'g6',name:'Walk-51',         cat:'Youth',    cur:230, target:3060, unit:'Minutes',   start:'2026-01-01',by:'2026-12-31',sec:'active'},
+  {id:'g7',name:'Rejuvenate-51',   cat:'Youth',    cur:15,  target:3060, unit:'Minutes',   start:'2026-01-01',by:'2026-12-31',sec:'active'},
+  {id:'g8',name:'Study-51',        cat:'Career',   cur:30,  target:3060, unit:'Minutes',   start:'2026-01-01',by:'2026-12-31',sec:'active'},
 ];
+// pace colour: blue=ahead, green=on track, orange=lagging, red=behind
+function expFrac(x){ if(!x.by) return null; const end=new Date(x.by+'T00:00:00'); const start=new Date(((x.start)||((end.getFullYear())+'-01-01'))+'T00:00:00'); const now=new Date(); if(now<=start) return 0; if(now>=end) return 1; return (now-start)/(end-start); }
+function paceColor(x){ const af=x.target>0?x.cur/x.target:0; if(af>=1) return '#93c5fd'; const ef=expFrac(x); if(ef==null) return '#86efac'; const d=af-ef; if(d>=0.05) return '#93c5fd'; if(d>=-0.10) return '#86efac'; if(d>=-0.25) return '#fdba74'; return '#fca5a5'; }
 let goalEdit=null;
 function loadGoals(){ try{ const v=JSON.parse(localStorage.getItem(LS_GOALS)); return Array.isArray(v)?v:SEED_GOALS; }catch(e){ return SEED_GOALS; } }
 function saveGoals(g){ localStorage.setItem(LS_GOALS, JSON.stringify(g)); fbSyncPush(); }
 function fmtBy(by){ if(!by) return ''; const d=new Date(by+'T00:00:00'); return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
 function monthsUntil(by){ if(!by) return null; const d=new Date(by+'T00:00:00'), now=new Date(); let m=(d.getFullYear()-now.getFullYear())*12+(d.getMonth()-now.getMonth()); if(d.getDate()<now.getDate())m--; return m; }
-function goalFormReset(){ goalEdit=null; document.getElementById('goalForm').reset(); document.getElementById('goalFormTitle').textContent='Add a goal'; document.getElementById('gCancel').style.display='none'; }
+function goalFormShow(on){ document.getElementById('goalFormCard').hidden=!on; document.getElementById('goalCreateBtn').hidden=on; }
+function goalFormReset(){ goalEdit=null; document.getElementById('goalForm').reset(); document.getElementById('goalFormTitle').textContent='Add a goal'; document.getElementById('gCancel').style.display='none'; goalFormShow(false); }
 function initGoals(){
   document.getElementById('gCat').innerHTML = ALLCATS.map(c=>`<option>${c}</option>`).join('');
+  document.getElementById('goalCreateBtn').onclick=()=>{ goalEdit=null; document.getElementById('goalForm').reset(); document.getElementById('goalFormTitle').textContent='Add a goal'; document.getElementById('gCancel').style.display=''; document.getElementById('goalMsg').textContent=''; goalFormShow(true); };
   document.getElementById('gCancel').onclick=()=>{ goalFormReset(); document.getElementById('goalMsg').textContent=''; };
   document.getElementById('goalForm').addEventListener('submit', e=>{
     e.preventDefault();
     const name=document.getElementById('gName').value.trim(); if(!name) return;
     const o={ name, cat:document.getElementById('gCat').value,
       cur:+document.getElementById('gCur').value||0, target:+document.getElementById('gTarget').value||0,
-      unit:document.getElementById('gUnit').value.trim(), by:document.getElementById('gBy').value,
+      unit:document.getElementById('gUnit').value.trim(), start:document.getElementById('gStart').value, by:document.getElementById('gBy').value,
       sec:document.getElementById('gSec').value };
     const g=loadGoals();
     if(goalEdit){ const i=g.findIndex(x=>x.id===goalEdit); if(i>=0) g[i]={...g[i],...o}; }
@@ -786,12 +796,12 @@ function initGoals(){
 }
 function goalRow(x){
   const pct = x.target>0 ? Math.round(x.cur/x.target*100) : 0;
-  const col = COLORS[x.cat]||'#4C6EF5';
+  const col = paceColor(x);
   const m = monthsUntil(x.by);
   const when = x.by ? `by ${fmtBy(x.by)}${m!=null?` <span style="color:#aab2c0">(${m>0?`in ${m} month${m>1?'s':''}`:m===0?'this month':'overdue'})</span>`:''}` : 'no deadline';
   const tar = x.target>0 ? `Target: ${x.target} ${x.unit} ${when}` : (x.by?when:'—');
   const bar = x.target>0
-    ? `<div class="gprog"><div class="gtrack2"><div class="gfill2" style="width:${Math.min(100,pct)}%;background:${col}"></div><div class="glabel">${x.cur} ${x.unit}</div></div></div><div class="gpct">${pct}%</div>`
+    ? `<div class="gprog"><div class="gtrack2"><div class="gfill2" style="width:${Math.min(100,pct)}%;background-color:${col}"></div><div class="glabel">${x.cur} ${x.unit}</div></div></div><div class="gpct">${pct}%</div>`
     : `<div class="gprog"></div><div class="gpct"></div>`;
   return `<div class="goalrow">
     <div class="gup ${x.sec}">⬆</div>
@@ -810,10 +820,10 @@ function renderSec(sec, el){
 }
 function renderGoals(){ renderSec('active','secActive'); renderSec('backlog','secBacklog'); renderSec('dream','secDream'); }
 window.goalAdd=function(id){ const g=loadGoals(), x=g.find(o=>o.id===id); if(!x) return; const a=prompt(`Add to "${x.name}" (${x.unit}):`,''); if(a==null) return; x.cur=(+x.cur||0)+(+a||0); saveGoals(g); renderGoals(); };
-window.goalEditStart=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x) return; goalEdit=id;
+window.goalEditStart=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x) return; goalEdit=id; goalFormShow(true);
   document.getElementById('gName').value=x.name; document.getElementById('gCat').value=x.cat;
   document.getElementById('gCur').value=x.cur; document.getElementById('gTarget').value=x.target;
-  document.getElementById('gUnit').value=x.unit; document.getElementById('gBy').value=x.by||'';
+  document.getElementById('gUnit').value=x.unit; document.getElementById('gStart').value=x.start||''; document.getElementById('gBy').value=x.by||'';
   document.getElementById('gSec').value=x.sec; document.getElementById('goalFormTitle').textContent='Edit goal';
   document.getElementById('gCancel').style.display=''; document.getElementById('viewGoals').scrollIntoView({behavior:'smooth'}); };
 window.goalDel=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x||!confirm(`Delete "${x.name}"?`)) return; saveGoals(loadGoals().filter(o=>o.id!==id)); renderGoals(); };
