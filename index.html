@@ -92,8 +92,8 @@
   .gname{font-size:16px;font-weight:700;color:#2d6cdf}
   .gtar{font-size:12.5px;color:var(--muted);margin-top:2px}
   .gprog{width:300px;max-width:40vw;flex:0 0 auto}
-  .gtrack2{position:relative;height:30px;border-radius:8px;background:#eef1f6;border:1px solid #dfe4ee;overflow:hidden}
-  .gfill2{position:absolute;left:0;top:0;bottom:0;border-radius:7px 0 0 7px;transition:width .4s;background-image:linear-gradient(to bottom,rgba(255,255,255,.45),rgba(255,255,255,0) 48%,rgba(0,0,0,.06)),repeating-linear-gradient(45deg,rgba(255,255,255,.22) 0 9px,rgba(255,255,255,0) 9px 18px)}
+  .gtrack2{position:relative;height:30px;border-radius:6px;background:#ececec;border:1px solid #d6dae0;overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,.12)}
+  .gfill2{position:absolute;left:0;top:0;bottom:0;border-radius:5px 0 0 5px;transition:width .4s;box-shadow:inset 0 -2px 3px rgba(0,0,0,.12);background-image:linear-gradient(to bottom,rgba(255,255,255,.45),rgba(255,255,255,.08) 45%,rgba(0,0,0,.10)),linear-gradient(45deg,rgba(255,255,255,.18) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.18) 50%,rgba(255,255,255,.18) 75%,transparent 75%,transparent);background-size:auto,28px 28px}
   .glabel{position:absolute;left:10px;top:0;bottom:0;display:flex;align-items:center;font-size:12.5px;font-weight:700;color:#1f2733}
   .gpct{width:46px;text-align:right;font-weight:700;font-size:15px;flex:0 0 auto}
   .gacts{display:flex;gap:4px;flex:0 0 auto}
@@ -806,7 +806,7 @@ function initGoals(){
 }
 function goalRow(x){
   const pct = x.target>0 ? Math.round(x.cur/x.target*100) : 0;
-  const col = '#3fb6a7';
+  const col = '#45b29d';
   const m = monthsUntil(x.by);
   const when = x.by ? `by ${fmtBy(x.by)}${m!=null?` <span style="color:#aab2c0">(${m>0?`in ${m} month${m>1?'s':''}`:m===0?'this month':'overdue'})</span>`:''}` : 'no deadline';
   const tar = x.target>0 ? `Target: ${x.target} ${x.unit} ${when}` : (x.by?when:'—');
