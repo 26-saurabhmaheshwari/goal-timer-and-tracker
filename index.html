@@ -166,17 +166,37 @@
   </header>
 
 <div id="viewOverview">
-  <div class="tabs" id="tabs" style="margin-bottom:18px"></div>
+  <div class="tabs" id="ovNav" style="margin-bottom:18px">
+    <button data-o="year" class="active">2026</button>
+    <button data-o="monthly">Monthly</button>
+  </div>
 
-  <div class="kpis" id="kpis"></div>
+  <!-- ===== 2026 (year) ===== -->
+  <div id="ovYear">
+    <div class="kpis" id="kpis"></div>
+    <div class="card" style="margin-bottom:16px">
+      <h2>Monthly total — trend</h2>
+      <div class="hint">Total tracked time per month (hours)</div>
+      <canvas id="totalTrend" class="chart"></canvas>
+    </div>
+    <div class="insights">
+      <h2>Suggestions — grow the 3 under-served areas toward the ideal mix</h2>
+      <div class="ibox" id="suggest"></div>
+    </div>
+    <div class="insights">
+      <h2>Tips to make the time count</h2>
+      <div class="ibox" id="tips"></div>
+    </div>
+  </div>
 
-  <div class="hint" id="usageHint" style="margin:16px 0 8px;font-weight:700;color:#cbd2de"></div>
-  <div class="kpis" id="usage"></div>
-
-  <div class="grid">
-    <div class="card">
+  <!-- ===== Monthly (unique per-month data only) ===== -->
+  <div id="ovMonthly" hidden>
+    <div class="tabs" id="tabs" style="margin-bottom:18px"></div>
+    <div class="hint" id="usageHint" style="margin:8px 0;font-weight:700;color:#cbd2de"></div>
+    <div class="kpis" id="usage"></div>
+    <div class="card" style="margin-top:16px">
       <h2 id="donutTitle">—</h2>
-      <div class="hint">Click a month tab above to switch the breakdown.</div>
+      <div class="hint">This month's category split.</div>
       <div class="donutbox">
         <div class="donutcanvas">
           <canvas id="donut"></canvas>
@@ -185,21 +205,6 @@
         <div class="legend" id="legend"></div>
       </div>
     </div>
-    <div class="card">
-      <h2>Monthly total — trend</h2>
-      <div class="hint">Total tracked time per month (hours)</div>
-      <canvas id="totalTrend" class="chart"></canvas>
-    </div>
-  </div>
-
-  <div class="insights">
-    <h2>Suggestions — grow the 3 under-served areas toward the ideal mix</h2>
-    <div class="ibox" id="suggest"></div>
-  </div>
-
-  <div class="insights">
-    <h2>Tips to make the time count</h2>
-    <div class="ibox" id="tips"></div>
   </div>
 </div><!-- /viewOverview -->
 
@@ -470,8 +475,10 @@ function renderTabs(){
 }
 
 // ---- Total trend (bar) ----
+let totalTrendChart;
 function renderTotalTrend(){
-  new Chart(document.getElementById('totalTrend'),{
+  if(totalTrendChart){ totalTrendChart.destroy(); }
+  totalTrendChart = new Chart(document.getElementById('totalTrend'),{
     type:'bar',
     data:{labels:MONTHS.map(x=>x.m.split(' ')[0]),
       datasets:[{data:MONTHS.map(x=>hrs(total(x.cats))),
@@ -688,7 +695,9 @@ function renderLog(){
 // ================= ONLINE / OFFLINE =================
 const LS_ONLINE='ptd_online_v1';
 let onSel=null, onSplitChart;
-function loadOnline(){ try{return JSON.parse(localStorage.getItem(LS_ONLINE))||{};}catch(e){return{};} }
+// May 2026 phone screen-time from the phone usage screenshot: 20h 30m total
+const SEED_ONLINE={'2026-05':{phone:20.5, lap:0, lapWaste:0}};
+function loadOnline(){ try{ const v=JSON.parse(localStorage.getItem(LS_ONLINE)); return {...SEED_ONLINE, ...(v||{})}; }catch(e){ return {...SEED_ONLINE}; } }
 function saveOnline(o){ localStorage.setItem(LS_ONLINE, JSON.stringify(o)); fbSyncPush(); }
 function daysIn(ym){ const y=+ym.slice(0,4), m=+ym.slice(5,7); return new Date(y,m,0).getDate(); }
 function loggedTotalMins(ym){ return loadEntries().filter(e=>e.ym===ym).reduce((a,e)=>a+e.mins,0); }
@@ -769,7 +778,8 @@ const SEED_GOALS=[
 ];
 // pace colour: blue=ahead, green=on track, orange=lagging, red=behind
 function expFrac(x){ if(!x.by) return null; const end=new Date(x.by+'T00:00:00'); const start=new Date(((x.start)||((end.getFullYear())+'-01-01'))+'T00:00:00'); const now=new Date(); if(now<=start) return 0; if(now>=end) return 1; return (now-start)/(end-start); }
-function paceColor(x){ const af=x.target>0?x.cur/x.target:0; if(af>=1) return '#93c5fd'; const ef=expFrac(x); if(ef==null) return '#86efac'; const d=af-ef; if(d>=0.05) return '#93c5fd'; if(d>=-0.10) return '#86efac'; if(d>=-0.25) return '#fdba74'; return '#fca5a5'; }
+function paceColor(x){ const af=x.target>0?x.cur/x.target:0; if(af>=1) return '#5b9bd5'; const ef=expFrac(x); if(ef==null) return '#5cb85c'; const d=af-ef; if(d>=0.05) return '#5b9bd5'; if(d>=-0.10) return '#5cb85c'; if(d>=-0.25) return '#f0ad4e'; return '#e57373'; }
+function arrowColor(x){ if(x.sec==='active'&&x.target>0) return paceColor(x); return x.sec==='backlog'?'#d99a2b':x.sec==='dream'?'#9b59b6':'#5cb85c'; }
 let goalEdit=null;
 function loadGoals(){ try{ const v=JSON.parse(localStorage.getItem(LS_GOALS)); return Array.isArray(v)?v:SEED_GOALS; }catch(e){ return SEED_GOALS; } }
 function saveGoals(g){ localStorage.setItem(LS_GOALS, JSON.stringify(g)); fbSyncPush(); }
@@ -796,7 +806,7 @@ function initGoals(){
 }
 function goalRow(x){
   const pct = x.target>0 ? Math.round(x.cur/x.target*100) : 0;
-  const col = paceColor(x);
+  const col = '#3fb6a7';
   const m = monthsUntil(x.by);
   const when = x.by ? `by ${fmtBy(x.by)}${m!=null?` <span style="color:#aab2c0">(${m>0?`in ${m} month${m>1?'s':''}`:m===0?'this month':'overdue'})</span>`:''}` : 'no deadline';
   const tar = x.target>0 ? `Target: ${x.target} ${x.unit} ${when}` : (x.by?when:'—');
@@ -804,7 +814,7 @@ function goalRow(x){
     ? `<div class="gprog"><div class="gtrack2"><div class="gfill2" style="width:${Math.min(100,pct)}%;background-color:${col}"></div><div class="glabel">${x.cur} ${x.unit}</div></div></div><div class="gpct">${pct}%</div>`
     : `<div class="gprog"></div><div class="gpct"></div>`;
   return `<div class="goalrow">
-    <div class="gup ${x.sec}">⬆</div>
+    <div class="gup" style="background:${arrowColor(x)}">⬆</div>
     <div class="ginfo"><div class="gname">${x.name}</div><div class="gtar">${tar}</div></div>
     ${bar}
     <div class="gacts">
@@ -838,12 +848,24 @@ function setView(v){
     online:'Screen time vs real life · the cost of being online', goals:'Targets vs what you actually did'};
   document.getElementById('sub').textContent = subs[v];
   document.querySelectorAll('#viewNav button').forEach(b=>b.classList.toggle('active', b.dataset.v===v));
-  if(v==='overview'){ renderSuggestions(); renderUsage(current); }
+  if(v==='overview'){ renderSuggestions(); if(ovTab==='monthly') renderDonut(current); else renderTotalTrend(); }
   if(v==='log') renderLog();
   if(v==='online') renderOnline();
   if(v==='goals') renderGoals();
 }
 document.querySelectorAll('#viewNav button').forEach(b=>b.onclick=()=>setView(b.dataset.v));
+
+// ---- Overview sub-tabs: 2026 (year) vs Monthly ----
+let ovTab='year';
+function setOv(o){
+  ovTab=o;
+  document.getElementById('ovYear').hidden = o!=='year';
+  document.getElementById('ovMonthly').hidden = o!=='monthly';
+  document.querySelectorAll('#ovNav button').forEach(b=>b.classList.toggle('active', b.dataset.o===o));
+  if(o==='year') renderTotalTrend();
+  if(o==='monthly') renderDonut(current);
+}
+document.querySelectorAll('#ovNav button').forEach(b=>b.onclick=()=>setOv(b.dataset.o));
 
 // --- Firebase sync glue ---
 function fbBlob(){ return {version:1, months:MONTHS, colors:COLORS, allcats:ALLCATS, taskcat:TASK_CAT, entries:loadEntries(), online:loadOnline(), goals:loadGoals()}; }
@@ -869,8 +891,8 @@ document.addEventListener('fb-data', e=>{
 document.addEventListener('fb-empty', ()=>fbSyncPush());
 
 // init
-renderKPIs(); renderTabs(); renderDonut(current);
-renderTotalTrend(); renderSuggestions(); renderTips();
+renderKPIs(); renderTabs(); renderTotalTrend(); renderSuggestions(); renderTips();
+setOv('year');
 initLogForm(); initOnline(); initGoals();
 </script>
 </body>
