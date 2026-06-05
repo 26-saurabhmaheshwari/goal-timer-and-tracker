@@ -785,7 +785,11 @@ document.addEventListener('fb-data', e=>{
   const set=(k,v)=>{ if(v===undefined||v===null) return; const s=JSON.stringify(v); if(localStorage.getItem(k)!==s){ localStorage.setItem(k,s); changed=true; } };
   set(LS_MONTHS,d.months); set(LS_COLORS,d.colors); set(LS_ALLCATS,d.allcats); set(LS_TASKCAT,d.taskcat);
   set(LS_KEY,d.entries); set(LS_ONLINE,d.online); set(LS_GOALS,d.goals);
-  if(changed) location.reload();
+  // one reload max per page load — prevents a flicker loop if remote/local never byte-match
+  if(changed && !sessionStorage.getItem('fb_synced')){
+    sessionStorage.setItem('fb_synced','1');
+    location.reload();
+  }
 });
 document.addEventListener('fb-empty', ()=>fbSyncPush());
 
