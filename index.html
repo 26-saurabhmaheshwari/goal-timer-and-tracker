@@ -181,21 +181,20 @@
   <!-- ===== 2026 (year) ===== -->
   <div id="ovYear">
     <div class="kpis" id="kpis"></div>
-    <div class="card" style="margin-bottom:16px">
-      <h2>2026 — category split</h2>
-      <div class="hint">Where your tracked time went this year.</div>
-      <div class="donutbox">
+    <div class="card monthsplit" style="margin-bottom:16px">
+      <div class="ms-left">
+        <h2 style="margin-bottom:10px">2026 — category split</h2>
         <div class="donutcanvas">
           <canvas id="yearDonut"></canvas>
           <div class="center"><div class="big" id="yearCenterVal"></div></div>
         </div>
-        <div class="legend" id="yearLegend"></div>
+        <table class="ms-table" style="margin-top:14px"><tbody id="yearLegend"></tbody></table>
       </div>
-    </div>
-    <div class="card" style="margin-bottom:16px">
-      <h2>Monthly total — trend</h2>
-      <div class="hint">Total tracked time per month (hours)</div>
-      <canvas id="totalTrend" class="chart"></canvas>
+      <div class="ms-right">
+        <h2>Monthly total — trend</h2>
+        <div class="hint">Total tracked time per month (hours)</div>
+        <canvas id="totalTrend" class="chart"></canvas>
+      </div>
     </div>
     <div class="insights">
       <h2>Suggestions — grow the 3 under-served areas toward the ideal mix</h2>
@@ -371,7 +370,7 @@
 
 <script>
 // ---- DATA (minutes) ----
-const SEED_COLORS = {Spiritual:'#4C6EF5',Youth:'#8DC63F',Family:'#F5A623',Mental:'#EF5350',Hobby:'#8B2FE0',Career:'#B9BFC7'};
+const SEED_COLORS = {Spiritual:'#1c92d2',Youth:'#74c4ea',Family:'#2451a8',Mental:'#283d8f',Hobby:'#1b2350',Career:'#a6d8f0'};
 const SEED_MONTHS = [
   {m:'Jan 2026', cats:{Spiritual:900, Youth:690, Family:120}},                 // 28h30m
   {m:'Feb 2026', cats:{Spiritual:670, Youth:580, Family:100}},                 // 22h30m
@@ -394,7 +393,7 @@ const SEED_TASK_CAT = {
 const LS_COLORS='ptd_colors_v1', LS_ALLCATS='ptd_allcats_v1', LS_TASKCAT='ptd_taskcat_v1';
 function loadObj(k,seed){ try{ const v=JSON.parse(localStorage.getItem(k)); return (v&&typeof v==='object'&&Object.keys(v).length)?v:seed; }catch(e){ return seed; } }
 function loadArr(k,seed){ try{ const v=JSON.parse(localStorage.getItem(k)); return (Array.isArray(v)&&v.length)?v:seed; }catch(e){ return seed; } }
-let COLORS  = loadObj(LS_COLORS, SEED_COLORS);
+let COLORS  = {...loadObj(LS_COLORS, SEED_COLORS), ...SEED_COLORS};
 let ALLCATS = loadArr(LS_ALLCATS, SEED_ALLCATS);
 let TASK_CAT= loadObj(LS_TASKCAT, SEED_TASK_CAT);
 let TASKS   = Object.keys(TASK_CAT);
@@ -410,8 +409,13 @@ function shadeScale(vals){
   return vals.map(v=>{ const t=(v-mn)/span; const L=Math.round(74-t*36); return `hsl(227 89% ${L}%)`; });
 }
 // vivid, distinct hue per bar — purple→blue→teal→green→yellow→orange→red, cycling
-const HUES = [275,225,190,150,90,45,18,330,255,210];
-function huePalette(n){ return Array.from({length:n},(_,i)=>`hsl(${HUES[i%HUES.length]} 78% 58%)`); }
+function huePalette(n){ return Array.from({length:n},(_,i)=>{
+  const t = n>1 ? i/(n-1) : 0;            // light cyan → deep navy ramp
+  const h = Math.round(195 + 35*t);
+  const s = Math.round(70 + 15*t);
+  const l = Math.round(78 - 46*t);
+  return `hsl(${h} ${s}% ${l}%)`;
+}); }
 
 // ---- KPIs ----
 function renderKPIs(){
@@ -448,9 +452,9 @@ function renderYearDonut(){
   const cols=labels.map(l=>COLORS[l]); const tot=data.reduce((a,b)=>a+b,0);
   document.getElementById('yearCenterVal').innerHTML=`${Math.floor(tot/60)}<span>h</span>`;
   document.getElementById('yearLegend').innerHTML=entries.map(([n,v])=>
-    `<div class="lrow"><span class="dot" style="background:${COLORS[n]}"></span>
-     <span class="nm">${n}</span>
-     <span class="meta">${fmtShort(v)} · ${Math.round(v/tot*100)}%</span></div>`).join('');
+    `<tr><td><span class="dot" style="background:${COLORS[n]}"></span>${n}</td>
+     <td style="text-align:right;font-weight:600">${fmtShort(v)}</td>
+     <td style="text-align:right;color:var(--muted)">${Math.round(v/tot*100)}%</td></tr>`).join('');
   const cfg={type:'doughnut',
     data:{labels,datasets:[{data,backgroundColor:cols,borderWidth:3,borderColor:'#fff',hoverOffset:6}]},
     options:{cutout:'68%',plugins:{legend:{display:false},
