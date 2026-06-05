@@ -84,6 +84,49 @@
   .gtrack{height:12px;background:#eef1f6;border-radius:8px;overflow:hidden}
   .gfill{height:100%;border-radius:8px;transition:width .4s}
 </style>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+  const firebaseConfig = {
+    apiKey: "AIzaSyA635AeqlLNF5G0YvoUUPEG3cG0AaTVKM4",
+    authDomain: "goal-tracker-and-timer.firebaseapp.com",
+    projectId: "goal-tracker-and-timer",
+    storageBucket: "goal-tracker-and-timer.firebasestorage.app",
+    messagingSenderId: "909186538996",
+    appId: "1:909186538996:web:3b9359566c7e0b21dd2da1"
+  };
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const provider = new GoogleAuthProvider();
+  let uid = null, pushTimer = null;
+
+  window.fbSignIn = () => signInWithPopup(auth, provider).catch(e => alert('Sign-in failed: ' + e.message));
+  window.fbSignOut = () => signOut(auth);
+  window.fbPushRaw = (data) => {
+    if (!uid) return;
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(() => {
+      setDoc(doc(db, 'users', uid), { ...data, updated: Date.now() }).catch(e => console.warn('fb push', e));
+    }, 800);
+  };
+
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      uid = user.uid;
+      document.dispatchEvent(new CustomEvent('fb-auth', { detail: { email: user.email, signedIn: true } }));
+      try {
+        const snap = await getDoc(doc(db, 'users', uid));
+        if (snap.exists()) document.dispatchEvent(new CustomEvent('fb-data', { detail: snap.data() }));
+        else document.dispatchEvent(new CustomEvent('fb-empty'));
+      } catch (e) { console.warn('fb load', e); }
+    } else {
+      uid = null;
+      document.dispatchEvent(new CustomEvent('fb-auth', { detail: { signedIn: false } }));
+    }
+  });
+</script>
 </head>
 <body>
 <div class="wrap">
@@ -97,6 +140,10 @@
       <button data-v="log">Log Data</button>
       <button data-v="online">Online / Offline</button>
       <button data-v="goals">Goals</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span id="fbWho" style="font-size:12px;color:#9aa3b2"></span>
+      <button id="fbBtn" onclick="fbToggle()" style="cursor:pointer;border:1px solid #3a4358;background:#1c2333;color:#e6e9ef;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600">Sign in to sync</button>
     </div>
   </header>
 
@@ -465,7 +512,7 @@ const PERIOD_LABEL = {P1:'1–10',P2:'11–20',P3:'21–end'};
 let logDonutChart, logTrendChart, logSel=null;
 
 function loadEntries(){ try{return JSON.parse(localStorage.getItem(LS_KEY))||[];}catch(e){return[];} }
-function saveEntries(a){ localStorage.setItem(LS_KEY, JSON.stringify(a)); }
+function saveEntries(a){ localStorage.setItem(LS_KEY, JSON.stringify(a)); fbSyncPush(); }
 function colorFor(cat){ if(COLORS[cat])return COLORS[cat];
   let h=0; for(const c of cat) h=(c.charCodeAt(0)+((h<<5)-h))|0;
   return `hsl(${Math.abs(h)%360} 65% 55%)`; }
@@ -566,7 +613,7 @@ function renderLog(){
 const LS_ONLINE='ptd_online_v1';
 let onSel=null, onSplitChart;
 function loadOnline(){ try{return JSON.parse(localStorage.getItem(LS_ONLINE))||{};}catch(e){return{};} }
-function saveOnline(o){ localStorage.setItem(LS_ONLINE, JSON.stringify(o)); }
+function saveOnline(o){ localStorage.setItem(LS_ONLINE, JSON.stringify(o)); fbSyncPush(); }
 function daysIn(ym){ const y=+ym.slice(0,4), m=+ym.slice(5,7); return new Date(y,m,0).getDate(); }
 function loggedTotalMins(ym){ return loadEntries().filter(e=>e.ym===ym).reduce((a,e)=>a+e.mins,0); }
 function loggedCatMins(ym,cat){ return loadEntries().filter(e=>e.ym===ym&&e.cat===cat).reduce((a,e)=>a+e.mins,0); }
@@ -636,7 +683,7 @@ function renderOnline(){
 const LS_GOALS='ptd_goals_v1';
 let goalSel=null;
 function loadGoals(){ try{return JSON.parse(localStorage.getItem(LS_GOALS))||{};}catch(e){return{};} }
-function saveGoals(g){ localStorage.setItem(LS_GOALS, JSON.stringify(g)); }
+function saveGoals(g){ localStorage.setItem(LS_GOALS, JSON.stringify(g)); fbSyncPush(); }
 function initGoals(){
   document.getElementById('gCat').innerHTML = ALLCATS.map(c=>`<option>${c}</option>`).join('');
   document.getElementById('goalForm').addEventListener('submit', e=>{
@@ -682,6 +729,24 @@ function setView(v){
   if(v==='goals') renderGoals();
 }
 document.querySelectorAll('#viewNav button').forEach(b=>b.onclick=()=>setView(b.dataset.v));
+
+// --- Firebase sync glue ---
+function fbBlob(){ return {version:1, entries:loadEntries(), online:loadOnline(), goals:loadGoals()}; }
+function fbSyncPush(){ window.fbPushRaw && window.fbPushRaw(fbBlob()); }
+window.fbToggle = function(){ if(window.__fbIn){ window.fbSignOut(); } else { window.fbSignIn(); } };
+document.addEventListener('fb-auth', e=>{
+  window.__fbIn = !!e.detail.signedIn;
+  const btn=document.getElementById('fbBtn'), who=document.getElementById('fbWho');
+  if(e.detail.signedIn){ btn.textContent='Sign out'; who.textContent=e.detail.email||'synced'; }
+  else { btn.textContent='Sign in to sync'; who.textContent=''; }
+});
+document.addEventListener('fb-data', e=>{
+  const d=e.detail||{}; let changed=false;
+  const set=(k,v)=>{ if(v===undefined||v===null) return; const s=JSON.stringify(v); if(localStorage.getItem(k)!==s){ localStorage.setItem(k,s); changed=true; } };
+  set(LS_KEY,d.entries); set(LS_ONLINE,d.online); set(LS_GOALS,d.goals);
+  if(changed) location.reload();
+});
+document.addEventListener('fb-empty', ()=>fbSyncPush());
 
 // init
 renderKPIs(); renderTabs(); renderDonut(current);
