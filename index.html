@@ -1225,11 +1225,12 @@ function goalMinPer(x){ if(x.minPerUnit!=null && x.minPerUnit!=='') return +x.mi
 function goalMins(x,amt){ return Math.round(goalMinPer(x)*amt); }
 // Propagate a goal's name/category/mapping to all its linked time entries (so editing a goal updates the time tracker, incl. via Firebase).
 function syncGoalEntries(g){
-  const all=loadEntries(); let changed=false; const mpu=goalMinPer(g);
+  // Propagate name + category to linked entries. Minutes are NOT recomputed:
+  // each entry keeps the minutes it had when logged; a mapping change only affects future logs.
+  const all=loadEntries(); let changed=false;
   all.forEach(e=>{ if(e.type==='goal' && e.goalId===g.id){
     if(e.task!==g.name){ e.task=g.name; changed=true; }
     if(e.cat!==g.cat){ e.cat=g.cat; changed=true; }
-    if(e.amt!=null){ const m=Math.round((+e.amt||0)*mpu); if(m!==e.mins){ e.mins=m; changed=true; } }
   }});
   if(changed) saveEntries(all);
 }
