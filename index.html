@@ -152,6 +152,9 @@
 
   <div class="kpis" id="kpis"></div>
 
+  <div class="hint" id="usageHint" style="margin:16px 0 8px;font-weight:700;color:#cbd2de"></div>
+  <div class="kpis" id="usage"></div>
+
   <div class="grid">
     <div class="card">
       <h2 id="donutTitle">—</h2>
@@ -308,7 +311,7 @@
 
 <script>
 // ---- DATA (minutes) ----
-const COLORS = {Spiritual:'#4C6EF5',Youth:'#8DC63F',Family:'#F5A623',Mental:'#EF5350',Hobby:'#8B2FE0',Career:'#B9BFC7'};
+const SEED_COLORS = {Spiritual:'#4C6EF5',Youth:'#8DC63F',Family:'#F5A623',Mental:'#EF5350',Hobby:'#8B2FE0',Career:'#B9BFC7'};
 const SEED_MONTHS = [
   {m:'Jan 2026', cats:{Spiritual:900, Youth:690, Family:120}},                 // 28h30m
   {m:'Feb 2026', cats:{Spiritual:670, Youth:580, Family:100}},                 // 22h30m
@@ -319,8 +322,8 @@ const SEED_MONTHS = [
 const LS_MONTHS = 'ptd_months_v1';
 function loadMonths(){ try{ const v=JSON.parse(localStorage.getItem(LS_MONTHS)); return (Array.isArray(v)&&v.length)?v:SEED_MONTHS; }catch(e){ return SEED_MONTHS; } }
 let MONTHS = loadMonths();
-const ALLCATS = ['Spiritual','Youth','Family','Career','Hobby'];
-const TASK_CAT = {
+const SEED_ALLCATS = ['Spiritual','Youth','Family','Career','Hobby'];
+const SEED_TASK_CAT = {
   'ONS':'Spiritual','TDS-SK-Mala':'Spiritual','Bala-AH3':'Spiritual','Vishnu Sahasranam':'Spiritual',
   'GauPradakshina':'Spiritual','NM-DK':'Spiritual','NMaho':'Spiritual','Sundarkand':'Spiritual',
   'Walk':'Youth','Rejuvenate':'Youth','Nurture':'Youth','Nails-10Min':'Youth',
@@ -328,7 +331,13 @@ const TASK_CAT = {
   'OppurtunityPrep':'Career','Study':'Career',
   'Book Reading':'Hobby','Gardening':'Hobby','Pranav':'Hobby'
 };
-const TASKS = Object.keys(TASK_CAT);
+const LS_COLORS='ptd_colors_v1', LS_ALLCATS='ptd_allcats_v1', LS_TASKCAT='ptd_taskcat_v1';
+function loadObj(k,seed){ try{ const v=JSON.parse(localStorage.getItem(k)); return (v&&typeof v==='object'&&Object.keys(v).length)?v:seed; }catch(e){ return seed; } }
+function loadArr(k,seed){ try{ const v=JSON.parse(localStorage.getItem(k)); return (Array.isArray(v)&&v.length)?v:seed; }catch(e){ return seed; } }
+let COLORS  = loadObj(LS_COLORS, SEED_COLORS);
+let ALLCATS = loadArr(LS_ALLCATS, SEED_ALLCATS);
+let TASK_CAT= loadObj(LS_TASKCAT, SEED_TASK_CAT);
+let TASKS   = Object.keys(TASK_CAT);
 
 // ---- helpers ----
 const fmt = m => `${Math.floor(m/60)}h ${m%60}m`;
@@ -340,6 +349,9 @@ function shadeScale(vals){
   const mn=Math.min(...vals), mx=Math.max(...vals), span=(mx-mn)||1;
   return vals.map(v=>{ const t=(v-mn)/span; const L=Math.round(74-t*36); return `hsl(227 89% ${L}%)`; });
 }
+// vivid, distinct hue per bar — purple→blue→teal→green→yellow→orange→red, cycling
+const HUES = [275,225,190,150,90,45,18,330,255,210];
+function huePalette(n){ return Array.from({length:n},(_,i)=>`hsl(${HUES[i%HUES.length]} 78% 58%)`); }
 
 // ---- KPIs ----
 function renderKPIs(){
@@ -384,6 +396,29 @@ function renderDonut(i){
   };
   if(donutChart){donutChart.data=cfg.data;donutChart.update();}
   else donutChart=new Chart(document.getElementById('donut'),cfg);
+  renderUsage(i);
+}
+
+// ---- Usage breakdown: of X waking hrs → used / wasted / unreported ----
+function ymOf(label){ const [mn,y]=label.split(' '); return `${y}-${String(MONTH_NAMES.indexOf(mn)+1).padStart(2,'0')}`; }
+function renderUsage(i){
+  const M=MONTHS[i], ym=ymOf(M.m), days=daysIn(ym);
+  const wakingH=16*days;
+  const usedH=total(M.cats)/60;
+  const o=loadOnline()[ym];
+  const wastedH= o ? (o.phone + o.lap*((o.lapWaste||0)/100)) : null;
+  const unrepH=Math.max(0, wakingH - usedH - (wastedH||0));
+  const pc=h=>Math.round(h/wakingH*100);
+  document.getElementById('usageHint').textContent = `${M.m} — where your ~${wakingH}h of waking time went (16h × ${days} days)`;
+  const k=[
+    {label:'Waking time', val:wakingH+'h', d:`16h × ${days} days`},
+    {label:'Tracked / used', val:usedH.toFixed(1)+'h', d:`${pc(usedH)}% of waking`, cls:'up'},
+    {label:'Wasted (online)', val: wastedH==null?'—':wastedH.toFixed(1)+'h', d: wastedH==null?'add in Online tab':`${pc(wastedH)}% of waking`, cls: wastedH==null?'':'down'},
+    {label:'Unreported', val:unrepH.toFixed(1)+'h', d:`${pc(unrepH)}% — untracked`},
+  ];
+  document.getElementById('usage').innerHTML = k.map(x=>
+    `<div class="kpi"><div class="label">${x.label}</div><div class="val">${x.val}</div>
+     <div class="delta ${x.cls||''}">${x.d}</div></div>`).join('');
 }
 
 // ---- Tabs ----
@@ -403,7 +438,7 @@ function renderTotalTrend(){
     type:'bar',
     data:{labels:MONTHS.map(x=>x.m.split(' ')[0]),
       datasets:[{data:MONTHS.map(x=>hrs(total(x.cats))),
-        backgroundColor:shadeScale(MONTHS.map(x=>total(x.cats))),
+        backgroundColor:huePalette(MONTHS.length),
         borderRadius:8,maxBarThickness:46}]},
     options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.raw} h`}}},
       scales:{y:{beginAtZero:true,grid:{color:'#eef1f6'},ticks:{callback:v=>v+'h'}},x:{grid:{display:false}}}}
@@ -469,15 +504,16 @@ function renderInsights(){
 
 // ---- Suggestions vs ideal mix ----
 function renderSuggestions(){
-  const grand = MONTHS.reduce((a,x)=>a+total(x.cats),0);
   const act = {Spiritual:0,Youth:0,Career:0,Rest:0};
-  MONTHS.forEach(x=>{for(const[c,v]of Object.entries(x.cats)){
-    if(c==='Spiritual')act.Spiritual+=v; else if(c==='Youth')act.Youth+=v;
-    else if(c==='Career')act.Career+=v; else act.Rest+=v;
-  }});
+  const bucket=(c,v)=>{ if(c==='Spiritual')act.Spiritual+=v; else if(c==='Youth')act.Youth+=v; else if(c==='Career')act.Career+=v; else act.Rest+=v; };
+  MONTHS.forEach(x=>{for(const[c,v]of Object.entries(x.cats)) bucket(c,v);});
+  // fold in live logged entries so suggestions update as you log
+  loadEntries().forEach(e=>bucket(e.cat, e.mins));
+  const nMonths = MONTHS.length + new Set(loadEntries().map(e=>e.ym)).size;
+  const grand = act.Spiritual+act.Youth+act.Career+act.Rest;
   const target = {Youth:40,Career:10,Rest:10};
   const accent = {Youth:'#8DC63F',Career:'#B9BFC7',Rest:'#F5A623'};
-  const avgMonthTot = grand/MONTHS.length/60; // current avg hrs/month
+  const avgMonthTot = grand/Math.max(1,nMonths)/60; // current avg hrs/month
   const how = {
     Youth:`Add one extra session or longer stretch — aim ~${(avgMonthTot*0.40/4.3).toFixed(1)}h/week.`,
     Career:`Biggest gap. Block ~${(avgMonthTot*0.10/4.3).toFixed(1)}h/week for skills, learning or side-work.`,
@@ -604,7 +640,7 @@ function renderLog(){
   // period trend (all periods)
   const totByKey={}; all.forEach(e=>totByKey[pkey(e)]=(totByKey[pkey(e)]||0)+e.mins);
   const tcfg={type:'bar',data:{labels:keys.map(plabel),datasets:[{data:keys.map(k=>hrs(totByKey[k])),
-    backgroundColor:shadeScale(keys.map(k=>totByKey[k]||0)),
+    backgroundColor:huePalette(keys.length),
     borderColor:keys.map(k=>k===logSel?'#EF5350':'transparent'),borderWidth:2,borderRadius:8,maxBarThickness:46}]},
     options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.raw} h`}}},
       scales:{y:{beginAtZero:true,grid:{color:'#eef1f6'},ticks:{callback:v=>v+'h'}},x:{grid:{display:false}}}}};
@@ -727,6 +763,7 @@ function setView(v){
     online:'Screen time vs real life · the cost of being online', goals:'Targets vs what you actually did'};
   document.getElementById('sub').textContent = subs[v];
   document.querySelectorAll('#viewNav button').forEach(b=>b.classList.toggle('active', b.dataset.v===v));
+  if(v==='overview'){ renderSuggestions(); renderUsage(current); }
   if(v==='log') renderLog();
   if(v==='online') renderOnline();
   if(v==='goals') renderGoals();
@@ -734,7 +771,7 @@ function setView(v){
 document.querySelectorAll('#viewNav button').forEach(b=>b.onclick=()=>setView(b.dataset.v));
 
 // --- Firebase sync glue ---
-function fbBlob(){ return {version:1, months:MONTHS, entries:loadEntries(), online:loadOnline(), goals:loadGoals()}; }
+function fbBlob(){ return {version:1, months:MONTHS, colors:COLORS, allcats:ALLCATS, taskcat:TASK_CAT, entries:loadEntries(), online:loadOnline(), goals:loadGoals()}; }
 function fbSyncPush(){ window.fbPushRaw && window.fbPushRaw(fbBlob()); }
 window.fbToggle = function(){ if(window.__fbIn){ window.fbSignOut(); } else { window.fbSignIn(); } };
 document.addEventListener('fb-auth', e=>{
@@ -746,7 +783,8 @@ document.addEventListener('fb-auth', e=>{
 document.addEventListener('fb-data', e=>{
   const d=e.detail||{}; let changed=false;
   const set=(k,v)=>{ if(v===undefined||v===null) return; const s=JSON.stringify(v); if(localStorage.getItem(k)!==s){ localStorage.setItem(k,s); changed=true; } };
-  set(LS_MONTHS,d.months); set(LS_KEY,d.entries); set(LS_ONLINE,d.online); set(LS_GOALS,d.goals);
+  set(LS_MONTHS,d.months); set(LS_COLORS,d.colors); set(LS_ALLCATS,d.allcats); set(LS_TASKCAT,d.taskcat);
+  set(LS_KEY,d.entries); set(LS_ONLINE,d.online); set(LS_GOALS,d.goals);
   if(changed) location.reload();
 });
 document.addEventListener('fb-empty', ()=>fbSyncPush());
