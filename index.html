@@ -71,6 +71,12 @@
   .ltrack{height:14px;border-radius:8px;background:rgba(255,255,255,.12);overflow:hidden}
   .lfill{height:100%;border-radius:8px;background:linear-gradient(90deg,#37b36b,#f5c451 55%,#ef6b5a);transition:width .6s}
   .lsub{font-size:11.5px;color:#aeb6c6;margin-top:7px}
+  .lgrid{display:flex;flex-wrap:wrap;gap:3px;margin-top:11px}
+  .lgrid i{width:7px;height:7px;border-radius:2px;background:rgba(255,255,255,.14)}
+  .lgrid i.on{background:#ffce73}
+  .lgrid i.now{background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.35)}
+  .lchips{display:flex;gap:16px;flex-wrap:wrap;margin-top:11px;font-size:11.5px;color:#aeb6c6;font-weight:600}
+  .lchips b{color:#fff;font-weight:700;font-size:13px}
   /* 8h coins + battery */
   .usagebox{margin-bottom:18px}
   .coins{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px}
@@ -885,7 +891,15 @@ function renderLifeBar(){
       <span class="lmsg">${msgs}</span>
     </div>
     <div class="ltrack"><div class="lfill" style="width:${pct}%"></div></div>
-    <div class="lsub">~${leftY.toFixed(1)} years left · ${leftDays.toLocaleString()} days · ${Math.round(leftDays/7).toLocaleString()} weekends</div>`;
+    <div class="lgrid">${Array.from({length:LIFE_TARGET},(_,i)=>{
+        const cls = i<Math.floor(yrs)?'on':(i===Math.floor(yrs)?'now':'');
+        return `<i class="${cls}"></i>`;
+      }).join('')}</div>
+    <div class="lchips">
+      <span><b>${Math.floor(leftY)}</b> birthdays left</span>
+      <span><b>${Math.round(leftY)}</b> summers left</span>
+      <span><b>${Math.round(leftDays/7).toLocaleString()}</b> weekends left</span>
+    </div>`;
 }
 window.editDob=function(){
   const cur=loadDob();
