@@ -148,63 +148,40 @@
   </header>
 
 <div id="viewOverview">
-  <div class="tabs" id="ovNav" style="margin-bottom:18px">
-    <button data-o="year" class="active">2026</button>
-    <button data-o="monthly">Monthly</button>
-  </div>
+  <div class="tabs" id="tabs" style="margin-bottom:18px"></div>
 
-  <!-- ===== 2026 (year) ===== -->
-  <div id="ovYear">
-    <div class="kpis" id="kpis"></div>
+  <div class="kpis" id="kpis"></div>
 
-    <div class="card" style="margin-top:18px">
+  <div class="hint" id="usageHint" style="margin:16px 0 8px;font-weight:700;color:#cbd2de"></div>
+  <div class="kpis" id="usage"></div>
+
+  <div class="grid">
+    <div class="card">
+      <h2 id="donutTitle">—</h2>
+      <div class="hint">Click a month tab above to switch the breakdown.</div>
+      <div class="donutbox">
+        <div class="donutcanvas">
+          <canvas id="donut"></canvas>
+          <div class="center"><div class="big" id="centerVal"></div></div>
+        </div>
+        <div class="legend" id="legend"></div>
+      </div>
+    </div>
+    <div class="card">
       <h2>Monthly total — trend</h2>
       <div class="hint">Total tracked time per month (hours)</div>
       <canvas id="totalTrend" class="chart"></canvas>
     </div>
-
-    <div class="card" style="margin-top:18px">
-      <h2>Year at a glance — hours by category &amp; month</h2>
-      <div class="hint">Blank = not logged that month. Highlights what was unique to each month.</div>
-      <div id="yearTable" style="overflow-x:auto"></div>
-    </div>
-
-    <div class="insights">
-      <h2>Suggestions — grow the 3 under-served areas toward the ideal mix</h2>
-      <div class="ibox" id="suggest"></div>
-    </div>
-
-    <div class="insights">
-      <h2>Tips to make the time count</h2>
-      <div class="ibox" id="tips"></div>
-    </div>
   </div>
 
-  <!-- ===== Monthly ===== -->
-  <div id="ovMonthly" hidden>
-    <div class="tabs" id="tabs" style="margin-bottom:18px"></div>
+  <div class="insights">
+    <h2>Suggestions — grow the 3 under-served areas toward the ideal mix</h2>
+    <div class="ibox" id="suggest"></div>
+  </div>
 
-    <div class="hint" id="usageHint" style="margin:4px 0 8px;font-weight:700;color:#cbd2de"></div>
-    <div class="kpis" id="usage"></div>
-
-    <div class="grid" style="margin-top:18px">
-      <div class="card">
-        <h2 id="donutTitle">—</h2>
-        <div class="hint">Pick a month tab above to switch the breakdown.</div>
-        <div class="donutbox">
-          <div class="donutcanvas">
-            <canvas id="donut"></canvas>
-            <div class="center"><div class="big" id="centerVal"></div></div>
-          </div>
-          <div class="legend" id="legend"></div>
-        </div>
-      </div>
-      <div class="card">
-        <h2 id="monthTableTitle">Month detail</h2>
-        <div class="hint">Categories logged this month, ranked.</div>
-        <div id="monthTable"></div>
-      </div>
-    </div>
+  <div class="insights">
+    <h2>Tips to make the time count</h2>
+    <div class="ibox" id="tips"></div>
   </div>
 </div><!-- /viewOverview -->
 
@@ -420,49 +397,6 @@ function renderDonut(i){
   if(donutChart){donutChart.data=cfg.data;donutChart.update();}
   else donutChart=new Chart(document.getElementById('donut'),cfg);
   renderUsage(i);
-  renderMonthTable(i);
-}
-
-// ---- Month detail table (data unique to the selected month) ----
-function renderMonthTable(i){
-  const M=MONTHS[i], tot=total(M.cats);
-  const rows=Object.entries(M.cats).sort((a,b)=>b[1]-a[1]);
-  document.getElementById('monthTableTitle').textContent = M.m+' — detail';
-  // which categories appear ONLY in this month across the year
-  const uniq = new Set(rows.map(r=>r[0]).filter(c=>MONTHS.filter(x=>x.cats[c]!=null).length===1));
-  const head=`<tr><th style="text-align:left">Category</th><th style="text-align:right">Time</th><th style="text-align:right">Share</th></tr>`;
-  const body=rows.map(([c,v])=>`<tr>
-      <td><span class="dot" style="background:${colorFor(c)};display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px"></span>${c}${uniq.has(c)?' <span style="font-size:10px;color:#8DC63F;border:1px solid #3a4d2a;border-radius:6px;padding:1px 5px;margin-left:6px">only this month</span>':''}</td>
-      <td style="text-align:right;font-variant-numeric:tabular-nums">${fmtShort(v)}</td>
-      <td style="text-align:right;font-variant-numeric:tabular-nums">${Math.round(v/tot*100)}%</td></tr>`).join('');
-  const foot=`<tr style="border-top:2px solid #2a3346;font-weight:700"><td>Total</td><td style="text-align:right">${fmtShort(tot)}</td><td style="text-align:right">100%</td></tr>`;
-  document.getElementById('monthTable').innerHTML =
-    `<table style="width:100%;border-collapse:collapse;font-size:13px">
-       <thead style="color:#9aa3b2;font-size:11px;text-transform:uppercase;letter-spacing:.04em">${head}</thead>
-       <tbody>${body}${foot}</tbody></table>
-     <style>#monthTable td{padding:9px 4px;border-bottom:1px solid #1c2333}</style>`;
-}
-
-// ---- Year table: hrs by category × month ----
-function renderYearTable(){
-  const cats=ALLCATS;
-  const head=`<tr><th style="text-align:left">Month</th>${cats.map(c=>`<th style="text-align:right">${c}</th>`).join('')}<th style="text-align:right">Total</th></tr>`;
-  const body=MONTHS.map(x=>{
-    const tot=total(x.cats);
-    const cells=cats.map(c=>{
-      const v=x.cats[c];
-      return `<td style="text-align:right;font-variant-numeric:tabular-nums;${v!=null?`color:${colorFor(c)};font-weight:600`:'color:#4a5568'}">${v!=null?hrs(v)+'h':'–'}</td>`;
-    }).join('');
-    return `<tr><td style="font-weight:600">${x.m}</td>${cells}<td style="text-align:right;font-weight:700;font-variant-numeric:tabular-nums">${hrs(tot)}h</td></tr>`;
-  }).join('');
-  const colTot=cats.map(c=>hrs(MONTHS.reduce((a,x)=>a+(x.cats[c]||0),0)));
-  const grand=hrs(MONTHS.reduce((a,x)=>a+total(x.cats),0));
-  const foot=`<tr style="border-top:2px solid #2a3346;font-weight:700"><td>Total</td>${colTot.map(v=>`<td style="text-align:right">${v}h</td>`).join('')}<td style="text-align:right">${grand}h</td></tr>`;
-  document.getElementById('yearTable').innerHTML =
-    `<table style="width:100%;border-collapse:collapse;font-size:13px;min-width:520px">
-       <thead style="color:#9aa3b2;font-size:11px;text-transform:uppercase;letter-spacing:.04em">${head}</thead>
-       <tbody>${body}${foot}</tbody></table>
-     <style>#yearTable td,#yearTable th{padding:9px 6px;border-bottom:1px solid #1c2333}</style>`;
 }
 
 // ---- Usage breakdown: of X waking hrs → used / wasted / unreported ----
@@ -499,10 +433,8 @@ function renderTabs(){
 }
 
 // ---- Total trend (bar) ----
-let totalTrendChart;
 function renderTotalTrend(){
-  if(totalTrendChart) totalTrendChart.destroy();
-  totalTrendChart=new Chart(document.getElementById('totalTrend'),{
+  new Chart(document.getElementById('totalTrend'),{
     type:'bar',
     data:{labels:MONTHS.map(x=>x.m.split(' ')[0]),
       datasets:[{data:MONTHS.map(x=>hrs(total(x.cats))),
@@ -831,23 +763,12 @@ function setView(v){
     online:'Screen time vs real life · the cost of being online', goals:'Targets vs what you actually did'};
   document.getElementById('sub').textContent = subs[v];
   document.querySelectorAll('#viewNav button').forEach(b=>b.classList.toggle('active', b.dataset.v===v));
-  if(v==='overview'){ renderSuggestions(); renderYearTable(); if(!document.getElementById('ovMonthly').hidden) renderDonut(current); }
+  if(v==='overview'){ renderSuggestions(); renderUsage(current); }
   if(v==='log') renderLog();
   if(v==='online') renderOnline();
   if(v==='goals') renderGoals();
 }
 document.querySelectorAll('#viewNav button').forEach(b=>b.onclick=()=>setView(b.dataset.v));
-
-// Overview sub-tabs: 2026 (year) | Monthly
-let monthlyReady=false;
-function setOv(o){
-  document.getElementById('ovYear').hidden = o!=='year';
-  document.getElementById('ovMonthly').hidden = o!=='monthly';
-  document.querySelectorAll('#ovNav button').forEach(b=>b.classList.toggle('active', b.dataset.o===o));
-  if(o==='monthly'){ renderDonut(current); monthlyReady=true; if(donutChart) donutChart.resize(); }
-  if(o==='year' && totalTrendChart) totalTrendChart.resize();
-}
-document.querySelectorAll('#ovNav button').forEach(b=>b.onclick=()=>setOv(b.dataset.o));
 
 // --- Firebase sync glue ---
 function fbBlob(){ return {version:1, months:MONTHS, colors:COLORS, allcats:ALLCATS, taskcat:TASK_CAT, entries:loadEntries(), online:loadOnline(), goals:loadGoals()}; }
@@ -873,9 +794,8 @@ document.addEventListener('fb-data', e=>{
 document.addEventListener('fb-empty', ()=>fbSyncPush());
 
 // init
-renderKPIs(); renderTabs();
-renderTotalTrend(); renderYearTable(); renderSuggestions(); renderTips();
-setOv('year');
+renderKPIs(); renderTabs(); renderDonut(current);
+renderTotalTrend(); renderSuggestions(); renderTips();
 initLogForm(); initOnline(); initGoals();
 </script>
 </body>
