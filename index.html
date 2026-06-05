@@ -64,7 +64,7 @@
   .ms-table .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;vertical-align:middle}
   canvas.chart{width:100%!important;height:280px!important}
   /* life bar */
-  .lifebar{margin-bottom:18px;background:radial-gradient(120% 140% at 0% 0%,#1e2a5e 0%,#0d1230 45%,#241349 100%);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:15px 20px;color:#fff;cursor:pointer;box-shadow:0 6px 24px rgba(10,15,45,.35),inset 0 1px 0 rgba(255,255,255,.06)}
+  .lifebar{margin-bottom:18px;background:radial-gradient(120% 140% at 0% 0%,#1e2a5e 0%,#0d1230 45%,#241349 100%);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:15px 20px;color:#fff;box-shadow:0 6px 24px rgba(10,15,45,.35),inset 0 1px 0 rgba(255,255,255,.06)}
   .lifebar .ltop{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;margin-bottom:9px;flex-wrap:wrap;gap:6px;color:#dfe4ee}
   .lifebar .ltop b{font-size:15px;color:#fff}
   .lifebar .lmsg{color:#ffd27a;font-weight:700;font-size:12px}
@@ -229,7 +229,7 @@
     </div>
   </header>
 
-  <div id="lifeBar" class="lifebar" onclick="editDob()" title="Tap to set birth date"></div>
+  <div id="lifeBar" class="lifebar"></div>
 
 <div id="viewOverview">
   <div class="tabs" id="tabs" style="margin-bottom:18px"></div>
@@ -872,6 +872,12 @@ function renderOnline(){
 // ================= LIFE BAR =================
 const LS_DOB='ptd_dob_v1', LIFE_TARGET=75;
 function loadDob(){ return localStorage.getItem(LS_DOB) || '1990-01-26'; }
+function lifeColor(t){ // green -> yellow(.55) -> red, same stops as the old bar
+  const g=[55,179,107], y=[245,196,81], r=[239,107,90];
+  const [c1,c2,tt] = t<=.55 ? [g,y,t/.55] : [y,r,(t-.55)/.45];
+  const v=(a,b)=>Math.round(a+(b-a)*tt);
+  return `rgb(${v(c1[0],c2[0])},${v(c1[1],c2[1])},${v(c1[2],c2[2])})`;
+}
 function renderLifeBar(){
   const el=document.getElementById('lifeBar'); if(!el) return;
   const dob=loadDob(); const [y,m,da]=dob.split('-').map(Number);
@@ -890,10 +896,11 @@ function renderLifeBar(){
       <b>${yrs.toFixed(1)} yrs lived · ${Math.round(pct)}%</b>
       <span class="lmsg">${msgs}</span>
     </div>
-    <div class="ltrack"><div class="lfill" style="width:${pct}%"></div></div>
     <div class="lgrid">${Array.from({length:LIFE_TARGET},(_,i)=>{
-        const cls = i<Math.floor(yrs)?'on':(i===Math.floor(yrs)?'now':'');
-        return `<i class="${cls}"></i>`;
+        const lived=Math.floor(yrs);
+        if(i===lived) return `<i class="now"></i>`;
+        if(i<lived) return `<i class="on" style="background:${lifeColor(i/(LIFE_TARGET-1))}"></i>`;
+        return `<i></i>`;
       }).join('')}</div>
     <div class="lchips">
       <span><b>${Math.floor(leftY)}</b> birthdays left</span>
