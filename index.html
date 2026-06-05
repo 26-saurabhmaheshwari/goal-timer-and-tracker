@@ -63,6 +63,26 @@
   .ms-table tr:last-child td{border-bottom:none}
   .ms-table .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;vertical-align:middle}
   canvas.chart{width:100%!important;height:280px!important}
+  /* life bar */
+  .lifebar{margin-bottom:18px;background:linear-gradient(135deg,#10131c,#1b2440);border-radius:16px;padding:14px 18px;color:#fff;cursor:pointer;box-shadow:0 2px 10px rgba(20,30,60,.12)}
+  .lifebar .ltop{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;margin-bottom:9px;flex-wrap:wrap;gap:6px;color:#dfe4ee}
+  .lifebar .ltop b{font-size:15px;color:#fff}
+  .lifebar .lmsg{color:#ffd27a;font-weight:700;font-size:12px}
+  .ltrack{height:14px;border-radius:8px;background:rgba(255,255,255,.12);overflow:hidden}
+  .lfill{height:100%;border-radius:8px;background:linear-gradient(90deg,#37b36b,#f5c451 55%,#ef6b5a);transition:width .6s}
+  .lsub{font-size:11.5px;color:#aeb6c6;margin-top:7px}
+  /* 8h coins + battery */
+  .usagebox{margin-bottom:18px}
+  .coins{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .coin{flex:1;min-width:104px;display:flex;flex-direction:column;gap:2px;padding:12px 16px;border-radius:14px;color:#fff;box-shadow:0 1px 4px rgba(20,30,60,.10)}
+  .coin.used{background:#37b36b}.coin.wasted{background:#ef6b5a}.coin.free{background:#8a93a3}
+  .coin .cv{font-size:22px;font-weight:700;letter-spacing:-.5px}
+  .coin .cl{font-size:11.5px;font-weight:600;opacity:.92}
+  .battery{display:flex;align-items:center;gap:3px}
+  .bbody{flex:1;display:flex;height:30px;border:2px solid #cbd2dc;border-radius:8px;overflow:hidden;background:#f1f3f7}
+  .bseg{height:100%;transition:width .4s}
+  .bcap{width:6px;height:15px;background:#cbd2dc;border-radius:0 3px 3px 0}
+  .bhint{font-size:11.5px;color:var(--muted);margin-top:8px;font-weight:600}
   .insights{margin-top:16px}
   .insights h2{font-size:15px;font-weight:700;margin-bottom:12px}
   .ibox{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
@@ -113,6 +133,30 @@
   .gacts button{border:1px solid #dfe4ee;background:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;color:#6b7280;font-size:13px;line-height:1;padding:0}
   .gacts button:hover{color:#2d6cdf;border-color:#2d6cdf}
   .gsec{margin-top:16px}
+  /* goal cards (redesign) */
+  .gstats{display:flex;gap:22px;flex-wrap:wrap;margin:2px 0 16px;font-size:12.5px}
+  .gstats div{display:flex;flex-direction:column}
+  .gstats b{color:var(--ink);font-size:20px;font-weight:700;letter-spacing:-.5px}
+  .gstats span{color:var(--muted);font-weight:600}
+  .gcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
+  .gcard{display:flex;align-items:center;gap:14px;padding:14px 16px;border:1px solid var(--line);border-radius:16px;background:#fff;position:relative;transition:.15s}
+  .gcard:hover{box-shadow:0 6px 18px rgba(20,30,60,.10);transform:translateY(-2px)}
+  .gring{position:relative;width:62px;height:62px;flex:0 0 auto}
+  .gring svg{width:62px;height:62px;transform:rotate(-90deg)}
+  .gring-bg{fill:none;stroke:#eef1f6;stroke-width:8}
+  .gring-fg{fill:none;stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset .6s}
+  .gring-txt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:var(--ink)}
+  .gcard-body{flex:1;min-width:0}
+  .gcard-name{font-size:15px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .gcard-sub{font-size:12.5px;color:var(--muted);margin-top:3px}
+  .gcard-meta{display:flex;align-items:center;gap:8px;margin-top:8px}
+  .gbadge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px}
+  .gwhen{font-size:11.5px;color:var(--muted);font-weight:600}
+  .gcard-acts{display:flex;flex-direction:column;gap:5px;opacity:0;transition:.15s}
+  .gcard:hover .gcard-acts{opacity:1}
+  .gcard-acts button{border:1px solid #dfe4ee;background:#fff;width:26px;height:26px;border-radius:50%;cursor:pointer;color:#6b7280;font-size:12px;line-height:1;padding:0}
+  .gcard-acts button:hover{color:#2d6cdf;border-color:#2d6cdf}
+  @media(max-width:560px){.gcards{grid-template-columns:1fr}}
   @media(max-width:880px){.gprog{min-width:110px}}
 </style>
 <script type="module">
@@ -178,28 +222,29 @@
     </div>
   </header>
 
+  <div id="lifeBar" class="lifebar" onclick="editDob()" title="Tap to set birth date"></div>
+
 <div id="viewOverview">
   <div class="tabs" id="tabs" style="margin-bottom:18px"></div>
 
   <!-- ===== 2026 (year) ===== -->
   <div id="ovYear">
-    <div class="kpis" id="kpis"></div>
-    <div class="card monthsplit" style="margin-bottom:16px">
-      <div class="ms-left grow">
-        <h2 style="margin-bottom:10px">2026 — category split</h2>
-        <div class="ms-piebox">
-          <div class="donutcanvas">
-            <canvas id="yearDonut"></canvas>
-            <div class="center"><div class="big" id="yearCenterVal"></div></div>
-          </div>
-          <table class="ms-table"><tbody id="yearLegend"></tbody></table>
+    <div class="usagebox" id="kpis"></div>
+    <div class="card" style="margin-bottom:16px">
+      <h2>2026 — category split</h2>
+      <div class="hint">Where your tracked time went this year.</div>
+      <div class="donutbox">
+        <div class="donutcanvas">
+          <canvas id="yearDonut"></canvas>
+          <div class="center"><div class="big" id="yearCenterVal"></div></div>
         </div>
+        <table class="ms-table" style="flex:1;min-width:200px"><tbody id="yearLegend"></tbody></table>
       </div>
-      <div class="ms-right">
-        <h2>Monthly total — trend</h2>
-        <div class="hint">Total tracked time per month (hours)</div>
-        <canvas id="totalTrend" class="chart"></canvas>
-      </div>
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <h2>Monthly total — trend</h2>
+      <div class="hint">Total tracked time per month (hours)</div>
+      <canvas id="totalTrend" class="chart"></canvas>
     </div>
     <div class="insights">
       <h2>Suggestions — grow the 3 under-served areas toward the ideal mix</h2>
@@ -223,7 +268,7 @@
         </div>
       </div>
       <div class="ms-right">
-        <div class="kpis" id="usage"></div>
+        <div class="usagebox" id="usage"></div>
         <table class="ms-table"><tbody id="legend"></tbody></table>
       </div>
     </div>
@@ -368,7 +413,7 @@
       </div>
     </form>
   </div>
-  <div class="card gsec"><h2>Active goals</h2><div id="secActive"></div></div>
+  <div class="card gsec"><h2>Active goals</h2><div class="gstats" id="goalStats"></div><div id="secActive"></div></div>
   <div class="card gsec"><h2>Backlog goals</h2><div class="hint">Things to start later.</div><div id="secBacklog"></div></div>
   <div class="card gsec"><h2>Dreams</h2><div class="hint">Big aspirations — no deadline pressure.</div><div id="secDream"></div></div>
 </div><!-- /viewGoals -->
@@ -424,27 +469,18 @@ function huePalette(n){ return Array.from({length:n},(_,i)=>{
 
 // ---- KPIs ----
 function renderKPIs(){
-  // Year-level waking-time breakdown (sum across all months)
+  // Year-level 8h/day discretionary budget (sum across tracked months)
   const onl=loadOnline();
-  let wakingH=0, usedH=0, wastedH=0, wasteKnown=false;
+  let pool=0, usedH=0, wastedH=0, days=0, wasteKnown=false;
   MONTHS.forEach(M=>{
-    const ym=ymOf(M.m), days=daysIn(ym);
-    wakingH+=16*days;
+    const ym=ymOf(M.m), d=daysIn(ym);
+    days+=d; pool+=DAILY_H*d;
     usedH+=total(M.cats)/60;
     const o=onl[ym];
     if(o){ wasteKnown=true; wastedH+=(o.phone + o.lap*((o.lapWaste||0)/100)); }
   });
-  const unrepH=Math.max(0, wakingH - usedH - wastedH);
-  const pc=h=>Math.round(h/wakingH*100);
-  const k = [
-    {label:'Waking time', val:Math.round(wakingH)+'h', d:`16h × ${MONTHS.length} months`},
-    {label:'Tracked / used', val:usedH.toFixed(0)+'h', d:`${pc(usedH)}% of waking`, cls:'up'},
-    {label:'Wasted (online)', val: wasteKnown? wastedH.toFixed(0)+'h':'—', d: wasteKnown?`${pc(wastedH)}% of waking`:'add in Online tab', cls: wasteKnown?'down':''},
-    {label:'Unreported', val:unrepH.toFixed(0)+'h', d:`${pc(unrepH)}% — untracked`},
-  ];
-  document.getElementById('kpis').innerHTML = k.map(x=>
-    `<div class="kpi"><div class="label">${x.label}</div><div class="val">${x.val}</div>
-     <div class="delta ${x.cls||''}">${x.d}</div></div>`).join('');
+  document.getElementById('kpis').innerHTML =
+    usageHTML(pool, usedH, wasteKnown?wastedH:null, `2026 so far · ${pool}h discretionary (${DAILY_H}h/day × ${days} days)`);
 }
 
 // ---- Year donut (category split across all months) ----
@@ -494,26 +530,31 @@ function renderDonut(i){
   renderUsage(i);
 }
 
-// ---- Usage breakdown: of X waking hrs → used / wasted / unreported ----
+// ---- Usage: of 8h/day discretionary time → used / wasted / free ----
+const DAILY_H = 8;
 function ymOf(label){ const [mn,y]=label.split(' '); return `${y}-${String(MONTH_NAMES.indexOf(mn)+1).padStart(2,'0')}`; }
+// Builds the coins-row + 3-segment battery markup. wasted=null → unknown.
+function usageHTML(pool, used, wasted, label){
+  const w = wasted==null?0:wasted;
+  const free = Math.max(0, pool - used - w);
+  const p = v => pool>0 ? Math.round(v/pool*100) : 0;
+  const seg = (v,c) => `<div class="bseg" style="width:${pool>0?(v/pool*100):0}%;background:${c}"></div>`;
+  return `<div class="coins">
+      <div class="coin used"><span class="cv">${used.toFixed(0)}h</span><span class="cl">Personal used · ${p(used)}%</span></div>
+      <div class="coin wasted"><span class="cv">${wasted==null?'—':w.toFixed(0)+'h'}</span><span class="cl">Wasted · ${wasted==null?'add online':p(w)+'%'}</span></div>
+      <div class="coin free"><span class="cv">${free.toFixed(0)}h</span><span class="cl">Free · ${p(free)}%</span></div>
+    </div>
+    <div class="battery"><div class="bbody">${seg(used,'#37b36b')}${seg(w,'#ef6b5a')}${seg(free,'#c4ccd6')}</div><div class="bcap"></div></div>
+    <div class="bhint">${label}</div>`;
+}
 function renderUsage(i){
   const M=MONTHS[i], ym=ymOf(M.m), days=daysIn(ym);
-  const wakingH=16*days;
+  const pool=DAILY_H*days;
   const usedH=total(M.cats)/60;
   const o=loadOnline()[ym];
   const wastedH= o ? (o.phone + o.lap*((o.lapWaste||0)/100)) : null;
-  const unrepH=Math.max(0, wakingH - usedH - (wastedH||0));
-  const pc=h=>Math.round(h/wakingH*100);
-  document.getElementById('usageHint').textContent = `${M.m} — where your ~${wakingH}h of waking time went (16h × ${days} days)`;
-  const k=[
-    {label:'Waking time', val:wakingH+'h', d:`16h × ${days} days`},
-    {label:'Tracked / used', val:usedH.toFixed(1)+'h', d:`${pc(usedH)}% of waking`, cls:'up'},
-    {label:'Wasted (online)', val: wastedH==null?'—':wastedH.toFixed(1)+'h', d: wastedH==null?'add in Online tab':`${pc(wastedH)}% of waking`, cls: wastedH==null?'':'down'},
-    {label:'Unreported', val:unrepH.toFixed(1)+'h', d:`${pc(unrepH)}% — untracked`},
-  ];
-  document.getElementById('usage').innerHTML = k.map(x=>
-    `<div class="kpi"><div class="label">${x.label}</div><div class="val">${x.val}</div>
-     <div class="delta ${x.cls||''}">${x.d}</div></div>`).join('');
+  document.getElementById('usageHint').textContent = `${M.m} — your ${pool}h of discretionary time (${DAILY_H}h × ${days} days)`;
+  document.getElementById('usage').innerHTML = usageHTML(pool, usedH, wastedH, `${pool}h available · ${DAILY_H}h/day × ${days} days`);
 }
 
 // ---- Tabs ----
@@ -819,6 +860,38 @@ function renderOnline(){
     `<div class="icard" style="border-left-color:${c}"><b>${h}</b><br>${b}</div>`).join('');
 }
 
+// ================= LIFE BAR =================
+const LS_DOB='ptd_dob_v1', LIFE_TARGET=75;
+function loadDob(){ return localStorage.getItem(LS_DOB) || '1990-01-26'; }
+function renderLifeBar(){
+  const el=document.getElementById('lifeBar'); if(!el) return;
+  const dob=loadDob(); const [y,m,da]=dob.split('-').map(Number);
+  const birth=new Date(y,m-1,da), now=new Date();
+  const yrs=(now-birth)/(365.25*24*3600*1000);
+  const pct=Math.min(100, yrs/LIFE_TARGET*100);
+  const leftY=Math.max(0, LIFE_TARGET-yrs);
+  const leftDays=Math.round(leftY*365.25);
+  const msgs=leftY<=0?'Every extra day is a bonus — spend it well.'
+    :pct<33?'So much runway. Build something that outlives you.'
+    :pct<60?'Prime years. Don\'t trade them for noise.'
+    :pct<80?'The clock is louder now — guard your hours.'
+    :'Time is precious. Make every moment count.';
+  el.innerHTML=`<div class="ltop">
+      <span>Life · target ${LIFE_TARGET} yrs</span>
+      <b>${yrs.toFixed(1)} yrs lived · ${Math.round(pct)}%</b>
+      <span class="lmsg">${msgs}</span>
+    </div>
+    <div class="ltrack"><div class="lfill" style="width:${pct}%"></div></div>
+    <div class="lsub">~${leftY.toFixed(1)} years left · ${leftDays.toLocaleString()} days · ${Math.round(leftDays/7).toLocaleString()} weekends</div>`;
+}
+window.editDob=function(){
+  const cur=loadDob();
+  const v=prompt('Your birth date (YYYY-MM-DD):', cur);
+  if(v==null) return;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(v) || isNaN(new Date(v).getTime())){ alert('Use format YYYY-MM-DD'); return; }
+  localStorage.setItem(LS_DOB, v); renderLifeBar(); fbSyncPush();
+};
+
 // ================= GOALS (named, with units + deadline) =================
 const LS_GOALS='ptd_goals2_v1';
 const SEED_GOALS=[
@@ -859,20 +932,37 @@ function initGoals(){
     saveGoals(g); document.getElementById('goalMsg').textContent='Saved ✓'; goalFormReset(); renderGoals();
   });
 }
-function goalRow(x){
-  const pct = x.target>0 ? Math.round(x.cur/x.target*100) : 0;
-  const col = '#45b29d';
+function paceLabel(x){
+  if(x.target<=0) return x.sec==='dream'?'Dream':x.sec==='backlog'?'Later':'—';
+  const af=x.cur/x.target; if(af>=1) return 'Done';
+  const ef=expFrac(x); if(ef==null) return 'On track';
+  const d=af-ef;
+  if(d>=0.05) return 'Ahead'; if(d>=-0.10) return 'On track'; if(d>=-0.25) return 'Behind'; return 'Lagging';
+}
+function goalCard(x){
+  const raw = x.target>0 ? Math.round(x.cur/x.target*100) : 0;
+  const pct = Math.min(100, raw);
+  const col = arrowColor(x);
+  const r=27, c=2*Math.PI*r, off=c*(1-pct/100);
   const m = monthsUntil(x.by);
-  const when = x.by ? `by ${fmtBy(x.by)}${m!=null?` <span style="color:#aab2c0">(${m>0?`in ${m} month${m>1?'s':''}`:m===0?'this month':'overdue'})</span>`:''}` : 'no deadline';
-  const tar = x.target>0 ? `Target: ${x.target} ${x.unit} ${when}` : (x.by?when:'—');
-  const bar = x.target>0
-    ? `<div class="gprog"><div class="gtrack2"><div class="gfill2" style="width:${Math.min(100,pct)}%;background-color:${col}"></div><div class="glabel">${x.cur} ${x.unit}</div></div></div><div class="gpct">${pct}%</div>`
-    : `<div class="gprog"></div><div class="gpct"></div>`;
-  return `<div class="goalrow">
-    <div class="gup" style="background:${arrowColor(x)}">⬆</div>
-    <div class="ginfo"><div class="gname">${x.name}</div><div class="gtar">${tar}</div></div>
-    ${bar}
-    <div class="gacts">
+  const when = x.by ? (m>0?`${m} mo left`:m===0?'this month':'overdue') : 'no deadline';
+  return `<div class="gcard">
+    <div class="gring">
+      <svg viewBox="0 0 62 62">
+        <circle class="gring-bg" cx="31" cy="31" r="${r}"/>
+        <circle class="gring-fg" cx="31" cy="31" r="${r}" stroke="${col}" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/>
+      </svg>
+      <div class="gring-txt">${raw}%</div>
+    </div>
+    <div class="gcard-body">
+      <div class="gcard-name" title="${x.name}">${x.name}</div>
+      <div class="gcard-sub">${x.cur}${x.target>0?` / ${x.target}`:''} ${x.unit}</div>
+      <div class="gcard-meta">
+        <span class="gbadge" style="background:${col}1f;color:${col}">${paceLabel(x)}</span>
+        <span class="gwhen">${when}</span>
+      </div>
+    </div>
+    <div class="gcard-acts">
       ${x.target>0?`<button title="Add progress" onclick="goalAdd('${x.id}')">+</button>`:''}
       <button title="Edit" onclick="goalEditStart('${x.id}')">✎</button>
       <button title="Delete" onclick="goalDel('${x.id}')">🗑</button>
@@ -880,10 +970,24 @@ function goalRow(x){
   </div>`;
 }
 function renderSec(sec, el){
-  const rows=loadGoals().filter(g=>g.sec===sec);
-  document.getElementById(el).innerHTML = rows.length ? rows.map(goalRow).join('') : '<div class="empty">Nothing here yet. Add one above.</div>';
+  const rows=loadGoals().filter(g=>g.sec===sec)
+    .sort((a,b)=>((b.target>0?b.cur/b.target:0)-(a.target>0?a.cur/a.target:0)));
+  document.getElementById(el).innerHTML = rows.length
+    ? `<div class="gcards">${rows.map(goalCard).join('')}</div>`
+    : '<div class="empty">Nothing here yet. Add one above.</div>';
 }
-function renderGoals(){ renderSec('active','secActive'); renderSec('backlog','secBacklog'); renderSec('dream','secDream'); }
+function renderGoalStats(){
+  const a=loadGoals().filter(g=>g.sec==='active'&&g.target>0);
+  const onTrack=a.filter(g=>['Done','Ahead','On track'].includes(paceLabel(g))).length;
+  const avg=a.length?Math.round(a.reduce((s,g)=>s+Math.min(100,g.cur/g.target*100),0)/a.length):0;
+  const done=a.filter(g=>g.cur>=g.target).length;
+  const el=document.getElementById('goalStats'); if(!el) return;
+  el.innerHTML=`<div><b>${a.length}</b><span>active goals</span></div>
+    <div><b>${onTrack}</b><span>on track / ahead</span></div>
+    <div><b>${avg}%</b><span>avg progress</span></div>
+    <div><b>${done}</b><span>completed</span></div>`;
+}
+function renderGoals(){ renderGoalStats(); renderSec('active','secActive'); renderSec('backlog','secBacklog'); renderSec('dream','secDream'); }
 window.goalAdd=function(id){ const g=loadGoals(), x=g.find(o=>o.id===id); if(!x) return; const a=prompt(`Add to "${x.name}" (${x.unit}):`,''); if(a==null) return; x.cur=(+x.cur||0)+(+a||0); saveGoals(g); renderGoals(); };
 window.goalEditStart=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x) return; goalEdit=id; goalFormShow(true);
   document.getElementById('gName').value=x.name; document.getElementById('gCat').value=x.cat;
@@ -921,7 +1025,7 @@ function setOv(o){
 }
 
 // --- Firebase sync glue ---
-function fbBlob(){ return {version:1, months:MONTHS, colors:COLORS, allcats:ALLCATS, taskcat:TASK_CAT, entries:loadEntries(), online:loadOnline(), goals:loadGoals()}; }
+function fbBlob(){ return {version:1, months:MONTHS, colors:COLORS, allcats:ALLCATS, taskcat:TASK_CAT, entries:loadEntries(), online:loadOnline(), goals:loadGoals(), dob:loadDob()}; }
 function fbSyncPush(){ window.fbPushRaw && window.fbPushRaw(fbBlob()); }
 window.fbToggle = function(){ if(window.__fbIn){ window.fbSignOut(); } else { window.fbSignIn(); } };
 document.addEventListener('fb-auth', e=>{
@@ -935,6 +1039,7 @@ document.addEventListener('fb-data', e=>{
   const set=(k,v)=>{ if(v===undefined||v===null) return; const s=JSON.stringify(v); if(localStorage.getItem(k)!==s){ localStorage.setItem(k,s); changed=true; } };
   set(LS_MONTHS,d.months); set(LS_COLORS,d.colors); set(LS_ALLCATS,d.allcats); set(LS_TASKCAT,d.taskcat);
   set(LS_KEY,d.entries); set(LS_ONLINE,d.online); set(LS_GOALS,d.goals);
+  if(typeof d.dob==='string' && d.dob && localStorage.getItem(LS_DOB)!==d.dob){ localStorage.setItem(LS_DOB,d.dob); changed=true; }
   // one reload max per page load — prevents a flicker loop if remote/local never byte-match
   if(changed && !sessionStorage.getItem('fb_synced')){
     sessionStorage.setItem('fb_synced','1');
@@ -944,7 +1049,7 @@ document.addEventListener('fb-data', e=>{
 document.addEventListener('fb-empty', ()=>fbSyncPush());
 
 // init
-renderKPIs(); renderTabs(); renderTotalTrend(); renderSuggestions(); renderTips();
+renderLifeBar(); renderKPIs(); renderTabs(); renderTotalTrend(); renderSuggestions(); renderTips();
 setOv('year');
 initLogForm(); initOnline(); initGoals();
 </script>
