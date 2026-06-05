@@ -101,11 +101,23 @@
   .batt{display:flex;align-items:center;gap:4px}
   .batt-body{position:relative;flex:1;height:44px;border:3px solid #b9c1cd;border-radius:10px;background:#cdddf7;overflow:hidden}
   .batt-fill{position:absolute;top:0;left:0;width:100%;height:100%;display:flex}
-  .bseg{height:100%;transition:width .4s}
+  .bseg{height:100%;transition:width .4s;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;letter-spacing:.2px;overflow:hidden;white-space:nowrap}
   .batt-cells{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(90deg,transparent 0 calc(5% - 2px),rgba(40,50,70,.22) calc(5% - 2px) 5%)}
+  .batt-sq{position:absolute;inset:0;display:flex;gap:2px;padding:3px;align-items:stretch}
+  .batt-sq i{flex:1 1 0;min-width:0;border-radius:2px;box-shadow:inset 0 0 0 .5px rgba(255,255,255,.18)}
   .batt-cap{width:7px;height:22px;background:#b9c1cd;border-radius:0 4px 4px 0}
+  .batt-pro .batt-body{height:38px;border:1px solid rgba(40,50,70,.18);border-radius:11px;background:#eef1f6;box-shadow:inset 0 1px 4px rgba(20,30,60,.14)}
+  .batt-pro .bseg{box-shadow:inset 1px 0 0 rgba(255,255,255,.45)}
+  .batt-pro .bseg:first-child{box-shadow:none}
+  .batt-gloss{position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:linear-gradient(180deg,rgba(255,255,255,.38),rgba(255,255,255,0) 46%)}
+  .ybar-lbl{font-size:11.5px;font-weight:700;color:var(--muted);margin:0 0 6px}
+  /* year battery — diagonal "happening" stripes over the segments */
+  .batt-stripes{position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:repeating-linear-gradient(45deg,rgba(255,255,255,.22) 0 2px,transparent 2px 10px)}
   .batt-meta{display:flex;gap:18px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);font-weight:600;margin-top:9px}
-  .batt-meta i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+  .batt-meta span{display:inline-flex;align-items:center}
+  .batt-meta .ybar-lbl{margin:0;font-weight:600}
+  .batt-meta b{margin-left:6px;color:var(--text)}
+  .batt-meta i{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;margin-right:7px;color:#fff;font-size:10.5px;font-weight:800;font-style:normal;letter-spacing:-.2px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25),0 1px 2px rgba(20,30,60,.18)}
   .insights{margin-top:16px}
   .insights h2{font-size:15px;font-weight:700;margin-bottom:12px}
   .ibox{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
@@ -265,6 +277,7 @@
   const auth = getAuth(app);
   const db = getFirestore(app);
   const provider = new GoogleAuthProvider();
+  const ALLOWED = ["26.saurabhcalendar@gmail.com"];
   let uid = null, pushTimer = null;
 
   window.fbSignIn = () => signInWithPopup(auth, provider).catch(e => alert('Sign-in failed: ' + e.message));
@@ -279,6 +292,13 @@
 
   onAuthStateChanged(auth, async (user) => {
     if (user) {
+      if (!ALLOWED.includes((user.email || '').toLowerCase())) {
+        alert('Not authorized: ' + (user.email || 'this account') + ' is not a registered user.');
+        uid = null;
+        document.dispatchEvent(new CustomEvent('fb-auth', { detail: { signedIn: false } }));
+        signOut(auth);
+        return;
+      }
       uid = user.uid;
       document.dispatchEvent(new CustomEvent('fb-auth', { detail: { email: user.email, signedIn: true } }));
       try {
@@ -629,18 +649,70 @@ function huePalette(n){ return Array.from({length:n},(_,i)=>{
 
 // ---- KPIs ----
 function renderKPIs(){
-  // Year-level 8h/day discretionary budget (sum across tracked months)
+  // Year-level 8h/day discretionary budget — honest elapsed-vs-future split.
+  // Elapsed time is split Used / Wasted / Untracked; future days are "still ahead".
   const onl=loadOnline();
-  let pool=0, usedH=0, wastedH=0, days=0, wasteKnown=false;
+  let usedH=0, wastedH=0, wasteKnown=false, curUsedH=0, curWastedH=0;
   MONTHS.forEach(M=>{
-    const ym=ymOf(M.m), d=daysIn(ym);
-    days+=d; pool+=DAILY_H*d;
-    usedH+=total(monthCats(M))/60;
-    const o=onl[ym];
-    if(o){ wasteKnown=true; wastedH+=onlineAgg(o).wasteH; }
+    const ym=ymOf(M.m);
+    const u=total(monthCats(M))/60; usedH+=u;
+    const o=onl[ym]; let wH=0;
+    if(o){ wasteKnown=true; wH=onlineAgg(o).wasteH; wastedH+=wH; }
+    if(ym===CUR_YM){ curUsedH=u; curWastedH=wH; }
   });
-  document.getElementById('kpis').innerHTML =
-    usageHTML(pool, usedH, wasteKnown?wastedH:null, `${CUR_YM.slice(0,4)} so far · ${pool}h discretionary (${DAILY_H}h/day × ${days} days)`);
+  const yr=+CUR_YM.slice(0,4), now=new Date();
+  const soY=new Date(yr,0,1), eoY=new Date(yr,11,31);
+  const totalDays=Math.round((eoY-soY)/864e5)+1;               // 365 (or 366)
+  const elapsedDays=Math.min(totalDays, Math.max(1, Math.floor((now-soY)/864e5)+1)); // Jan 1 → today
+  const aheadDays=totalDays-elapsedDays;                        // tomorrow → Dec 31
+  const yearPool=DAILY_H*totalDays;                            // 8h/day × whole year
+  const elapsedPool=DAILY_H*elapsedDays;
+  const aheadPool=DAILY_H*aheadDays;
+  const tracked=usedH+(wasteKnown?wastedH:0);
+  const untracked=Math.max(0, elapsedPool-tracked);           // lived but never logged
+  // ahead + untracked + tracked = yearPool exactly
+  document.getElementById('kpis').innerHTML = yearUsageHTML({
+    yr, yearPool, totalDays, aheadPool, aheadDays, elapsedDays, passedPool:elapsedPool, untracked, used:usedH, wasted:wasteKnown?wastedH:null
+  });
+}
+// Year KPI — battery of the whole year pool (2920h = 8h/day × 365).
+// Segments left→right: Untracked (light red — unaccounted, likely lost) → Wasted (red)
+//   → Used (green) → Still ahead (blue, hope still to come). They sum to the year pool.
+function yearUsageHTML(o){
+  const w=o.wasted==null?0:o.wasted;
+  const yp=o.yearPool;
+  const fmt=n=>Math.round(n).toLocaleString('en-US');
+  const pctOf=h=>yp>0?h/yp*100:0;
+  const segs=[
+    {k:'Untracked',h:o.untracked,c:'#94A3B8'},
+    {k:'Wasted',h:w,c:'#EF6B5A'},
+    {k:'Used',h:o.used,c:'#37B36B'},
+    {k:'Still ahead',h:o.aheadPool,c:'#F5C451'},
+  ];
+  const shade=(hex,amt)=>{hex=hex.replace('#','');const n=parseInt(hex,16);let r=n>>16,g=(n>>8)&255,b=n&255;const t=amt<0?0:255,p=Math.abs(amt);r=Math.round(r+(t-r)*p);g=Math.round(g+(t-g)*p);b=Math.round(b+(t-b)*p);return `rgb(${r},${g},${b})`;};
+  // allocate small cells per segment, proportional to hours, summing to N
+  const N=90;
+  let n=segs.map(s=>s.h>0?Math.max(1,Math.round(pctOf(s.h)/100*N)):0);
+  let diff=N-n.reduce((a,b)=>a+b,0);
+  while(diff!==0){ // nudge the biggest segment to hit N exactly
+    let idx=0;n.forEach((v,i)=>{if(diff>0?n[i]>n[idx]:n[i]>1&&n[i]>=n[idx])idx=i;});
+    n[idx]+=diff>0?1:-1; diff+=diff>0?-1:1;
+  }
+  const cells=segs.map((s,si)=>{
+    const cnt=n[si];let out='';
+    const rev=s.k==='Still ahead'; // yellow goes dark->light
+    for(let j=0;j<cnt;j++){const f=cnt>1?(rev?(cnt-1-j):j)/(cnt-1):0;const amt=0.22-0.40*f;out+=`<i style="background:${shade(s.c,amt)}"></i>`;}
+    return out;
+  }).join('');
+  const meta=segs.map(s=>`<span><i style="background:${s.c}">${Math.round(pctOf(s.h))}%</i>${s.k} <b>${fmt(s.h)}h</b></span>`).join('');
+  return `<div class="batt batt-pro">
+      <div class="batt-body">
+        <div class="batt-sq">${cells}</div>
+        <div class="batt-gloss"></div>
+      </div>
+      <div class="batt-cap"></div>
+    </div>
+    <div class="batt-meta"><span class="ybar-lbl">Your ${o.yr} — ${fmt(yp)}h of intent · 8h/day × ${o.totalDays} days</span>${meta}</div>`;
 }
 
 // ---- Year donut (category split across all months) ----
