@@ -83,6 +83,24 @@
   .gbar .gtop b{font-weight:700}.gbar .gtop .gv{color:var(--muted);font-weight:600}
   .gtrack{height:12px;background:#eef1f6;border-radius:8px;overflow:hidden}
   .gfill{height:100%;border-radius:8px;transition:width .4s}
+  /* named goals */
+  .goalrow{display:flex;align-items:center;gap:14px;padding:14px 2px;border-bottom:1px solid var(--line)}
+  .goalrow:last-child{border-bottom:0}
+  .gup{width:34px;height:34px;border-radius:9px;background:#5cb85c;color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex:0 0 auto;box-shadow:0 1px 3px rgba(0,0,0,.18)}
+  .gup.backlog{background:#d99a2b}.gup.dream{background:#9b59b6}
+  .ginfo{flex:1;min-width:150px}
+  .gname{font-size:16px;font-weight:700;color:#2d6cdf}
+  .gtar{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .gprog{width:300px;max-width:40vw;flex:0 0 auto}
+  .gtrack2{position:relative;height:30px;border-radius:8px;background:#eef1f6;border:1px solid #dfe4ee;overflow:hidden}
+  .gfill2{position:absolute;left:0;top:0;bottom:0;border-radius:7px 0 0 7px;transition:width .4s}
+  .glabel{position:absolute;left:10px;top:0;bottom:0;display:flex;align-items:center;font-size:12.5px;font-weight:700;color:#1f2733}
+  .gpct{width:46px;text-align:right;font-weight:700;font-size:15px;flex:0 0 auto}
+  .gacts{display:flex;gap:4px;flex:0 0 auto}
+  .gacts button{border:1px solid #dfe4ee;background:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;color:#6b7280;font-size:13px;line-height:1;padding:0}
+  .gacts button:hover{color:#2d6cdf;border-color:#2d6cdf}
+  .gsec{margin-top:16px}
+  @media(max-width:880px){.gprog{width:150px}}
 </style>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
@@ -291,22 +309,36 @@
 
 <div id="viewGoals" hidden>
   <div class="card">
-    <h2>Goals</h2>
-    <div class="hint">Set a monthly target (hours) per category. Progress is measured against your logged data for the selected month.</div>
-    <form id="goalForm" class="form" style="max-width:520px">
+    <h2 id="goalFormTitle">Add a goal</h2>
+    <div class="hint">Named goal with its own unit, target and deadline. Progress = current ÷ target.</div>
+    <form id="goalForm" class="form">
       <div class="frow">
+        <label>Name <input id="gName" placeholder="e.g. N. MAHOTSAV"></label>
         <label>Category <select id="gCat"></select></label>
-        <label>Target hours / month <input id="gHrs" type="number" min="0" step="0.5" placeholder="e.g. 12"></label>
       </div>
-      <button type="submit" class="btn">Set goal</button>
-      <span id="goalMsg" class="fmsg"></span>
+      <div class="frow">
+        <label>Current <input id="gCur" type="number" min="0" step="any" placeholder="0"></label>
+        <label>Target <input id="gTarget" type="number" min="0" step="any" placeholder="e.g. 1250"></label>
+      </div>
+      <div class="frow">
+        <label>Unit <input id="gUnit" placeholder="Paath / mala / Minutes / Parikramas"></label>
+        <label>Deadline <input id="gBy" type="date"></label>
+      </div>
+      <label style="max-width:260px">Section <select id="gSec">
+        <option value="active">Active goal</option>
+        <option value="backlog">Backlog</option>
+        <option value="dream">Dream</option>
+      </select></label>
+      <div style="display:flex;gap:10px;align-items:center">
+        <button type="submit" class="btn">Save goal</button>
+        <button type="button" id="gCancel" class="btn" style="background:#94a3b8;display:none">Cancel</button>
+        <span id="goalMsg" class="fmsg"></span>
+      </div>
     </form>
   </div>
-  <div class="card">
-    <h2>Progress <span id="goalMonthWrap" class="muted-sm"></span></h2>
-    <div class="periodtabs" id="goalMonthTabs"></div>
-    <div id="goalBars"></div>
-  </div>
+  <div class="card gsec"><h2>Active goals</h2><div id="secActive"></div></div>
+  <div class="card gsec"><h2>Backlog goals</h2><div class="hint">Things to start later.</div><div id="secBacklog"></div></div>
+  <div class="card gsec"><h2>Dreams</h2><div class="hint">Big aspirations — no deadline pressure.</div><div id="secDream"></div></div>
 </div><!-- /viewGoals -->
 
 <script>
@@ -718,40 +750,73 @@ function renderOnline(){
     `<div class="icard" style="border-left-color:${c}"><b>${h}</b><br>${b}</div>`).join('');
 }
 
-// ================= GOALS =================
-const LS_GOALS='ptd_goals_v1';
-let goalSel=null;
-function loadGoals(){ try{return JSON.parse(localStorage.getItem(LS_GOALS))||{};}catch(e){return{};} }
+// ================= GOALS (named, with units + deadline) =================
+const LS_GOALS='ptd_goals2_v1';
+const SEED_GOALS=[
+  {id:'g1',name:'N. MAHOTSAV',     cat:'Spiritual',cur:590, target:1250, unit:'Paath',     by:'2026-09-01',sec:'active'},
+  {id:'g2',name:'ONS-7100',        cat:'Spiritual',cur:2163,target:7100, unit:'mala',      by:'2026-12-31',sec:'active'},
+  {id:'g3',name:'NM - Devi Kavach',cat:'Spiritual',cur:62,  target:121,  unit:'Paath',     by:'2026-12-31',sec:'active'},
+  {id:'g4',name:'Sundarkand',      cat:'Spiritual',cur:4,   target:75,   unit:'Paath',     by:'2026-12-31',sec:'active'},
+  {id:'g5',name:'Gau Pradakshina', cat:'Spiritual',cur:52,  target:12500,unit:'Parikramas',by:'2026-12-31',sec:'active'},
+  {id:'g6',name:'Walk-51',         cat:'Youth',    cur:230, target:3060, unit:'Minutes',   by:'2026-12-31',sec:'active'},
+  {id:'g7',name:'Rejuvenate-51',   cat:'Youth',    cur:15,  target:3060, unit:'Minutes',   by:'2026-12-31',sec:'active'},
+  {id:'g8',name:'Study-51',        cat:'Career',   cur:30,  target:3060, unit:'Minutes',   by:'2026-12-31',sec:'active'},
+];
+let goalEdit=null;
+function loadGoals(){ try{ const v=JSON.parse(localStorage.getItem(LS_GOALS)); return Array.isArray(v)?v:SEED_GOALS; }catch(e){ return SEED_GOALS; } }
 function saveGoals(g){ localStorage.setItem(LS_GOALS, JSON.stringify(g)); fbSyncPush(); }
+function fmtBy(by){ if(!by) return ''; const d=new Date(by+'T00:00:00'); return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
+function monthsUntil(by){ if(!by) return null; const d=new Date(by+'T00:00:00'), now=new Date(); let m=(d.getFullYear()-now.getFullYear())*12+(d.getMonth()-now.getMonth()); if(d.getDate()<now.getDate())m--; return m; }
+function goalFormReset(){ goalEdit=null; document.getElementById('goalForm').reset(); document.getElementById('goalFormTitle').textContent='Add a goal'; document.getElementById('gCancel').style.display='none'; }
 function initGoals(){
   document.getElementById('gCat').innerHTML = ALLCATS.map(c=>`<option>${c}</option>`).join('');
+  document.getElementById('gCancel').onclick=()=>{ goalFormReset(); document.getElementById('goalMsg').textContent=''; };
   document.getElementById('goalForm').addEventListener('submit', e=>{
     e.preventDefault();
-    const g=loadGoals(); g[document.getElementById('gCat').value]=+document.getElementById('gHrs').value||0;
-    saveGoals(g); document.getElementById('goalMsg').textContent='Goal set ✓';
-    renderGoals();
+    const name=document.getElementById('gName').value.trim(); if(!name) return;
+    const o={ name, cat:document.getElementById('gCat').value,
+      cur:+document.getElementById('gCur').value||0, target:+document.getElementById('gTarget').value||0,
+      unit:document.getElementById('gUnit').value.trim(), by:document.getElementById('gBy').value,
+      sec:document.getElementById('gSec').value };
+    const g=loadGoals();
+    if(goalEdit){ const i=g.findIndex(x=>x.id===goalEdit); if(i>=0) g[i]={...g[i],...o}; }
+    else { o.id='g'+Date.now(); g.push(o); }
+    saveGoals(g); document.getElementById('goalMsg').textContent='Saved ✓'; goalFormReset(); renderGoals();
   });
 }
-function renderGoals(){
-  const goals=loadGoals();
-  const keys=[...new Set(loadEntries().map(e=>e.ym))].sort();
-  if(!goalSel||!keys.includes(goalSel)) goalSel=keys.at(-1)||null;
-  document.getElementById('goalMonthTabs').innerHTML = keys.length
-    ? keys.map(k=>`<button data-k="${k}" class="${k===goalSel?'active':''}">${ymList().find(o=>o.key===k)?.label||k}</button>`).join('')
-    : '<span class="muted-sm">Log some time first, then set goals to track progress.</span>';
-  document.querySelectorAll('#goalMonthTabs button').forEach(b=>b.onclick=()=>{goalSel=b.dataset.k;renderGoals();});
-
-  const cats=Object.keys(goals);
-  if(!cats.length){ document.getElementById('goalBars').innerHTML='<div class="empty">No goals set yet. Add one above.</div>'; return; }
-  document.getElementById('goalBars').innerHTML = cats.map(c=>{
-    const target=goals[c], actualH= goalSel? loggedCatMins(goalSel,c)/60 : 0;
-    const pct=target>0?Math.min(100, actualH/target*100):0;
-    const col= pct>=100?'#16a34a':(COLORS[c]||'#4C6EF5');
-    return `<div class="gbar"><div class="gtop"><b>${c}</b>
-      <span class="gv">${actualH.toFixed(1)}h / ${target}h · ${Math.round(pct)}%</span></div>
-      <div class="gtrack"><div class="gfill" style="width:${pct}%;background:${col}"></div></div></div>`;
-  }).join('');
+function goalRow(x){
+  const pct = x.target>0 ? Math.round(x.cur/x.target*100) : 0;
+  const col = COLORS[x.cat]||'#4C6EF5';
+  const m = monthsUntil(x.by);
+  const when = x.by ? `by ${fmtBy(x.by)}${m!=null?` <span style="color:#aab2c0">(${m>0?`in ${m} month${m>1?'s':''}`:m===0?'this month':'overdue'})</span>`:''}` : 'no deadline';
+  const tar = x.target>0 ? `Target: ${x.target} ${x.unit} ${when}` : (x.by?when:'—');
+  const bar = x.target>0
+    ? `<div class="gprog"><div class="gtrack2"><div class="gfill2" style="width:${Math.min(100,pct)}%;background:${col}"></div><div class="glabel">${x.cur} ${x.unit}</div></div></div><div class="gpct">${pct}%</div>`
+    : `<div class="gprog"></div><div class="gpct"></div>`;
+  return `<div class="goalrow">
+    <div class="gup ${x.sec}">⬆</div>
+    <div class="ginfo"><div class="gname">${x.name}</div><div class="gtar">${tar}</div></div>
+    ${bar}
+    <div class="gacts">
+      ${x.target>0?`<button title="Add progress" onclick="goalAdd('${x.id}')">+</button>`:''}
+      <button title="Edit" onclick="goalEditStart('${x.id}')">✎</button>
+      <button title="Delete" onclick="goalDel('${x.id}')">🗑</button>
+    </div>
+  </div>`;
 }
+function renderSec(sec, el){
+  const rows=loadGoals().filter(g=>g.sec===sec);
+  document.getElementById(el).innerHTML = rows.length ? rows.map(goalRow).join('') : '<div class="empty">Nothing here yet. Add one above.</div>';
+}
+function renderGoals(){ renderSec('active','secActive'); renderSec('backlog','secBacklog'); renderSec('dream','secDream'); }
+window.goalAdd=function(id){ const g=loadGoals(), x=g.find(o=>o.id===id); if(!x) return; const a=prompt(`Add to "${x.name}" (${x.unit}):`,''); if(a==null) return; x.cur=(+x.cur||0)+(+a||0); saveGoals(g); renderGoals(); };
+window.goalEditStart=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x) return; goalEdit=id;
+  document.getElementById('gName').value=x.name; document.getElementById('gCat').value=x.cat;
+  document.getElementById('gCur').value=x.cur; document.getElementById('gTarget').value=x.target;
+  document.getElementById('gUnit').value=x.unit; document.getElementById('gBy').value=x.by||'';
+  document.getElementById('gSec').value=x.sec; document.getElementById('goalFormTitle').textContent='Edit goal';
+  document.getElementById('gCancel').style.display=''; document.getElementById('viewGoals').scrollIntoView({behavior:'smooth'}); };
+window.goalDel=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x||!confirm(`Delete "${x.name}"?`)) return; saveGoals(loadGoals().filter(o=>o.id!==id)); renderGoals(); };
 
 // ---- view switch ----
 function setView(v){
