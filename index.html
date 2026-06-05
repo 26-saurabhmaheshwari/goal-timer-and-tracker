@@ -62,6 +62,16 @@
   .ms-table td{padding:6px 8px;border-bottom:1px solid var(--line)}
   .ms-table tr:last-child td{border-bottom:none}
   .ms-table .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;vertical-align:middle}
+  .pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:6px}
+  .pcol{display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px;background:#f6f8fc;border-radius:14px}
+  .pcol-h{font-size:12px;font-weight:700;color:#1b2440}
+  .donutcanvas.sm{width:150px;height:150px}
+  .center .big.sm{font-size:18px;color:#1b2440}
+  .ms-table.mini{font-size:11.5px}
+  .ms-table.mini td{padding:3px 5px}
+  .ms-table.mini .muted{color:var(--muted)}
+  .tagnow{font-size:10px;font-weight:700;background:#37b36b;color:#fff;padding:2px 8px;border-radius:20px;vertical-align:middle;margin-left:6px}
+  @media(max-width:720px){.pgrid{grid-template-columns:1fr}}
   canvas.chart{width:100%!important;height:280px!important}
   /* life bar */
   .lifebar{margin-bottom:18px;background:radial-gradient(120% 140% at 0% 0%,#1e2a5e 0%,#0d1230 45%,#241349 100%);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:15px 20px;color:#fff;box-shadow:0 6px 24px rgba(10,15,45,.35),inset 0 1px 0 rgba(255,255,255,.06)}
@@ -114,6 +124,25 @@
   .btn:hover{filter:brightness(1.05)}
   .fmsg{font-size:12.5px;font-weight:600;color:#16a34a}
   .muted-sm{font-size:12px;color:var(--muted);font-weight:500}
+  /* goal form modal */
+  .modal-ov{position:fixed;inset:0;z-index:50;background:rgba(15,23,42,.55);backdrop-filter:blur(2px);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow:auto}
+  .modal-ov[hidden]{display:none}
+  .modal-card{position:relative;width:100%;max-width:520px;margin:auto}
+  .modal-x{position:absolute;top:14px;right:14px;width:30px;height:30px;border:0;border-radius:8px;background:#eef1f6;color:#475569;font-size:15px;cursor:pointer;line-height:1}
+  .modal-x:hover{background:#e2e6ee}
+  .gmap{background:#f6f8fc;border:1px solid #e4e9f2;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+  .gmap-lab{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+  .gmap-row{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--ink)}
+  .gmap-row input{width:110px}
+  .gmap-row b{color:var(--spiritual)}
+  .gform-sec{max-width:240px}
+  .gform-foot{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:2px}
+.catlist{display:flex;flex-direction:column;gap:8px}
+.catrow{display:flex;align-items:center;gap:10px;padding:8px 12px;background:#f6f8fc;border:1px solid #e4e9f2;border-radius:10px}
+.catrow .nm{flex:1;font-weight:600;color:var(--ink)}
+.catrow .cdot{width:20px;height:20px;border-radius:6px;flex-shrink:0;border:1px solid rgba(0,0,0,.08)}
+.catrow .cedit{border:0;background:#eef1f6;color:#475569;width:28px;height:28px;border-radius:7px;cursor:pointer;font-size:13px;line-height:1}
+.catrow .cedit:hover{background:#e2e6ee}
   .periodtabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
   .periodtabs button{border:1px solid #dfe4ee;background:#fff;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer}
   .periodtabs button.active{background:var(--spiritual);color:#fff;border-color:var(--spiritual)}
@@ -147,22 +176,44 @@
   .gacts button:hover{color:#2d6cdf;border-color:#2d6cdf}
   .gsec{margin-top:16px}
   /* goal cards (redesign) */
-  .gstats{display:flex;gap:22px;flex-wrap:wrap;margin:2px 0 16px;font-size:12.5px}
-  .gstats div{display:flex;flex-direction:column}
-  .gstats b{color:var(--ink);font-size:20px;font-weight:700;letter-spacing:-.5px}
-  .gstats span{color:var(--muted);font-weight:600}
+  .gstats{display:flex;gap:14px;flex-wrap:wrap;margin:4px 0 18px}
+  .goals-head{display:flex;align-items:stretch;gap:14px;margin-bottom:16px}
+  .goals-head .gstats{margin:0;flex:1}
+  .goals-head #goalCreateBtn{flex:0 0 auto;align-self:stretch;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:0 18px;border-radius:16px;background:linear-gradient(150deg,#4f46e5,#7c3aed);color:#fff;box-shadow:0 6px 16px rgba(79,70,229,.4);transition:.15s}
+  .goals-head #goalCreateBtn .gc-plus{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.2);font-size:26px;font-weight:400;line-height:1}
+  .goals-head #goalCreateBtn .gc-arc{width:112px;height:34px;margin-top:6px;overflow:visible}
+  .goals-head #goalCreateBtn .gc-arc text{fill:#fff;font-size:14px;font-weight:800;letter-spacing:.4px}
+  .goals-head #goalCreateBtn:hover{transform:translateY(-3px);box-shadow:0 10px 24px rgba(79,70,229,.5)}
+  .goals-head #goalCreateBtn:active{transform:translateY(0);box-shadow:0 3px 8px rgba(79,70,229,.45)}
+  .gstat-cap{flex:1;min-width:220px;display:flex;align-items:center;justify-content:flex-start;gap:16px;background:linear-gradient(120deg,#7e3ff2,#e84393 50%,#f6b93b 100%);border:0;box-shadow:0 6px 18px rgba(126,63,242,.2);border-radius:16px;padding:14px 22px;color:#fff}
+  .gstat-main{display:flex;flex-direction:column;line-height:1.05}
+  .gstat-main b{font-size:30px;font-weight:800;letter-spacing:-1px;color:#fff}
+  .gstat-main span{font-size:11px;font-weight:600;color:rgba(255,255,255,.7);margin-top:3px;text-transform:uppercase;letter-spacing:.5px}
+  .gstat-break{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:7px;margin-left:auto}
+  .gs-pill{display:inline-flex;align-items:center;gap:4px;padding:4px 11px;border-radius:999px;font-size:12px;font-weight:600;line-height:1.4;background:rgba(255,255,255,.92);color:#334155}
+  .gs-pill b{font-weight:800;font-size:13px}
+  .gs-up b{color:#15803d}
+  .gs-mid b{color:#1d4ed8}
+  .gs-down b{color:#b91c1c}
+  .gs-left b{color:#b45309}
   .gcards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-  .gcard{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:22px 16px;border-radius:18px;position:relative;transition:.15s;min-height:210px;justify-content:center;border:1px solid rgba(20,30,60,.06)}
+  .gcard{display:flex;flex-direction:column;gap:11px;padding:15px;border-radius:18px;position:relative;transition:.15s;text-align:left;background:color-mix(in srgb,var(--gcol,#8a93a3) 13%,#fff);border:2px solid color-mix(in srgb,var(--gcol,#8a93a3) 55%,#fff)}
   .gcard:hover{box-shadow:0 8px 22px rgba(20,30,60,.14);transform:translateY(-3px)}
-  .gring{position:relative;width:76px;height:76px;flex:0 0 auto}
-  .gring svg{width:76px;height:76px;transform:rotate(-90deg)}
+  .gcard-top{display:flex;align-items:center;gap:13px}
+  .gring{position:relative;width:62px;height:62px;flex:0 0 auto}
+  .gring svg{width:62px;height:62px;transform:rotate(-90deg)}
   .gring-bg{fill:none;stroke:rgba(20,30,60,.12);stroke-width:8}
   .gring-fg{fill:none;stroke:#1b2440;stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset .6s}
-  .gring-txt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#1b2440}
-  .gcard-name{font-size:14.5px;font-weight:700;color:var(--ink);width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .gcard-sub{font-size:12.5px;color:var(--muted)}
-  .gcard-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center}
-  .ghint{font-size:11px;font-weight:700;color:#1b2440;opacity:.62;letter-spacing:.1px}
+  .gring-txt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#1b2440}
+  .gcard-head{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;align-items:flex-start}
+  .gcard-name{font-size:14px;font-weight:700;color:var(--ink);max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .gcard-sub{font-size:12px;color:var(--muted)}
+  .gcard-sub b{color:var(--ink);font-size:15px}
+  .gcard-det{background:rgba(255,255,255,.55);border-radius:10px;padding:8px 11px;display:flex;flex-direction:column;gap:4px}
+  .gd-row{display:flex;justify-content:space-between;gap:10px;font-size:11.5px;line-height:1.3}
+  .gd-row span{color:var(--muted);font-weight:600}
+  .gd-row b{color:#1b2440;font-weight:700;text-align:right}
+  .gcard-foot{display:flex;justify-content:flex-end;align-items:center;border-top:1px solid rgba(20,30,60,.09);padding-top:8px;margin-top:auto}
   .gcard-overdue{animation:gpulse 1.8s ease-in-out infinite}
   @keyframes gpulse{0%,100%{box-shadow:0 0 0 0 rgba(239,77,77,.0);border-color:#ef4d4d}50%{box-shadow:0 0 0 4px rgba(239,77,77,.28);border-color:#ef4d4d}}
   .obreak{margin-top:12px;padding:10px 12px;background:#f6f8fc;border-radius:10px}
@@ -251,8 +302,9 @@
     </div>
     <div class="tabs" id="viewNav">
       <button data-v="overview" class="active">Overview</button>
-      <button data-v="log">Log Data</button>
       <button data-v="goals">Goals</button>
+      <button data-v="log">Log Data</button>
+      <button data-v="settings">Settings</button>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <span id="fbWho" style="font-size:12px;color:#9aa3b2"></span>
@@ -297,22 +349,7 @@
   </div>
 
   <!-- ===== Monthly (unique per-month data only) ===== -->
-  <div id="ovMonthly" hidden>
-    <div class="hint" id="usageHint" style="margin:0 0 12px;font-weight:700;color:#cbd2de"></div>
-    <div class="card monthsplit">
-      <div class="ms-left">
-        <h2 id="donutTitle" style="margin-bottom:10px">—</h2>
-        <div class="donutcanvas">
-          <canvas id="donut"></canvas>
-          <div class="center"><div class="big" id="centerVal"></div></div>
-        </div>
-      </div>
-      <div class="ms-right">
-        <div class="usagebox" id="usage"></div>
-        <table class="ms-table"><tbody id="legend"></tbody></table>
-      </div>
-    </div>
-  </div>
+  <div id="ovMonthly" hidden></div>
 </div><!-- /viewOverview -->
 
 <div id="viewLog" hidden>
@@ -322,7 +359,7 @@
       <div class="hint">Pick what you're logging, then fill the few fields. Saved on this device · periods are 10-day blocks.</div>
       <form id="logForm" class="form">
         <div class="typetabs" id="typeTabs">
-          <button type="button" data-t="project" class="active">⏱ Project</button>
+          <button type="button" data-t="project" class="active">⏱ Timer</button>
           <button type="button" data-t="goal">🎯 Goal</button>
           <button type="button" data-t="screen">📱 Screen</button>
         </div>
@@ -341,8 +378,8 @@
             <label>Category <select id="fCat"></select></label>
           </div>
           <div class="frow">
-            <label>New category (optional) <input id="fNewCat" type="text" placeholder="blank = use dropdown"></label>
             <label>Time <span class="time2"><input id="fHrs" type="number" min="0" placeholder="h"> <input id="fMin" type="number" min="0" max="59" placeholder="m"></span></label>
+            <label></label>
           </div>
         </div>
 
@@ -419,48 +456,122 @@
 </div><!-- /viewLog -->
 
 <div id="viewGoals" hidden>
-  <button id="goalCreateBtn" class="btn" style="margin-bottom:14px">＋ Create goal</button>
-  <div class="card" id="goalFormCard" hidden>
+  <div class="goals-head">
+    <div class="gstats" id="goalStats"></div>
+    <button id="goalCreateBtn" class="btn" title="Create goal" aria-label="Create goal">
+      <span class="gc-plus">＋</span>
+      <svg class="gc-arc" viewBox="0 0 100 30" aria-hidden="true">
+        <path id="gcArc" d="M6,4 A62,62 0 0 0 94,4" fill="none"/>
+        <text text-anchor="middle"><textPath href="#gcArc" startOffset="50%">Create goal</textPath></text>
+      </svg>
+    </button>
+  </div>
+  <div id="goalModal" class="modal-ov" hidden>
+   <div class="card modal-card" id="goalFormCard">
+    <button type="button" id="gClose" class="modal-x" title="Close">✕</button>
     <h2 id="goalFormTitle">Add a goal</h2>
     <div class="hint">Named goal with its own unit, target and deadline. Progress = current ÷ target.</div>
     <form id="goalForm" class="form">
+      <label>Name <input id="gName" placeholder="e.g. N. MAHOTSAV"></label>
       <div class="frow">
-        <label>Name <input id="gName" placeholder="e.g. N. MAHOTSAV"></label>
         <label>Category <select id="gCat"></select></label>
+        <label>Unit <input id="gUnit" placeholder="Paath / mala / Minutes"></label>
       </div>
       <div class="frow">
         <label>Current <input id="gCur" type="number" min="0" step="any" placeholder="0"></label>
         <label>Target <input id="gTarget" type="number" min="0" step="any" placeholder="e.g. 1250"></label>
       </div>
       <div class="frow">
-        <label>Unit <input id="gUnit" placeholder="Paath / mala / Minutes / Parikramas"></label>
         <label>Start <input id="gStart" type="date"></label>
-      </div>
-      <div class="frow">
         <label>Deadline <input id="gBy" type="date"></label>
-        <label>1 <span id="gUnitLab">unit</span> = <input id="gMinPer" type="number" min="0" step="any" placeholder="minutes — blank = no time"> min
-          <span class="hint" style="margin:0">how this goal maps to tracked time</span></label>
       </div>
-      <label style="max-width:260px">Section <select id="gSec">
+      <div class="gmap">
+        <div class="gmap-lab">Time mapping</div>
+        <div class="gmap-row">1 <b id="gUnitLab">unit</b> = <input id="gMinPer" type="number" min="0" step="any" placeholder="e.g. 1.5"> min</div>
+        <div class="hint" style="margin:0">How one unit converts to tracked minutes (decimals ok). Leave blank if this goal isn't time-based.</div>
+      </div>
+      <label class="gform-sec">Section <select id="gSec">
         <option value="active">Active goal</option>
         <option value="backlog">Backlog</option>
         <option value="dream">Dream</option>
       </select></label>
-      <div style="display:flex;gap:10px;align-items:center">
+      <div class="gform-foot">
         <button type="submit" class="btn">Save goal</button>
-        <button type="button" id="gCancel" class="btn" style="background:#94a3b8;display:none">Cancel</button>
+        <button type="button" id="gCancel" class="btn" style="background:#94a3b8">Cancel</button>
+        <button type="button" id="gDelete" class="btn" style="background:#ef4444;margin-left:auto;display:none">Delete goal</button>
         <span id="goalMsg" class="fmsg"></span>
       </div>
     </form>
+   </div>
   </div>
-  <div class="card gsec"><h2>Active goals</h2><div class="gstats" id="goalStats"></div><div id="secActive"></div></div>
+  <div id="addModal" class="modal-ov" hidden>
+   <div class="card modal-card" style="max-width:380px">
+    <button type="button" id="aClose" class="modal-x" title="Close">✕</button>
+    <h2 id="addTitle">Add progress</h2>
+    <div class="hint" id="addSub">Log an amount toward this goal.</div>
+    <form id="addForm" class="form">
+      <div class="frow">
+        <label><span>Amount (<span id="aUnitLab">units</span>)</span>
+          <input id="aAmt" type="number" min="1" max="99999" step="1" inputmode="numeric" placeholder="e.g. 2"></label>
+        <label>Date <input id="aDate" type="date"></label>
+      </div>
+      <div class="hint" id="aPeriod" style="margin:0"></div>
+      <div class="gform-foot">
+        <button type="submit" class="btn">Add</button>
+        <button type="button" id="aCancel" class="btn" style="background:#94a3b8">Cancel</button>
+        <span id="addMsg" class="fmsg"></span>
+      </div>
+    </form>
+   </div>
+  </div>
+  <div class="card gsec"><h2>Active goals</h2><div id="secActive"></div></div>
   <div class="card gsec"><h2>Backlog goals</h2><div class="hint">Things to start later.</div><div id="secBacklog"></div></div>
   <div class="card gsec"><h2>Dreams</h2><div class="hint">Big aspirations — no deadline pressure.</div><div id="secDream"></div></div>
 </div><!-- /viewGoals -->
 
+<div id="viewSettings" hidden>
+  <div class="card" style="max-width:560px">
+    <h2>Categories</h2>
+    <div class="hint">Manage the categories used across the timer and goals. Deleting one won't change past entries.</div>
+    <div id="catList" class="catlist"></div>
+    <form id="catForm" class="form" style="margin-top:14px">
+      <div class="frow">
+        <label>New category <input id="newCatName" type="text" placeholder="e.g. Health"></label>
+        <label>Colour <input id="newCatColor" type="color" value="#4C6EF5"></label>
+      </div>
+      <div class="gform-foot">
+        <button type="submit" class="btn">+ Add category</button>
+        <span id="catMsg" class="fmsg"></span>
+      </div>
+    </form>
+  </div>
+
+  <div id="catModal" class="modal-ov" hidden>
+   <div class="card modal-card" style="max-width:400px">
+    <button type="button" id="catEditClose" class="modal-x" title="Close">✕</button>
+    <h2 id="catEditTitle">Edit category</h2>
+    <div class="hint" id="catEditUse"></div>
+    <form id="catEditForm" class="form">
+      <div class="frow">
+        <label>Name <input id="catEditName" type="text"></label>
+        <label>Colour <input id="catEditColor" type="color"></label>
+      </div>
+      <div class="gform-foot">
+        <button type="submit" class="btn">Save</button>
+        <button type="button" id="catEditCancel" class="btn" style="background:#94a3b8">Cancel</button>
+        <button type="button" id="catEditDelete" class="btn" style="background:#ef4444;margin-left:auto">Delete</button>
+        <span id="catEditMsg" class="fmsg"></span>
+      </div>
+    </form>
+   </div>
+  </div>
+</div><!-- /viewSettings -->
+
 <script>
 // ---- DATA (minutes) ----
 const SEED_COLORS = {Spiritual:'#4C6EF5',Youth:'#8DC63F',Family:'#F5A623',Mental:'#EF5350',Hobby:'#8B2FE0',Career:'#B9BFC7'};
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function curYM(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
 const SEED_MONTHS = [
   {m:'Jan 2026', cats:{Spiritual:900, Youth:690, Family:120}},                 // 28h30m
   {m:'Feb 2026', cats:{Spiritual:670, Youth:580, Family:100}},                 // 22h30m
@@ -469,8 +580,17 @@ const SEED_MONTHS = [
   {m:'May 2026', cats:{Spiritual:1634,Youth:995, Family:108, Career:30}},      // 46h07m
 ];
 const LS_MONTHS = 'ptd_months_v1';
-function loadMonths(){ try{ const v=JSON.parse(localStorage.getItem(LS_MONTHS)); return (Array.isArray(v)&&v.length)?v:SEED_MONTHS; }catch(e){ return SEED_MONTHS; } }
+const CUR_YM = curYM();
+// ensure the real calendar month is present as the latest entry (dynamic, never persisted)
+function withCurrentMonth(arr){
+  if(arr.some(x=>ymOf(x.m)===CUR_YM)) return arr;
+  const [y,m]=CUR_YM.split('-');
+  return arr.concat([{m:`${MONTH_NAMES[+m-1]} ${y}`, cats:{}}]);
+}
+function loadMonths(){ let arr; try{ const v=JSON.parse(localStorage.getItem(LS_MONTHS)); arr=(Array.isArray(v)&&v.length)?v:SEED_MONTHS; }catch(e){ arr=SEED_MONTHS; } return withCurrentMonth(arr); }
 let MONTHS = loadMonths();
+// effective category totals: current month is sourced live from Log entries (cats stay empty)
+function monthCats(M){ return ymOf(M.m)===CUR_YM ? entryCats(ymOf(M.m)) : (M.cats||{}); }
 const SEED_ALLCATS = ['Spiritual','Youth','Family','Career','Hobby'];
 const SEED_TASK_CAT = {
   'ONS':'Spiritual','TDS-SK-Mala':'Spiritual','Bala-AH3':'Spiritual','Vishnu Sahasranam':'Spiritual',
@@ -515,19 +635,19 @@ function renderKPIs(){
   MONTHS.forEach(M=>{
     const ym=ymOf(M.m), d=daysIn(ym);
     days+=d; pool+=DAILY_H*d;
-    usedH+=total(M.cats)/60;
+    usedH+=total(monthCats(M))/60;
     const o=onl[ym];
     if(o){ wasteKnown=true; wastedH+=onlineAgg(o).wasteH; }
   });
   document.getElementById('kpis').innerHTML =
-    usageHTML(pool, usedH, wasteKnown?wastedH:null, `2026 so far · ${pool}h discretionary (${DAILY_H}h/day × ${days} days)`);
+    usageHTML(pool, usedH, wasteKnown?wastedH:null, `${CUR_YM.slice(0,4)} so far · ${pool}h discretionary (${DAILY_H}h/day × ${days} days)`);
 }
 
 // ---- Year donut (category split across all months) ----
 let yearDonutChart;
 function renderYearDonut(){
   const agg={};
-  MONTHS.forEach(M=>{ for(const [c,v] of Object.entries(M.cats)) agg[c]=(agg[c]||0)+v; });
+  MONTHS.forEach(M=>{ for(const [c,v] of Object.entries(monthCats(M))) agg[c]=(agg[c]||0)+v; });
   const entries=Object.entries(agg).sort((a,b)=>b[1]-a[1]);
   const labels=entries.map(e=>e[0]), data=entries.map(e=>e[1]);
   const cols=labels.map(l=>COLORS[l]); const tot=data.reduce((a,b)=>a+b,0);
@@ -545,28 +665,69 @@ function renderYearDonut(){
 }
 
 // ---- Donut (per month) ----
-let donutChart, current=MONTHS.length-1;
-function renderDonut(i){
-  const M = MONTHS[i];
-  const entries = Object.entries(M.cats).sort((a,b)=>b[1]-a[1]);
-  const labels = entries.map(e=>e[0]);
-  const data = entries.map(e=>e[1]);
-  const cols = labels.map(l=>COLORS[l]);
-  const tot = total(M.cats);
-  document.getElementById('donutTitle').textContent = M.m + ' breakdown';
-  document.getElementById('centerVal').innerHTML = `${Math.floor(tot/60)}<span>h</span> ${tot%60}<span>m</span>`;
-  document.getElementById('legend').innerHTML = entries.map(([n,v])=>
-    `<tr><td><span class="dot" style="background:${COLORS[n]}"></span>${n}</td>
-     <td style="text-align:right;font-weight:600">${fmtShort(v)}</td>
-     <td style="text-align:right;color:var(--muted)">${Math.round(v/tot*100)}%</td></tr>`).join('');
-  const cfg = {
-    type:'doughnut',
-    data:{labels,datasets:[{data,backgroundColor:cols,borderWidth:3,borderColor:'#fff',hoverOffset:6}]},
+let donutCharts=[], current=MONTHS.length-1;
+function destroyDonuts(){ donutCharts.forEach(c=>{try{c.destroy();}catch(_){}}); donutCharts=[]; }
+// category sums (minutes) from Log entries for a given ym (optionally one period)
+function entryCats(ym, period){
+  const out={}; loadEntries().forEach(e=>{ if(e.ym===ym && (!period||e.period===period)){ out[e.cat]=(out[e.cat]||0)+(+e.mins||0); } });
+  return out;
+}
+function catsParts(cats){
+  const ents=Object.entries(cats).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  return { labels:ents.map(e=>e[0]), data:ents.map(e=>e[1]), cols:ents.map(e=>COLORS[e[0]]||'#b9c1cd'), tot:ents.reduce((s,e)=>s+e[1],0) };
+}
+function donutCfg(cats){
+  const {labels,data,cols,tot}=catsParts(cats);
+  return {type:'doughnut',data:{labels,datasets:[{data,backgroundColor:cols,borderWidth:3,borderColor:'#fff',hoverOffset:6}]},
     options:{cutout:'68%',plugins:{legend:{display:false},
-      tooltip:{callbacks:{label:c=>` ${c.label}: ${fmtShort(c.raw)} (${Math.round(c.raw/tot*100)}%)`}}}}
-  };
-  if(donutChart){donutChart.data=cfg.data;donutChart.update();}
-  else donutChart=new Chart(document.getElementById('donut'),cfg);
+      tooltip:{callbacks:{label:c=>` ${c.label}: ${fmtShort(c.raw)} (${tot?Math.round(c.raw/tot*100):0}%)`}}}}};
+}
+function legendRows(cats){
+  const {labels,data,tot}=catsParts(cats);
+  return labels.map((n,idx)=>`<tr><td><span class="dot" style="background:${COLORS[n]||'#b9c1cd'}"></span>${n}</td>
+     <td style="text-align:right;font-weight:600">${fmtShort(data[idx])}</td>
+     <td style="text-align:right;color:var(--muted)">${tot?Math.round(data[idx]/tot*100):0}%</td></tr>`).join('');
+}
+function renderDonut(i){
+  destroyDonuts();
+  const M=MONTHS[i], ym=ymOf(M.m), wrap=document.getElementById('ovMonthly');
+  const isCurrent = ym===CUR_YM; // real calendar month → split by period
+  const usageHint = `<div class="hint" id="usageHint" style="margin:0 0 12px;font-weight:700;color:#cbd2de"></div>`;
+  if(isCurrent){
+    const periods=['P1','P2','P3'];
+    const cells=periods.map((p,idx)=>{
+      const cats=entryCats(ym,p), tot=total(cats);
+      return `<div class="pcol">
+        <div class="pcol-h">${PERIOD_LABEL[p]}</div>
+        <div class="donutcanvas sm"><canvas id="pdonut${idx}"></canvas>
+          <div class="center"><div class="big sm">${tot?Math.floor(tot/60)+'h '+(tot%60)+'m':'—'}</div></div></div>
+        <table class="ms-table mini"><tbody>${tot?legendRows(cats):'<tr><td class="muted">no entries yet</td></tr>'}</tbody></table>
+      </div>`;
+    }).join('');
+    wrap.innerHTML = `${usageHint}
+      <div class="card">
+        <div class="usagebox" id="usage"></div>
+        <h2 style="margin:16px 0 2px">${M.m} — by period <span class="tagnow">current</span></h2>
+        <div class="hint" style="margin-bottom:10px">Three 10-day blocks side by side — compare where each stretch of the month went. Merges into one chart once the month ends.</div>
+        <div class="pgrid">${cells}</div>
+      </div>`;
+    periods.forEach((p,idx)=>{ const cats=entryCats(ym,p); if(total(cats)) donutCharts.push(new Chart(document.getElementById('pdonut'+idx), donutCfg(cats))); });
+  } else {
+    const cats=M.cats, tot=total(cats);
+    wrap.innerHTML = `${usageHint}
+      <div class="card monthsplit">
+        <div class="ms-left">
+          <h2 style="margin-bottom:10px">${M.m} breakdown</h2>
+          <div class="donutcanvas"><canvas id="donut"></canvas>
+            <div class="center"><div class="big">${Math.floor(tot/60)}<span>h</span> ${tot%60}<span>m</span></div></div></div>
+        </div>
+        <div class="ms-right">
+          <div class="usagebox" id="usage"></div>
+          <table class="ms-table"><tbody>${legendRows(cats)}</tbody></table>
+        </div>
+      </div>`;
+    donutCharts.push(new Chart(document.getElementById('donut'), donutCfg(cats)));
+  }
   renderUsage(i);
 }
 
@@ -608,17 +769,19 @@ function usageHTML(pool, used, wasted, label, past){
 function renderUsage(i){
   const M=MONTHS[i], ym=ymOf(M.m), days=daysIn(ym);
   const pool=DAILY_H*days;
-  const usedH=total(M.cats)/60;
+  const usedH=total(monthCats(M))/60;
   const o=loadOnline()[ym];
   const wastedH= o ? onlineAgg(o).wasteH : null;
-  const past = new Date(ym+'-'+String(days).padStart(2,'0')+'T23:59:59') < new Date();
+  // the live/current month → always hopeful, never "gone", to match its by-period view
+  const isCurrent = ym===CUR_YM;
+  const past = !isCurrent && new Date(ym+'-'+String(days).padStart(2,'0')+'T23:59:59') < new Date();
   document.getElementById('usageHint').textContent = `${M.m} — your ${pool}h of discretionary time (${DAILY_H}h × ${days} days)`;
   document.getElementById('usage').innerHTML = usageHTML(pool, usedH, wastedH, `${pool}h available · ${DAILY_H}h/day × ${days} days`, past);
 }
 
 // ---- Tabs ----
 function renderTabs(){
-  const yearBtn = `<button data-o="year" class="${ovTab==='year'?'active':''}">2026</button>`;
+  const yearBtn = `<button data-o="year" class="${ovTab==='year'?'active':''}">${CUR_YM.slice(0,4)}</button>`;
   const monthBtns = MONTHS.map((x,i)=>({i,m:x.m})).reverse().map(o=>
     `<button data-i="${o.i}" class="${ovTab==='monthly'&&o.i===current?'active':''}">${o.m.split(' ')[0]}</button>`).join('');
   document.getElementById('tabs').innerHTML = yearBtn + monthBtns;
@@ -745,7 +908,6 @@ function renderTips(){
 
 // ================= LOG VIEW =================
 const LS_KEY = 'ptd_entries_v1';
-const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const PERIOD_LABEL = {P1:'1–10',P2:'11–20',P3:'21–end'};
 let logDonutChart, logTrendChart, logSel=null;
 
@@ -769,7 +931,6 @@ function initLogForm(){
   refreshCatOptions(); refreshTaskOptions(); refreshGoalOptions();
   const clearTask=()=>{document.getElementById('fTask').value=''; refreshTaskOptions();};
   document.getElementById('fCat').addEventListener('change', clearTask);
-  document.getElementById('fNewCat').addEventListener('input', refreshTaskOptions);
   document.querySelectorAll('#typeTabs button').forEach(b=>b.onclick=()=>setLogType(b.dataset.t));
   document.getElementById('fGoal').addEventListener('change', syncGoalFields);
   document.getElementById('fGoalAmt').addEventListener('input', syncGoalFields);
@@ -815,15 +976,14 @@ function onLogSubmit(e){
 function submitProject(ym,period){
   const hrs=+document.getElementById('fHrs').value||0, min=+document.getElementById('fMin').value||0;
   const mins=hrs*60+min;
-  const newCat=document.getElementById('fNewCat').value.trim();
-  const cat= newCat || document.getElementById('fCat').value;
+  const cat=document.getElementById('fCat').value;
   const task=document.getElementById('fTask').value.trim();
   if(!task||mins<=0){ flash('Enter a task and a time > 0', true); return; }
   const all=loadEntries();
   all.push({id:eid(), ym, period, type:'project', task, cat, mins});
   saveEntries(all);
   logSel = `${ym}-${period}`;
-  document.getElementById('fTask').value=''; document.getElementById('fHrs').value=''; document.getElementById('fMin').value=''; document.getElementById('fNewCat').value='';
+  document.getElementById('fTask').value=''; document.getElementById('fHrs').value=''; document.getElementById('fMin').value='';
   refreshCatOptions(); refreshTaskOptions(); flash(`Added “${task}” (${fmtShort(mins)})`);
   renderLog();
 }
@@ -867,15 +1027,67 @@ function refreshCatOptions(){
   const cur=document.getElementById('fCat').value;
   document.getElementById('fCat').innerHTML=[...ALLCATS,...custom].map(c=>`<option ${c===cur?'selected':''}>${c}</option>`).join('');
 }
+// ---- category management (Settings) ----
+function persistCats(){ localStorage.setItem(LS_ALLCATS, JSON.stringify(ALLCATS)); localStorage.setItem(LS_COLORS, JSON.stringify(COLORS)); fbSyncPush(); }
+function refreshAllCatPickers(){
+  if(document.getElementById('fCat')) refreshCatOptions();
+  ['gCat','onRedirect'].forEach(id=>{ const el=document.getElementById(id); if(el){ const cur=el.value; el.innerHTML=ALLCATS.map(c=>`<option ${c===cur?'selected':''}>${c}</option>`).join(''); } });
+}
+function renderSettings(){
+  const el=document.getElementById('catList'); if(!el) return;
+  const used=new Set(loadEntries().map(e=>e.cat));
+  el.innerHTML = ALLCATS.map(c=>{ const e=c.replace(/'/g,"\\'");
+    return `<div class="catrow">
+      <span class="cdot" style="background:${colorFor(c)}"></span>
+      <span class="nm">${c}</span>
+      ${used.has(c)?'<span class="muted-sm">in use</span>':''}
+      <button class="cedit" title="Edit" onclick="catEditStart('${e}')">✎</button>
+    </div>`; }).join('') || '<div class="empty">No categories. Add one below.</div>';
+}
+let catEdit=null;
+function catModalShow(on){ document.getElementById('catModal').hidden=!on; document.body.style.overflow=on?'hidden':''; }
+window.catEditStart=function(c){
+  catEdit=c;
+  document.getElementById('catEditName').value=c;
+  document.getElementById('catEditColor').value=colorFor(c);
+  document.getElementById('catEditTitle').textContent=`Edit “${c}”`;
+  const inUse=loadEntries().some(e=>e.cat===c);
+  document.getElementById('catEditUse').textContent = inUse ? 'Used by existing entries — renaming updates them; deleting keeps their old label.' : 'Not used by any entry yet.';
+  document.getElementById('catEditMsg').textContent='';
+  catModalShow(true);
+};
+function catRename(oldName,newName,color){
+  newName=newName.trim(); if(!newName) return false;
+  if(newName!==oldName && ALLCATS.some(c=>c.toLowerCase()===newName.toLowerCase())) return false;
+  const i=ALLCATS.indexOf(oldName); if(i<0) return false;
+  ALLCATS[i]=newName;
+  if(oldName!==newName){ delete COLORS[oldName]; }
+  COLORS[newName]=color;
+  if(oldName!==newName){
+    const all=loadEntries(); let ch=false; all.forEach(e=>{ if(e.cat===oldName){ e.cat=newName; ch=true; } }); if(ch) saveEntries(all);
+    const g=loadGoals(); let gch=false; g.forEach(x=>{ if(x.cat===oldName){ x.cat=newName; gch=true; } }); if(gch) saveGoals(g);
+    Object.keys(TASK_CAT).forEach(t=>{ if(TASK_CAT[t]===oldName) TASK_CAT[t]=newName; });
+    localStorage.setItem(LS_TASKCAT, JSON.stringify(TASK_CAT));
+  }
+  persistCats(); refreshAllCatPickers(); renderSettings();
+  if(document.getElementById('secActive')) renderGoals();
+  return true;
+}
+window.delCategory=function(c){
+  const inUse=loadEntries().some(e=>e.cat===c);
+  if(!confirm(`Delete category “${c}”?${inUse?' It is used by existing entries — they keep their old label.':''} This can't be undone.`)) return;
+  ALLCATS=ALLCATS.filter(x=>x!==c); persistCats(); refreshAllCatPickers(); renderSettings(); catModalShow(false);
+};
 function refreshTaskOptions(){
-  const newCat=document.getElementById('fNewCat').value.trim();
-  const cat= newCat || document.getElementById('fCat').value;
+  const cat=document.getElementById('fCat').value;
   const base = TASKS.filter(t=>TASK_CAT[t]===cat);
   const custom=[...new Set(loadEntries().filter(e=>e.cat===cat).map(e=>e.task))].filter(t=>!base.includes(t));
   document.getElementById('taskList').innerHTML=[...base,...custom].map(t=>`<option value="${t.replace(/"/g,'&quot;')}">`).join('');
 }
 function deleteEntry(id){
   const all=loadEntries(); const e=all.find(x=>x.id===id);
+  if(!e) return;
+  if(!confirm(`Delete this entry${e.task?` “${e.task}”`:''}? This can't be undone.`)) return;
   if(e && e.type==='goal' && e.goalId && e.amt!=null){ // roll the goal's count back down
     const g=loadGoals(), gx=g.find(o=>o.id===e.goalId);
     if(gx){ gx.cur=Math.max(0,(+gx.cur||0)-(+e.amt||0)); saveGoals(g); if(document.getElementById('secActive')) renderGoals(); }
@@ -1121,17 +1333,35 @@ function paceHint(x){ // "~N/day needed" to finish by deadline
   const per=(x.target-x.cur)/dl;
   return per>=1 ? `~${Math.ceil(per)}/day to finish` : `~${Math.ceil(per*7)}/wk to finish`;
 }
-function goalFormShow(on){ document.getElementById('goalFormCard').hidden=!on; document.getElementById('goalCreateBtn').hidden=on; }
-function goalFormReset(){ goalEdit=null; document.getElementById('goalForm').reset(); document.getElementById('gUnitLab').textContent='unit'; document.getElementById('goalFormTitle').textContent='Add a goal'; document.getElementById('gCancel').style.display='none'; goalFormShow(false); }
+function goalFormShow(on){ document.getElementById('goalModal').hidden=!on; document.body.style.overflow=on?'hidden':''; }
+function goalFormReset(){ goalEdit=null; document.getElementById('goalForm').reset(); document.getElementById('gUnitLab').textContent='unit'; document.getElementById('goalFormTitle').textContent='Add a goal'; document.getElementById('gDelete').style.display='none'; goalFormShow(false); }
 function initGoals(){
   document.getElementById('gCat').innerHTML = ALLCATS.map(c=>`<option>${c}</option>`).join('');
-  document.getElementById('goalCreateBtn').onclick=()=>{ goalEdit=null; document.getElementById('goalForm').reset(); document.getElementById('goalFormTitle').textContent='Add a goal'; document.getElementById('gCancel').style.display=''; document.getElementById('goalMsg').textContent=''; goalFormShow(true); };
+  document.getElementById('goalCreateBtn').onclick=()=>{ goalEdit=null; document.getElementById('goalForm').reset(); document.getElementById('gUnitLab').textContent='unit'; document.getElementById('goalFormTitle').textContent='Add a goal'; document.getElementById('gDelete').style.display='none'; document.getElementById('goalMsg').textContent=''; goalFormShow(true); };
   document.getElementById('gCancel').onclick=()=>{ goalFormReset(); document.getElementById('goalMsg').textContent=''; };
+  document.getElementById('gClose').onclick=()=>{ goalFormReset(); document.getElementById('goalMsg').textContent=''; };
+  document.getElementById('goalModal').onclick=(e)=>{ if(e.target.id==='goalModal'){ goalFormReset(); document.getElementById('goalMsg').textContent=''; } };
+  document.getElementById('gDelete').onclick=()=>{ if(goalEdit){ const id=goalEdit; goalFormReset(); window.goalDel(id); } };
   document.getElementById('gUnit').addEventListener('input', ()=>{
     const u=document.getElementById('gUnit').value.trim();
     document.getElementById('gUnitLab').textContent = u||'unit';
     const mp=document.getElementById('gMinPer');
     if(mp.value==='') mp.placeholder = /min/i.test(u)?'1 (1 min = 1 min)' : /hour|hr/i.test(u)?'60 (1 hr = 60 min)' : 'minutes — blank = no time';
+  });
+  document.getElementById('aCancel').onclick=()=>addFormShow(false);
+  document.getElementById('aClose').onclick=()=>addFormShow(false);
+  document.getElementById('addModal').onclick=(e)=>{ if(e.target.id==='addModal') addFormShow(false); };
+  document.getElementById('aDate').addEventListener('input', addPeriodHint);
+  document.getElementById('addForm').addEventListener('submit', e=>{
+    e.preventDefault();
+    const g=loadGoals(), x=g.find(o=>o.id===addGoalId); if(!x) return;
+    const amt=Math.floor(+document.getElementById('aAmt').value||0); if(amt<=0) return;
+    const d=document.getElementById('aDate').value||''; if(!d) return;
+    const ym=d.slice(0,7), period=periodOfDay(+d.slice(8,10));
+    x.cur=(+x.cur||0)+amt; saveGoals(g);
+    const mins=goalMins(x,amt);
+    if(mins>0){ const all=loadEntries(); all.push({id:eid(), ym, period, type:'goal', goalId:x.id, amt, task:x.name, cat:x.cat, mins}); saveEntries(all); logSel=`${ym}-${period}`; }
+    addFormShow(false); renderGoals(); if(document.getElementById('entryTable')) renderLog();
   });
   document.getElementById('goalForm').addEventListener('submit', e=>{
     e.preventDefault();
@@ -1178,29 +1408,37 @@ function goalCard(x){
   const overdue = x.target>0 && x.cur<x.target && dl!=null && dl<0;
   const when = x.by ? (m>0?`${m} mo left`:m===0?'this month':'overdue') : 'no deadline';
   const hint = paceHint(x);
-  return `<div class="gcard${overdue?' gcard-overdue':''}" style="background:linear-gradient(135deg,${col}73,${col}33);border-color:${col}99">
-    <div class="gring">
-      <svg viewBox="0 0 76 76">
-        <circle class="gring-bg" cx="38" cy="38" r="${r}"/>
-        <circle class="gring-fg" cx="38" cy="38" r="${r}" style="stroke:${col}" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/>
-      </svg>
-      <div class="gring-txt">${raw}%</div>
-    </div>
-    <div class="gcard-body">
-      <div class="gcard-name" title="${x.name}">${x.name}</div>
-      <div class="gcard-sub">${x.cur}${x.target>0?` / ${x.target}`:''} ${x.unit}</div>
-      ${goalMinPer(x)>0?`<div class="ghint">⏱ ≈ ${fmtShort(Math.round((+x.cur||0)*goalMinPer(x)))} tracked · 1 ${x.unit||'unit'} = ${goalMinPer(x)} min</div>`:''}
-      ${hint?`<div class="ghint">${hint}</div>`:''}
-      <div class="gcard-meta">
-        <span class="gbadge" style="background:${col}">${badge}</span>
-        <span class="gwhen">${when}</span>
-      </div>
-    </div>
+  const mp = goalMinPer(x);
+  const doneM = Math.round((+x.cur||0)*mp), totM = Math.round((+x.target||0)*mp);
+  const det = [
+    mp>0 ? `<div class="gd-row"><span>Done</span><b>≈ ${fmtShort(doneM)} of ${fmtShort(totM)}</b></div>` : '',
+    mp>0 ? `<div class="gd-row"><span>Rate</span><b>${mp} min / ${x.unit||'unit'}</b></div>` : '',
+    hint ? `<div class="gd-row"><span>Pace</span><b>${hint}</b></div>` : ''
+  ].filter(Boolean).join('');
+  return `<div class="gcard${overdue?' gcard-overdue':''}" style="--gcol:${col}">
     <div class="gcard-acts">
       ${x.target>0?`<button title="Add progress" onclick="goalAdd('${x.id}')">+</button>`:''}
       <button title="Edit" onclick="goalEditStart('${x.id}')">✎</button>
-      <button title="Delete" onclick="goalDel('${x.id}')">🗑</button>
     </div>
+    <div class="gcard-top">
+      <div class="gring">
+        <svg viewBox="0 0 76 76">
+          <circle cx="38" cy="38" r="29" fill="#fff"/>
+          <circle cx="38" cy="38" r="37" fill="none" stroke="rgba(20,30,60,.16)" stroke-width="1.5"/>
+          <circle cx="38" cy="38" r="29.5" fill="none" stroke="rgba(20,30,60,.1)" stroke-width="1"/>
+          <circle class="gring-bg" cx="38" cy="38" r="${r}"/>
+          <circle class="gring-fg" cx="38" cy="38" r="${r}" style="stroke:${col}" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/>
+        </svg>
+        <div class="gring-txt">${raw}%</div>
+      </div>
+      <div class="gcard-head">
+        <div class="gcard-name" title="${x.name}">${x.name}</div>
+        <div class="gcard-sub"><b>${x.cur}</b>${x.target>0?` / ${x.target}`:''} ${x.unit||''}</div>
+        <span class="gbadge" style="background:${col}">${badge}</span>
+      </div>
+    </div>
+    ${det?`<div class="gcard-det">${det}</div>`:''}
+    <div class="gcard-foot"><span class="gwhen">${when}</span></div>
   </div>`;
 }
 function renderSec(sec, el){
@@ -1217,14 +1455,29 @@ function renderSec(sec, el){
 }
 function renderGoalStats(){
   const a=loadGoals().filter(g=>g.sec==='active'&&g.target>0);
-  const onTrack=a.filter(g=>['Done','Ahead','On track'].includes(paceLabel(g))).length;
-  const avg=a.length?Math.round(a.reduce((s,g)=>s+Math.min(100,g.cur/g.target*100),0)/a.length):0;
-  const done=a.filter(g=>g.cur>=g.target).length;
+  const ahead=a.filter(g=>['Done','Ahead'].includes(paceLabel(g))).length;
+  const onTrack=a.filter(g=>paceLabel(g)==='On track').length;
+  const lagging=a.filter(g=>['Lagging','Behind'].includes(paceLabel(g))).length;
+  let doneMin=0, pendMin=0;
+  a.forEach(g=>{ const mp=goalMinPer(g); if(mp>0){ doneMin+=(+g.cur||0)*mp; pendMin+=Math.max(0,(+g.target||0)-(+g.cur||0))*mp; } });
+  const doneH=Math.round(doneMin/60), leftH=Math.round(pendMin/60), totH=doneH+leftH;
   const el=document.getElementById('goalStats'); if(!el) return;
-  el.innerHTML=`<div><b>${a.length}</b><span>active goals</span></div>
-    <div><b>${onTrack}</b><span>on track / ahead</span></div>
-    <div><b>${avg}%</b><span>avg progress</span></div>
-    <div><b>${done}</b><span>completed</span></div>`;
+  el.innerHTML=`
+    <div class="gstat-cap">
+      <div class="gstat-main"><b>${a.length}</b><span>active goals</span></div>
+      <div class="gstat-break">
+        <span class="gs-pill gs-up"><b>${ahead}</b> ahead</span>
+        <span class="gs-pill gs-mid"><b>${onTrack}</b> on track</span>
+        <span class="gs-pill gs-down"><b>${lagging}</b> lagging</span>
+      </div>
+    </div>
+    <div class="gstat-cap">
+      <div class="gstat-main"><b>${totH}h</b><span>total target</span></div>
+      <div class="gstat-break">
+        <span class="gs-pill gs-up"><b>${doneH}h</b> done</span>
+        <span class="gs-pill gs-left"><b>${leftH}h</b> left</span>
+      </div>
+    </div>`;
 }
 function renderGoals(){ renderGoalStats(); renderSec('active','secActive'); renderSec('backlog','secBacklog'); renderSec('dream','secDream'); if(document.getElementById('fGoal')) refreshGoalOptions(); }
 function goalMinPer(x){ if(x.minPerUnit!=null && x.minPerUnit!=='') return +x.minPerUnit||0; const u=(x.unit||'').toLowerCase(); if(/min/.test(u)) return 1; if(/hour|hr/.test(u)) return 60; return 0; }
@@ -1247,15 +1500,25 @@ function logTimeEntry(cat,task,mins){
   const day=now.getDate(); const period=day<=10?'P1':day<=20?'P2':'P3';
   const all=loadEntries(); all.push({id:Date.now()+''+Math.floor(performance.now()), ym, period, task, cat, mins}); saveEntries(all);
 }
+let addGoalId=null;
+function periodOfDay(day){ return day<=10?'P1':day<=20?'P2':'P3'; }
+function addFormShow(on){ document.getElementById('addModal').hidden=!on; document.body.style.overflow=on?'hidden':''; }
+function addPeriodHint(){
+  const d=document.getElementById('aDate').value;
+  const el=document.getElementById('aPeriod'); if(!d){ el.textContent=''; return; }
+  const ym=d.slice(0,7), p=periodOfDay(+d.slice(8,10));
+  el.innerHTML=`→ counts in <b>${ymLabel(ym)} · ${PERIOD_LABEL[p]}</b>`;
+}
 window.goalAdd=function(id){
-  const g=loadGoals(), x=g.find(o=>o.id===id); if(!x) return;
-  const a=prompt(`Add to "${x.name}" (${x.unit}):`,''); if(a==null) return;
-  const amt=+a||0; if(amt<=0) return;
-  x.cur=(+x.cur||0)+amt; saveGoals(g);
-  const mins=goalMins(x,amt);
-  if(mins>0){ const now=new Date(); const ym=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0'); const day=now.getDate(); const period=day<=10?'P1':day<=20?'P2':'P3';
-    const all=loadEntries(); all.push({id:eid(), ym, period, type:'goal', goalId:x.id, amt, task:x.name, cat:x.cat, mins}); saveEntries(all); logSel=`${ym}-${period}`; }
-  renderGoals(); if(document.getElementById('entryTable')) renderLog();
+  const x=loadGoals().find(o=>o.id===id); if(!x) return;
+  addGoalId=id;
+  document.getElementById('addTitle').textContent=`Add to ${x.name}`;
+  document.getElementById('addSub').textContent=`Log progress${x.unit?` in ${x.unit}`:''}. Pick the date — it auto-files into the right 10-day period.`;
+  document.getElementById('aUnitLab').textContent=x.unit||'units';
+  document.getElementById('addForm').reset();
+  const now=new Date(); document.getElementById('aDate').value=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+  document.getElementById('addMsg').textContent=''; addPeriodHint();
+  addFormShow(true); document.getElementById('aAmt').focus();
 };
 function flashGoalLog(name,mins){ const el=document.getElementById('goalStats'); if(!el) return; const n=document.createElement('div'); n.className='hint'; n.style.color='#16a34a'; n.textContent=`Logged ${fmtShort(mins)} of ${name} as tracked time ✓`; el.parentNode.insertBefore(n, el.nextSibling); setTimeout(()=>n.remove(), 4000); }
 window.goalEditStart=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x) return; goalEdit=id; goalFormShow(true);
@@ -1264,7 +1527,7 @@ window.goalEditStart=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x
   document.getElementById('gUnit').value=x.unit; document.getElementById('gStart').value=x.start||''; document.getElementById('gBy').value=x.by||'';
   document.getElementById('gMinPer').value=(x.minPerUnit==null?'':x.minPerUnit); document.getElementById('gUnitLab').textContent=x.unit||'unit';
   document.getElementById('gSec').value=x.sec; document.getElementById('goalFormTitle').textContent='Edit goal';
-  document.getElementById('gCancel').style.display=''; document.getElementById('viewGoals').scrollIntoView({behavior:'smooth'}); };
+  document.getElementById('gDelete').style.display=''; };
 window.goalDel=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x||!confirm(`Delete "${x.name}"? This also removes its tracked time entries.`)) return;
   saveGoals(loadGoals().filter(o=>o.id!==id));
   const ents=loadEntries(), kept=ents.filter(e=>!(e.type==='goal'&&e.goalId===id)); if(kept.length!==ents.length) saveEntries(kept);
@@ -1275,14 +1538,16 @@ function setView(v){
   document.getElementById('viewOverview').hidden = v!=='overview';
   document.getElementById('viewLog').hidden = v!=='log';
   document.getElementById('viewGoals').hidden = v!=='goals';
+  document.getElementById('viewSettings').hidden = v!=='settings';
   document.getElementById('lifeBar').hidden = v!=='overview';
   const subs={overview:'your finite hours, on purpose', log:'log time, goals & screen use · saved on this device',
-    goals:'targets vs what you actually did'};
+    goals:'targets vs what you actually did', settings:'manage categories & preferences'};
   document.getElementById('sub').textContent = subs[v];
   document.querySelectorAll('#viewNav button').forEach(b=>b.classList.toggle('active', b.dataset.v===v));
   if(v==='overview'){ renderSuggestions(); setOv(ovTab); }
   if(v==='log') renderLog();
   if(v==='goals') renderGoals();
+  if(v==='settings') renderSettings();
   try{ localStorage.setItem(LS_VIEW, v); }catch(e){}
 }
 document.querySelectorAll('#viewNav button').forEach(b=>b.onclick=()=>setView(b.dataset.v));
@@ -1335,6 +1600,26 @@ document.addEventListener('fb-empty', ()=>fbSyncPush());
 renderLifeBar(); renderKPIs(); renderTabs(); renderTotalTrend(); renderSuggestions(); renderTips();
 setOv('year');
 initLogForm(); initGoals();
+document.getElementById('catForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const name=document.getElementById('newCatName').value.trim();
+  const color=document.getElementById('newCatColor').value;
+  const msg=document.getElementById('catMsg');
+  if(!name){ msg.textContent='Enter a name'; msg.style.color='#dc2626'; return; }
+  if(ALLCATS.some(c=>c.toLowerCase()===name.toLowerCase())){ msg.textContent='Already exists'; msg.style.color='#dc2626'; return; }
+  ALLCATS.push(name); COLORS[name]=color; persistCats(); refreshAllCatPickers(); renderSettings();
+  document.getElementById('newCatName').value=''; msg.textContent=`Added “${name}” ✓`; msg.style.color='#16a34a';
+});
+document.getElementById('catEditCancel').onclick=()=>catModalShow(false);
+document.getElementById('catEditClose').onclick=()=>catModalShow(false);
+document.getElementById('catModal').onclick=(e)=>{ if(e.target.id==='catModal') catModalShow(false); };
+document.getElementById('catEditDelete').onclick=()=>{ if(catEdit) window.delCategory(catEdit); };
+document.getElementById('catEditForm').addEventListener('submit', e=>{
+  e.preventDefault(); if(!catEdit) return;
+  const ok=catRename(catEdit, document.getElementById('catEditName').value, document.getElementById('catEditColor').value);
+  const m=document.getElementById('catEditMsg');
+  if(ok){ catModalShow(false); } else { m.textContent='Name empty or already exists'; m.style.color='#dc2626'; }
+});
 (function(){ try{ const sv=localStorage.getItem(LS_VIEW); if(sv&&sv!=='overview') setView(sv); }catch(e){} })();
 </script>
 </body>
