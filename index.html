@@ -51,7 +51,10 @@
   .lrow .meta{margin-left:auto;color:var(--muted);font-size:13px;font-weight:500}
   .monthsplit{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap}
   .ms-left{flex:0 0 auto}
+  .ms-left.grow{flex:1;min-width:300px}
   .ms-left .donutcanvas{width:280px;height:280px}
+  .ms-piebox{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+  .ms-piebox .ms-table{flex:1;min-width:170px}
   .ms-right{flex:1;min-width:280px;display:flex;flex-direction:column;gap:14px}
   .ms-right .kpis{grid-template-columns:1fr 1fr;gap:12px;margin-bottom:0}
   .ms-right .kpi{padding:13px 15px}
@@ -182,13 +185,15 @@
   <div id="ovYear">
     <div class="kpis" id="kpis"></div>
     <div class="card monthsplit" style="margin-bottom:16px">
-      <div class="ms-left">
+      <div class="ms-left grow">
         <h2 style="margin-bottom:10px">2026 — category split</h2>
-        <div class="donutcanvas">
-          <canvas id="yearDonut"></canvas>
-          <div class="center"><div class="big" id="yearCenterVal"></div></div>
+        <div class="ms-piebox">
+          <div class="donutcanvas">
+            <canvas id="yearDonut"></canvas>
+            <div class="center"><div class="big" id="yearCenterVal"></div></div>
+          </div>
+          <table class="ms-table"><tbody id="yearLegend"></tbody></table>
         </div>
-        <table class="ms-table" style="margin-top:14px"><tbody id="yearLegend"></tbody></table>
       </div>
       <div class="ms-right">
         <h2>Monthly total — trend</h2>
@@ -370,7 +375,7 @@
 
 <script>
 // ---- DATA (minutes) ----
-const SEED_COLORS = {Spiritual:'#1c92d2',Youth:'#74c4ea',Family:'#2451a8',Mental:'#283d8f',Hobby:'#1b2350',Career:'#a6d8f0'};
+const SEED_COLORS = {Spiritual:'#4C6EF5',Youth:'#8DC63F',Family:'#F5A623',Mental:'#EF5350',Hobby:'#8B2FE0',Career:'#B9BFC7'};
 const SEED_MONTHS = [
   {m:'Jan 2026', cats:{Spiritual:900, Youth:690, Family:120}},                 // 28h30m
   {m:'Feb 2026', cats:{Spiritual:670, Youth:580, Family:100}},                 // 22h30m
