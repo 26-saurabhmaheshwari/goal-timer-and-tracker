@@ -91,7 +91,7 @@
   .ginfo{flex:1;min-width:150px}
   .gname{font-size:16px;font-weight:700;color:#2d6cdf}
   .gtar{font-size:12.5px;color:var(--muted);margin-top:2px}
-  .gprog{width:300px;max-width:40vw;flex:0 0 auto}
+  .gprog{flex:1 1 auto;min-width:160px}
   .gtrack2{position:relative;height:30px;border-radius:6px;background:#ececec;border:1px solid #d6dae0;overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,.12)}
   .gfill2{position:absolute;left:0;top:0;bottom:0;border-radius:5px 0 0 5px;transition:width .4s;box-shadow:inset 0 -2px 3px rgba(0,0,0,.12);background-image:linear-gradient(to bottom,rgba(255,255,255,.45),rgba(255,255,255,.08) 45%,rgba(0,0,0,.10)),linear-gradient(45deg,rgba(255,255,255,.18) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.18) 50%,rgba(255,255,255,.18) 75%,transparent 75%,transparent);background-size:auto,28px 28px}
   .glabel{position:absolute;left:10px;top:0;bottom:0;display:flex;align-items:center;font-size:12.5px;font-weight:700;color:#1f2733}
@@ -100,7 +100,7 @@
   .gacts button{border:1px solid #dfe4ee;background:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;color:#6b7280;font-size:13px;line-height:1;padding:0}
   .gacts button:hover{color:#2d6cdf;border-color:#2d6cdf}
   .gsec{margin-top:16px}
-  @media(max-width:880px){.gprog{width:150px}}
+  @media(max-width:880px){.gprog{min-width:110px}}
 </style>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
@@ -166,10 +166,7 @@
   </header>
 
 <div id="viewOverview">
-  <div class="tabs" id="ovNav" style="margin-bottom:18px">
-    <button data-o="year" class="active">2026</button>
-    <button data-o="monthly">Monthly</button>
-  </div>
+  <div class="tabs" id="tabs" style="margin-bottom:18px"></div>
 
   <!-- ===== 2026 (year) ===== -->
   <div id="ovYear">
@@ -465,12 +462,14 @@ function renderUsage(i){
 
 // ---- Tabs ----
 function renderTabs(){
-  document.getElementById('tabs').innerHTML = MONTHS.map((x,i)=>
-    `<button data-i="${i}" class="${i===current?'active':''}">${x.m.split(' ')[0]}</button>`).join('');
+  const yearBtn = `<button data-o="year" class="${ovTab==='year'?'active':''}">2026</button>`;
+  const monthBtns = MONTHS.map((x,i)=>
+    `<button data-i="${i}" class="${ovTab==='monthly'&&i===current?'active':''}">${x.m.split(' ')[0]}</button>`).join('');
+  document.getElementById('tabs').innerHTML = yearBtn + monthBtns;
   document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{
-    current=+b.dataset.i;
-    document.querySelectorAll('#tabs button').forEach(x=>x.classList.remove('active'));
-    b.classList.add('active'); renderDonut(current);
+    if(b.dataset.o==='year'){ setOv('year'); }
+    else { current=+b.dataset.i; setOv('monthly'); }
+    renderTabs();
   });
 }
 
@@ -861,11 +860,9 @@ function setOv(o){
   ovTab=o;
   document.getElementById('ovYear').hidden = o!=='year';
   document.getElementById('ovMonthly').hidden = o!=='monthly';
-  document.querySelectorAll('#ovNav button').forEach(b=>b.classList.toggle('active', b.dataset.o===o));
   if(o==='year') renderTotalTrend();
   if(o==='monthly') renderDonut(current);
 }
-document.querySelectorAll('#ovNav button').forEach(b=>b.onclick=()=>setOv(b.dataset.o));
 
 // --- Firebase sync glue ---
 function fbBlob(){ return {version:1, months:MONTHS, colors:COLORS, allcats:ALLCATS, taskcat:TASK_CAT, entries:loadEntries(), online:loadOnline(), goals:loadGoals()}; }
