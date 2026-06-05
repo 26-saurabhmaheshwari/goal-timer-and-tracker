@@ -89,8 +89,8 @@
   .batt-hand{font-size:13.5px;font-weight:700;color:var(--ink);margin-bottom:9px}
   .batt-hand b{font-size:21px;color:#2c7d47;letter-spacing:-.5px}
   .batt{display:flex;align-items:center;gap:4px}
-  .batt-body{position:relative;flex:1;height:44px;border:3px solid #b9c1cd;border-radius:10px;background:#eef1f5;overflow:hidden}
-  .batt-fill{position:absolute;top:0;left:0;height:100%;display:flex}
+  .batt-body{position:relative;flex:1;height:44px;border:3px solid #b9c1cd;border-radius:10px;background:#cdddf7;overflow:hidden}
+  .batt-fill{position:absolute;top:0;left:0;width:100%;height:100%;display:flex}
   .bseg{height:100%;transition:width .4s}
   .batt-cells{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(90deg,transparent 0 calc(5% - 2px),rgba(40,50,70,.22) calc(5% - 2px) 5%)}
   .batt-cap{width:7px;height:22px;background:#b9c1cd;border-radius:0 4px 4px 0}
@@ -579,12 +579,17 @@ function usageHTML(pool, used, wasted, label, past){
   const free = Math.max(0, pool - used - w);
   const p = v => pool>0 ? Math.round(v/pool*100) : 0;
   const pw = v => pool>0 ? (v/pool*100) : 0;
+  // free time is "still yours" (blue, hope) while the period is ongoing; once a
+  // month/year is fully past, that unspent time is gone for good → grey.
+  const freeBg = past ? '#c2c9d4' : '#ffe45c';
+  const freeBd = past ? '#a6aebb' : '#e0bd1f';
+  const freeLbl = past ? 'Gone' : 'Still yours';
   const hand = past
-    ? `📒 <b>${used.toFixed(0)}h</b> tracked of ${pool.toFixed(0)}h · ${p(used)}% of the month's discretionary time`
+    ? `📒 <b>${used.toFixed(0)}h</b> tracked of ${pool.toFixed(0)}h · ${free.toFixed(0)}h (${p(free)}%) gone unspent`
     : `⚡ <b>${free.toFixed(0)}h</b> still in your hands · ${p(free)}% of ${pool.toFixed(0)}h left to spend`;
   return `<div class="batt-hand">${hand}</div>
     <div class="batt">
-      <div class="batt-body">
+      <div class="batt-body" style="background:${freeBg}">
         <div class="batt-fill">
           <div class="bseg" style="width:${pw(used)}%;background:#37b36b"></div>
           <div class="bseg" style="width:${pw(w)}%;background:#ef6b5a"></div>
@@ -596,6 +601,7 @@ function usageHTML(pool, used, wasted, label, past){
     <div class="batt-meta">
       <span><i style="background:#37b36b"></i>Used ${used.toFixed(0)}h · ${p(used)}%</span>
       <span><i style="background:#ef6b5a"></i>Wasted ${wasted==null?'— add online':w.toFixed(0)+'h · '+p(w)+'%'}</span>
+      <span><i style="background:${freeBg};border:1px solid ${freeBd}"></i>${freeLbl} ${free.toFixed(0)}h · ${p(free)}%</span>
       <span>${label}</span>
     </div>`;
 }
@@ -1225,12 +1231,14 @@ function goalMinPer(x){ if(x.minPerUnit!=null && x.minPerUnit!=='') return +x.mi
 function goalMins(x,amt){ return Math.round(goalMinPer(x)*amt); }
 // Propagate a goal's name/category/mapping to all its linked time entries (so editing a goal updates the time tracker, incl. via Firebase).
 function syncGoalEntries(g){
-  // Propagate name + category to linked entries. Minutes are NOT recomputed:
-  // each entry keeps the minutes it had when logged; a mapping change only affects future logs.
-  const all=loadEntries(); let changed=false;
+  // Propagate name + category to ALL linked entries, and recompute minutes from the
+  // current mapping for linked entries — EXCEPT entries flagged e.lock, which keep the
+  // minutes they were logged with (the "leave this one alone" use case).
+  const all=loadEntries(); let changed=false; const mpu=goalMinPer(g);
   all.forEach(e=>{ if(e.type==='goal' && e.goalId===g.id){
     if(e.task!==g.name){ e.task=g.name; changed=true; }
     if(e.cat!==g.cat){ e.cat=g.cat; changed=true; }
+    if(!e.lock && e.amt!=null){ const m=Math.round((+e.amt||0)*mpu); if(m!==e.mins){ e.mins=m; changed=true; } }
   }});
   if(changed) saveEntries(all);
 }
@@ -1290,7 +1298,7 @@ function setOv(o){
 }
 
 // --- Firebase sync glue ---
-function fbBlob(){ return {version:1, months:MONTHS, colors:COLORS, allcats:ALLCATS, taskcat:TASK_CAT, entries:loadEntries(), online:loadOnline(), goals:loadGoals(), dob:loadDob()}; }
+function fbBlob(){ return {version:1, months:MONTHS, colors:COLORS, allcats:ALLCATS, taskcat:TASK_CAT, entries:loadEntries(), online:loadOnline(), goals:loadGoals(), dob:loadDob(), lockMig:localStorage.getItem('ptd_lockmig_v1')==='1'}; }
 function fbSyncPush(){ window.fbPushRaw && window.fbPushRaw(fbBlob()); }
 window.fbToggle = function(){ if(window.__fbIn){ window.fbSignOut(); } else { window.fbSignIn(); } };
 document.addEventListener('fb-auth', e=>{
@@ -1305,6 +1313,16 @@ document.addEventListener('fb-data', e=>{
   set(LS_MONTHS,d.months); set(LS_COLORS,d.colors); set(LS_ALLCATS,d.allcats); set(LS_TASKCAT,d.taskcat);
   set(LS_KEY,d.entries); set(LS_ONLINE,d.online); set(LS_GOALS,d.goals);
   if(typeof d.dob==='string' && d.dob && localStorage.getItem(LS_DOB)!==d.dob){ localStorage.setItem(LS_DOB,d.dob); changed=true; }
+  // one-time backfill: lock goal-linked entries that already exist, so a later
+  // minutes-per-unit change never retroactively rewrites them. Flag is synced
+  // (d.lockMig) so this runs exactly once across all devices. New entries logged
+  // after this stay unlocked and DO recompute on mapping changes.
+  if(!d.lockMig){
+    const all=loadEntries(); let stamped=false;
+    all.forEach(e=>{ if(e.type==='goal' && e.goalId && !e.lock){ e.lock=true; stamped=true; } });
+    localStorage.setItem('ptd_lockmig_v1','1');
+    if(stamped){ saveEntries(all); changed=true; } else { fbSyncPush(); }
+  }
   // one reload max per page load — prevents a flicker loop if remote/local never byte-match
   if(changed && !sessionStorage.getItem('fb_synced')){
     sessionStorage.setItem('fb_synced','1');
