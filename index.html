@@ -49,6 +49,16 @@
   .dot{width:9px;height:9px;border-radius:3px;flex:0 0 auto}
   .lrow .nm{font-weight:600;font-size:14px}
   .lrow .meta{margin-left:auto;color:var(--muted);font-size:13px;font-weight:500}
+  .monthsplit{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap}
+  .ms-left{flex:0 0 auto}
+  .ms-left .donutcanvas{width:280px;height:280px}
+  .ms-right{flex:1;min-width:280px;display:flex;flex-direction:column;gap:14px}
+  .ms-right .kpis{grid-template-columns:1fr 1fr;gap:12px;margin-bottom:0}
+  .ms-right .kpi{padding:13px 15px}
+  .ms-table{width:100%;border-collapse:collapse;font-size:13px}
+  .ms-table td{padding:6px 8px;border-bottom:1px solid var(--line)}
+  .ms-table tr:last-child td{border-bottom:none}
+  .ms-table .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;vertical-align:middle}
   canvas.chart{width:100%!important;height:280px!important}
   .insights{margin-top:16px}
   .insights h2{font-size:15px;font-weight:700;margin-bottom:12px}
@@ -172,6 +182,17 @@
   <div id="ovYear">
     <div class="kpis" id="kpis"></div>
     <div class="card" style="margin-bottom:16px">
+      <h2>2026 — category split</h2>
+      <div class="hint">Where your tracked time went this year.</div>
+      <div class="donutbox">
+        <div class="donutcanvas">
+          <canvas id="yearDonut"></canvas>
+          <div class="center"><div class="big" id="yearCenterVal"></div></div>
+        </div>
+        <div class="legend" id="yearLegend"></div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:16px">
       <h2>Monthly total — trend</h2>
       <div class="hint">Total tracked time per month (hours)</div>
       <canvas id="totalTrend" class="chart"></canvas>
@@ -188,18 +209,18 @@
 
   <!-- ===== Monthly (unique per-month data only) ===== -->
   <div id="ovMonthly" hidden>
-    <div class="tabs" id="tabs" style="margin-bottom:18px"></div>
-    <div class="hint" id="usageHint" style="margin:8px 0;font-weight:700;color:#cbd2de"></div>
-    <div class="kpis" id="usage"></div>
-    <div class="card" style="margin-top:16px">
-      <h2 id="donutTitle">—</h2>
-      <div class="hint">This month's category split.</div>
-      <div class="donutbox">
+    <div class="hint" id="usageHint" style="margin:0 0 12px;font-weight:700;color:#cbd2de"></div>
+    <div class="card monthsplit">
+      <div class="ms-left">
+        <h2 id="donutTitle" style="margin-bottom:10px">—</h2>
         <div class="donutcanvas">
           <canvas id="donut"></canvas>
           <div class="center"><div class="big" id="centerVal"></div></div>
         </div>
-        <div class="legend" id="legend"></div>
+      </div>
+      <div class="ms-right">
+        <div class="kpis" id="usage"></div>
+        <table class="ms-table"><tbody id="legend"></tbody></table>
       </div>
     </div>
   </div>
@@ -394,22 +415,48 @@ function huePalette(n){ return Array.from({length:n},(_,i)=>`hsl(${HUES[i%HUES.l
 
 // ---- KPIs ----
 function renderKPIs(){
-  const totals = MONTHS.map(x=>total(x.cats));
-  const grand = totals.reduce((a,b)=>a+b,0);
-  const avg = grand/MONTHS.length;
-  const last = totals.at(-1), prev = totals.at(-2);
-  const mom = ((last-prev)/prev*100).toFixed(0);
-  // spiritual share overall
-  const sp = MONTHS.reduce((a,x)=>a+(x.cats.Spiritual||0),0);
+  // Year-level waking-time breakdown (sum across all months)
+  const onl=loadOnline();
+  let wakingH=0, usedH=0, wastedH=0, wasteKnown=false;
+  MONTHS.forEach(M=>{
+    const ym=ymOf(M.m), days=daysIn(ym);
+    wakingH+=16*days;
+    usedH+=total(M.cats)/60;
+    const o=onl[ym];
+    if(o){ wasteKnown=true; wastedH+=(o.phone + o.lap*((o.lapWaste||0)/100)); }
+  });
+  const unrepH=Math.max(0, wakingH - usedH - wastedH);
+  const pc=h=>Math.round(h/wakingH*100);
   const k = [
-    {label:'Total tracked', val:fmtShort(grand), d:''},
-    {label:'Avg / month', val:fmtShort(Math.round(avg)), d:''},
-    {label:'Latest month (May)', val:fmtShort(last), d:`${mom>0?'▲':'▼'} ${Math.abs(mom)}% vs Apr`, cls:mom>0?'up':'down'},
-    {label:'Spiritual share', val:Math.round(sp/grand*100)+'%', d:'of all time'},
+    {label:'Waking time', val:Math.round(wakingH)+'h', d:`16h × ${MONTHS.length} months`},
+    {label:'Tracked / used', val:usedH.toFixed(0)+'h', d:`${pc(usedH)}% of waking`, cls:'up'},
+    {label:'Wasted (online)', val: wasteKnown? wastedH.toFixed(0)+'h':'—', d: wasteKnown?`${pc(wastedH)}% of waking`:'add in Online tab', cls: wasteKnown?'down':''},
+    {label:'Unreported', val:unrepH.toFixed(0)+'h', d:`${pc(unrepH)}% — untracked`},
   ];
   document.getElementById('kpis').innerHTML = k.map(x=>
     `<div class="kpi"><div class="label">${x.label}</div><div class="val">${x.val}</div>
      <div class="delta ${x.cls||''}">${x.d}</div></div>`).join('');
+}
+
+// ---- Year donut (category split across all months) ----
+let yearDonutChart;
+function renderYearDonut(){
+  const agg={};
+  MONTHS.forEach(M=>{ for(const [c,v] of Object.entries(M.cats)) agg[c]=(agg[c]||0)+v; });
+  const entries=Object.entries(agg).sort((a,b)=>b[1]-a[1]);
+  const labels=entries.map(e=>e[0]), data=entries.map(e=>e[1]);
+  const cols=labels.map(l=>COLORS[l]); const tot=data.reduce((a,b)=>a+b,0);
+  document.getElementById('yearCenterVal').innerHTML=`${Math.floor(tot/60)}<span>h</span>`;
+  document.getElementById('yearLegend').innerHTML=entries.map(([n,v])=>
+    `<div class="lrow"><span class="dot" style="background:${COLORS[n]}"></span>
+     <span class="nm">${n}</span>
+     <span class="meta">${fmtShort(v)} · ${Math.round(v/tot*100)}%</span></div>`).join('');
+  const cfg={type:'doughnut',
+    data:{labels,datasets:[{data,backgroundColor:cols,borderWidth:3,borderColor:'#fff',hoverOffset:6}]},
+    options:{cutout:'68%',plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:c=>` ${c.label}: ${fmtShort(c.raw)} (${Math.round(c.raw/tot*100)}%)`}}}}};
+  if(yearDonutChart){yearDonutChart.data=cfg.data;yearDonutChart.update();}
+  else yearDonutChart=new Chart(document.getElementById('yearDonut'),cfg);
 }
 
 // ---- Donut (per month) ----
@@ -424,9 +471,9 @@ function renderDonut(i){
   document.getElementById('donutTitle').textContent = M.m + ' breakdown';
   document.getElementById('centerVal').innerHTML = `${Math.floor(tot/60)}<span>h</span> ${tot%60}<span>m</span>`;
   document.getElementById('legend').innerHTML = entries.map(([n,v])=>
-    `<div class="lrow"><span class="dot" style="background:${COLORS[n]}"></span>
-     <span class="nm">${n}</span>
-     <span class="meta">${fmtShort(v)} · ${Math.round(v/tot*100)}%</span></div>`).join('');
+    `<tr><td><span class="dot" style="background:${COLORS[n]}"></span>${n}</td>
+     <td style="text-align:right;font-weight:600">${fmtShort(v)}</td>
+     <td style="text-align:right;color:var(--muted)">${Math.round(v/tot*100)}%</td></tr>`).join('');
   const cfg = {
     type:'doughnut',
     data:{labels,datasets:[{data,backgroundColor:cols,borderWidth:3,borderColor:'#fff',hoverOffset:6}]},
@@ -847,7 +894,7 @@ function setView(v){
     online:'Screen time vs real life · the cost of being online', goals:'Targets vs what you actually did'};
   document.getElementById('sub').textContent = subs[v];
   document.querySelectorAll('#viewNav button').forEach(b=>b.classList.toggle('active', b.dataset.v===v));
-  if(v==='overview'){ renderSuggestions(); if(ovTab==='monthly') renderDonut(current); else renderTotalTrend(); }
+  if(v==='overview'){ renderSuggestions(); setOv(ovTab); }
   if(v==='log') renderLog();
   if(v==='online') renderOnline();
   if(v==='goals') renderGoals();
@@ -860,7 +907,7 @@ function setOv(o){
   ovTab=o;
   document.getElementById('ovYear').hidden = o!=='year';
   document.getElementById('ovMonthly').hidden = o!=='monthly';
-  if(o==='year') renderTotalTrend();
+  if(o==='year'){ renderKPIs(); renderYearDonut(); renderTotalTrend(); }
   if(o==='monthly') renderDonut(current);
 }
 
