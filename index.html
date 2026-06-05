@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Time Distribution — 2026</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --spiritual:#4C6EF5;
+    --youth:#8DC63F;
+    --family:#F5A623;
+    --mental:#EF5350;
+    --hobby:#8B2FE0;
+    --career:#B9BFC7;
+    --bg:#f4f6fb;
+    --card:#ffffff;
+    --ink:#1f2733;
+    --muted:#8a93a3;
+    --line:#eef1f6;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);padding:28px;-webkit-font-smoothing:antialiased}
+  h1{font-size:22px;font-weight:700;letter-spacing:-.3px}
+  .sub{color:var(--muted);font-size:13px;margin-top:2px}
+  .wrap{max-width:1280px;margin:0 auto}
+  header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:12px}
+  .tabs{display:flex;gap:6px;background:#e8ecf4;padding:5px;border-radius:12px}
+  .tabs button{border:0;background:transparent;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:.15s}
+  .tabs button.active{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(20,30,60,.12)}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+  .kpi{background:var(--card);border-radius:16px;padding:18px 20px;box-shadow:0 1px 4px rgba(20,30,60,.05)}
+  .kpi .label{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+  .kpi .val{font-size:26px;font-weight:700;margin-top:6px;letter-spacing:-.5px}
+  .kpi .delta{font-size:12px;margin-top:4px;font-weight:600}
+  .up{color:#16a34a}.down{color:#dc2626}
+  .grid{display:grid;grid-template-columns:1.1fr 1fr;gap:16px;margin-bottom:16px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .card{background:var(--card);border-radius:18px;padding:20px 22px;box-shadow:0 1px 4px rgba(20,30,60,.05)}
+  .card h2{font-size:15px;font-weight:700;margin-bottom:2px}
+  .card .hint{font-size:12px;color:var(--muted);margin-bottom:14px}
+  .donutbox{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+  .donutcanvas{position:relative;width:300px;height:300px;flex:0 0 auto}
+  .center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
+  .center .big{font-size:34px;font-weight:700;color:#EF5350;letter-spacing:-1px}
+  .center .big span{font-size:16px;font-weight:600;color:#f1948f}
+  .legend{flex:1;min-width:200px;display:flex;flex-direction:column;gap:8px}
+  .lrow{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--line);border-radius:12px}
+  .dot{width:9px;height:9px;border-radius:3px;flex:0 0 auto}
+  .lrow .nm{font-weight:600;font-size:14px}
+  .lrow .meta{margin-left:auto;color:var(--muted);font-size:13px;font-weight:500}
+  canvas.chart{width:100%!important;height:280px!important}
+  .insights{margin-top:16px}
+  .insights h2{font-size:15px;font-weight:700;margin-bottom:12px}
+  .ibox{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .icard{background:var(--card);border-radius:16px;padding:16px 18px;box-shadow:0 1px 4px rgba(20,30,60,.05);font-size:13.5px;line-height:1.5;color:#374151;border-left:4px solid var(--spiritual)}
+  .icard b{color:var(--ink)}
+  @media(max-width:1100px){.ibox{grid-template-columns:1fr 1fr}}
+  @media(max-width:880px){.grid,.ibox{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}}
+  /* log form */
+  .form{display:flex;flex-direction:column;gap:14px;margin-top:6px}
+  .frow{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .form label{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:600;color:var(--muted)}
+  .form input,.form select{font-size:14px;padding:10px 12px;border:1px solid #dfe4ee;border-radius:10px;background:#fff;color:var(--ink);font-family:inherit}
+  .form input:focus,.form select:focus{outline:none;border-color:var(--spiritual)}
+  .time2{display:flex;gap:8px}.time2 input{width:100%}
+  .btn{align-self:flex-start;background:var(--spiritual);color:#fff;border:0;padding:11px 20px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer}
+  .btn:hover{filter:brightness(1.05)}
+  .fmsg{font-size:12.5px;font-weight:600;color:#16a34a}
+  .muted-sm{font-size:12px;color:var(--muted);font-weight:500}
+  .periodtabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+  .periodtabs button{border:1px solid #dfe4ee;background:#fff;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer}
+  .periodtabs button.active{background:var(--spiritual);color:#fff;border-color:var(--spiritual)}
+  .table{display:flex;flex-direction:column;gap:6px;max-height:300px;overflow:auto}
+  .trow{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;font-size:13.5px}
+  .trow .tt{font-weight:600}.trow .tc{font-size:11px;color:#fff;padding:2px 8px;border-radius:6px;font-weight:600}
+  .trow .tm{margin-left:auto;color:var(--muted);font-weight:600}
+  .trow .del{border:0;background:transparent;color:#c0c6d0;cursor:pointer;font-size:15px;line-height:1;padding:2px 4px}
+  .trow .del:hover{color:#dc2626}
+  .empty{font-size:13px;color:var(--muted);padding:18px;text-align:center}
+  .gbar{margin:14px 0}
+  .gbar .gtop{display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:6px}
+  .gbar .gtop b{font-weight:700}.gbar .gtop .gv{color:var(--muted);font-weight:600}
+  .gtrack{height:12px;background:#eef1f6;border-radius:8px;overflow:hidden}
+  .gfill{height:100%;border-radius:8px;transition:width .4s}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Project Time Distribution</h1>
+      <div class="sub" id="sub">Jan – May 2026 · interactive overview</div>
+    </div>
+    <div class="tabs" id="viewNav">
+      <button data-v="overview" class="active">Overview</button>
+      <button data-v="log">Log Data</button>
+      <button data-v="online">Online / Offline</button>
+      <button data-v="goals">Goals</button>
+    </div>
+  </header>
+
+<div id="viewOverview">
+  <div class="tabs" id="tabs" style="margin-bottom:18px"></div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="grid">
+    <div class="card">
+      <h2 id="donutTitle">—</h2>
+      <div class="hint">Click a month tab above to switch the breakdown.</div>
+      <div class="donutbox">
+        <div class="donutcanvas">
+          <canvas id="donut"></canvas>
+          <div class="center"><div class="big" id="centerVal"></div></div>
+        </div>
+        <div class="legend" id="legend"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Monthly total — trend</h2>
+      <div class="hint">Total tracked time per month (hours)</div>
+      <canvas id="totalTrend" class="chart"></canvas>
+    </div>
+  </div>
+
+  <div class="insights">
+    <h2>Suggestions — grow the 3 under-served areas toward the ideal mix</h2>
+    <div class="ibox" id="suggest"></div>
+  </div>
+
+  <div class="insights">
+    <h2>Tips to make the time count</h2>
+    <div class="ibox" id="tips"></div>
+  </div>
+</div><!-- /viewOverview -->
+
+<div id="viewLog" hidden>
+  <div class="grid">
+    <div class="card">
+      <h2>Log time</h2>
+      <div class="hint">Add an entry — saved on this device (localStorage). Periods are 10-day blocks.</div>
+      <form id="logForm" class="form">
+        <div class="frow">
+          <label>Month
+            <select id="fMonth"></select>
+          </label>
+          <label>Period
+            <select id="fPeriod">
+              <option value="P1">Days 1–10</option>
+              <option value="P2">Days 11–20</option>
+              <option value="P3">Days 21–end</option>
+            </select>
+          </label>
+        </div>
+        <div class="frow">
+          <label>Task name
+            <input id="fTask" type="text" list="taskList" placeholder="pick or type a task" required>
+            <datalist id="taskList"></datalist>
+          </label>
+          <label>Category
+            <select id="fCat"></select>
+          </label>
+        </div>
+        <div class="frow">
+          <label>New category (optional)
+            <input id="fNewCat" type="text" placeholder="leave blank to use dropdown">
+          </label>
+          <label>Time logged
+            <span class="time2"><input id="fHrs" type="number" min="0" placeholder="h"> <input id="fMin" type="number" min="0" max="59" placeholder="m"></span>
+          </label>
+        </div>
+        <button type="submit" class="btn">+ Add entry</button>
+        <span id="formMsg" class="fmsg"></span>
+      </form>
+    </div>
+    <div class="card">
+      <h2 id="logDonutTitle">—</h2>
+      <div class="hint">Breakdown for the selected period below.</div>
+      <div class="donutbox">
+        <div class="donutcanvas">
+          <canvas id="logDonut"></canvas>
+          <div class="center"><div class="big" id="logCenterVal"></div></div>
+        </div>
+        <div class="legend" id="logLegend"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Period trend</h2>
+      <div class="hint">Total logged time per 10-day period</div>
+      <canvas id="logTrend" class="chart"></canvas>
+    </div>
+    <div class="card">
+      <h2>Entries <span id="entryCount" class="muted-sm"></span></h2>
+      <div class="hint">Click a period to filter the donut. ✕ deletes an entry.</div>
+      <div class="periodtabs" id="periodTabs"></div>
+      <div class="table" id="entryTable"></div>
+    </div>
+  </div>
+</div><!-- /viewLog -->
+
+<div id="viewOnline" hidden>
+  <div class="grid">
+    <div class="card">
+      <h2>Log screen time</h2>
+      <div class="hint">Manual — pull totals from iOS Screen Time / macOS Screen Time and enter monthly hours. Phone = waste; laptop split by how much was real work.</div>
+      <form id="onForm" class="form">
+        <div class="frow">
+          <label>Month <select id="oMonth"></select></label>
+          <label>Phone hours (all waste) <input id="oPhone" type="number" min="0" step="0.1" placeholder="e.g. 62"></label>
+        </div>
+        <div class="frow">
+          <label>Laptop hours <input id="oLap" type="number" min="0" step="0.1" placeholder="e.g. 40"></label>
+          <label>Laptop % wasted <input id="oLapWaste" type="number" min="0" max="100" placeholder="e.g. 40"></label>
+        </div>
+        <button type="submit" class="btn">Save month</button>
+        <span id="onMsg" class="fmsg"></span>
+      </form>
+      <div class="periodtabs" id="onMonthTabs" style="margin-top:16px"></div>
+    </div>
+    <div class="card">
+      <h2 id="onTitle">—</h2>
+      <div class="hint">Online = phone + laptop. Offline = everything you logged that month.</div>
+      <div class="kpis" id="onKpis" style="grid-template-columns:1fr 1fr;margin-bottom:14px"></div>
+      <canvas id="onSplit" class="chart" style="height:200px!important"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>The hard truth — what that wasted time could become</h2>
+    <div class="hint">If you redirected your wasted hours into one category, here's the impact.</div>
+    <div class="frow" style="max-width:340px;margin:6px 0 16px">
+      <label>Redirect wasted time into <select id="onRedirect"></select></label>
+    </div>
+    <div class="ibox" id="onWhatIf"></div>
+  </div>
+</div><!-- /viewOnline -->
+
+<div id="viewGoals" hidden>
+  <div class="card">
+    <h2>Goals</h2>
+    <div class="hint">Set a monthly target (hours) per category. Progress is measured against your logged data for the selected month.</div>
+    <form id="goalForm" class="form" style="max-width:520px">
+      <div class="frow">
+        <label>Category <select id="gCat"></select></label>
+        <label>Target hours / month <input id="gHrs" type="number" min="0" step="0.5" placeholder="e.g. 12"></label>
+      </div>
+      <button type="submit" class="btn">Set goal</button>
+      <span id="goalMsg" class="fmsg"></span>
+    </form>
+  </div>
+  <div class="card">
+    <h2>Progress <span id="goalMonthWrap" class="muted-sm"></span></h2>
+    <div class="periodtabs" id="goalMonthTabs"></div>
+    <div id="goalBars"></div>
+  </div>
+</div><!-- /viewGoals -->
+
+<script>
+// ---- DATA (minutes) ----
+const COLORS = {Spiritual:'#4C6EF5',Youth:'#8DC63F',Family:'#F5A623',Mental:'#EF5350',Hobby:'#8B2FE0',Career:'#B9BFC7'};
+const MONTHS = [
+  {m:'Jan 2026', cats:{Spiritual:900, Youth:690, Family:120}},                 // 28h30m
+  {m:'Feb 2026', cats:{Spiritual:670, Youth:580, Family:100}},                 // 22h30m
+  {m:'Mar 2026', cats:{Spiritual:903, Youth:274, Hobby:100}},                  // 21h17m (Mental merged into Hobby)
+  {m:'Apr 2026', cats:{Spiritual:1027,Youth:591, Family:48}},                  // 27h46m
+  {m:'May 2026', cats:{Spiritual:1634,Youth:995, Family:108, Career:30}},      // 46h07m
+];
+const ALLCATS = ['Spiritual','Youth','Family','Career','Hobby'];
+const TASK_CAT = {
+  'ONS':'Spiritual','TDS-SK-Mala':'Spiritual','Bala-AH3':'Spiritual','Vishnu Sahasranam':'Spiritual',
+  'GauPradakshina':'Spiritual','NM-DK':'Spiritual','NMaho':'Spiritual','Sundarkand':'Spiritual',
+  'Walk':'Youth','Rejuvenate':'Youth','Nurture':'Youth','Nails-10Min':'Youth',
+  'SRM-Play':'Family','SRM-20':'Family',
+  'OppurtunityPrep':'Career','Study':'Career',
+  'Book Reading':'Hobby','Gardening':'Hobby','Pranav':'Hobby'
+};
+const TASKS = Object.keys(TASK_CAT);
+
+// ---- helpers ----
+const fmt = m => `${Math.floor(m/60)}h ${m%60}m`;
+const fmtShort = m => { const h=Math.floor(m/60),mm=m%60; return mm? `${h}h ${mm}m`:`${h}h`; };
+const hrs = m => +(m/60).toFixed(2);
+const total = c => Object.values(c).reduce((a,b)=>a+b,0);
+// blue shade by value: highest = darkest, lowest = lightest
+function shadeScale(vals){
+  const mn=Math.min(...vals), mx=Math.max(...vals), span=(mx-mn)||1;
+  return vals.map(v=>{ const t=(v-mn)/span; const L=Math.round(74-t*36); return `hsl(227 89% ${L}%)`; });
+}
+
+// ---- KPIs ----
+function renderKPIs(){
+  const totals = MONTHS.map(x=>total(x.cats));
+  const grand = totals.reduce((a,b)=>a+b,0);
+  const avg = grand/MONTHS.length;
+  const last = totals.at(-1), prev = totals.at(-2);
+  const mom = ((last-prev)/prev*100).toFixed(0);
+  // spiritual share overall
+  const sp = MONTHS.reduce((a,x)=>a+(x.cats.Spiritual||0),0);
+  const k = [
+    {label:'Total tracked', val:fmtShort(grand), d:''},
+    {label:'Avg / month', val:fmtShort(Math.round(avg)), d:''},
+    {label:'Latest month (May)', val:fmtShort(last), d:`${mom>0?'▲':'▼'} ${Math.abs(mom)}% vs Apr`, cls:mom>0?'up':'down'},
+    {label:'Spiritual share', val:Math.round(sp/grand*100)+'%', d:'of all time'},
+  ];
+  document.getElementById('kpis').innerHTML = k.map(x=>
+    `<div class="kpi"><div class="label">${x.label}</div><div class="val">${x.val}</div>
+     <div class="delta ${x.cls||''}">${x.d}</div></div>`).join('');
+}
+
+// ---- Donut (per month) ----
+let donutChart, current=MONTHS.length-1;
+function renderDonut(i){
+  const M = MONTHS[i];
+  const entries = Object.entries(M.cats).sort((a,b)=>b[1]-a[1]);
+  const labels = entries.map(e=>e[0]);
+  const data = entries.map(e=>e[1]);
+  const cols = labels.map(l=>COLORS[l]);
+  const tot = total(M.cats);
+  document.getElementById('donutTitle').textContent = M.m + ' breakdown';
+  document.getElementById('centerVal').innerHTML = `${Math.floor(tot/60)}<span>h</span> ${tot%60}<span>m</span>`;
+  document.getElementById('legend').innerHTML = entries.map(([n,v])=>
+    `<div class="lrow"><span class="dot" style="background:${COLORS[n]}"></span>
+     <span class="nm">${n}</span>
+     <span class="meta">${fmtShort(v)} · ${Math.round(v/tot*100)}%</span></div>`).join('');
+  const cfg = {
+    type:'doughnut',
+    data:{labels,datasets:[{data,backgroundColor:cols,borderWidth:3,borderColor:'#fff',hoverOffset:6}]},
+    options:{cutout:'68%',plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:c=>` ${c.label}: ${fmtShort(c.raw)} (${Math.round(c.raw/tot*100)}%)`}}}}
+  };
+  if(donutChart){donutChart.data=cfg.data;donutChart.update();}
+  else donutChart=new Chart(document.getElementById('donut'),cfg);
+}
+
+// ---- Tabs ----
+function renderTabs(){
+  document.getElementById('tabs').innerHTML = MONTHS.map((x,i)=>
+    `<button data-i="${i}" class="${i===current?'active':''}">${x.m.split(' ')[0]}</button>`).join('');
+  document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{
+    current=+b.dataset.i;
+    document.querySelectorAll('#tabs button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active'); renderDonut(current);
+  });
+}
+
+// ---- Total trend (bar) ----
+function renderTotalTrend(){
+  new Chart(document.getElementById('totalTrend'),{
+    type:'bar',
+    data:{labels:MONTHS.map(x=>x.m.split(' ')[0]),
+      datasets:[{data:MONTHS.map(x=>hrs(total(x.cats))),
+        backgroundColor:shadeScale(MONTHS.map(x=>total(x.cats))),
+        borderRadius:8,maxBarThickness:46}]},
+    options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.raw} h`}}},
+      scales:{y:{beginAtZero:true,grid:{color:'#eef1f6'},ticks:{callback:v=>v+'h'}},x:{grid:{display:false}}}}
+  });
+}
+
+// ---- Stacked bar by category ----
+function renderStack(){
+  const ds = ALLCATS.map(cat=>({
+    label:cat, backgroundColor:COLORS[cat],
+    data:MONTHS.map(x=>hrs(x.cats[cat]||0)), borderRadius:4, maxBarThickness:46
+  }));
+  new Chart(document.getElementById('stack'),{
+    type:'bar',
+    data:{labels:MONTHS.map(x=>x.m.split(' ')[0]),datasets:ds},
+    options:{plugins:{legend:{position:'bottom',labels:{boxWidth:10,boxHeight:10,usePointStyle:true,pointStyle:'circle',font:{size:11}}},
+      tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${c.raw} h`}}},
+      scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,grid:{color:'#eef1f6'},ticks:{callback:v=>v+'h'}}}}
+  });
+}
+
+// ---- Per-category lines ----
+function renderLines(){
+  const ds = ALLCATS.map(cat=>({
+    label:cat, borderColor:COLORS[cat], backgroundColor:COLORS[cat],
+    data:MONTHS.map(x=>x.cats[cat]!=null?hrs(x.cats[cat]):null),
+    spanGaps:true, tension:.35, borderWidth:2.5, pointRadius:3, pointHoverRadius:5
+  }));
+  new Chart(document.getElementById('lines'),{
+    type:'line',
+    data:{labels:MONTHS.map(x=>x.m.split(' ')[0]),datasets:ds},
+    options:{plugins:{legend:{position:'bottom',labels:{boxWidth:10,boxHeight:10,usePointStyle:true,pointStyle:'circle',font:{size:11}}},
+      tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${c.raw} h`}}},
+      scales:{y:{beginAtZero:true,grid:{color:'#eef1f6'},ticks:{callback:v=>v+'h'}},x:{grid:{display:false}}}}
+  });
+}
+
+// ---- Insights (computed) ----
+function renderInsights(){
+  const totals = MONTHS.map(x=>total(x.cats));
+  const grand = totals.reduce((a,b)=>a+b,0);
+  const sp = MONTHS.map(x=>x.cats.Spiritual||0);
+  const yt = MONTHS.map(x=>x.cats.Youth||0);
+  const peak = MONTHS[totals.indexOf(Math.max(...totals))];
+  const low  = MONTHS[totals.indexOf(Math.min(...totals))];
+  const spShare = Math.round(sp.reduce((a,b)=>a+b,0)/grand*100);
+  const ytShare = Math.round(yt.reduce((a,b)=>a+b,0)/grand*100);
+  const mayJump = Math.round((totals.at(-1)-totals.at(-2))/totals.at(-2)*100);
+  const spGrowth = Math.round((sp.at(-1)-sp[0])/sp[0]*100);
+  const firstHalf = (totals[0]+totals[1]+totals[2])/3/60;
+  const secondHalf = (totals[3]+totals[4])/2/60;
+  const li = [
+    `<b>May was peak month</b> at ${fmtShort(total(peak.cats))} — a <b>${mayJump}%</b> jump over April and ~2× the Feb/Mar low.`,
+    `<b>Momentum is building</b> — total time rose two months running, climbing from the Feb/Mar dip (~21h) to <b>${fmtShort(total(peak.cats))}</b> in May.`,
+    `<b>The second half is stronger</b> — Apr–May averaged <b>${secondHalf.toFixed(0)}h</b>/mo vs <b>${firstHalf.toFixed(0)}h</b> across Jan–Mar; a clear step-up.`,
+    `<b>March was an outlier</b> — the only month with Hobby logged, but also your lowest Youth (${fmtShort(Math.min(...yt))}); breadth came at the cost of your #2.`,
+    `<b>High volatility</b> — months swing from ${fmtShort(Math.min(...totals))} to ${fmtShort(Math.max(...totals))}; consistency itself could be a target.`,
+  ];
+  const accents = ['#4C6EF5','#8DC63F','#F5A623','#EF5350','#8B2FE0','#4C6EF5','#8DC63F','#F5A623'];
+  document.getElementById('insights').innerHTML =
+    li.map((x,i)=>`<div class="icard" style="border-left-color:${accents[i%accents.length]}">${x}</div>`).join('');
+}
+
+// ---- Suggestions vs ideal mix ----
+function renderSuggestions(){
+  const grand = MONTHS.reduce((a,x)=>a+total(x.cats),0);
+  const act = {Spiritual:0,Youth:0,Career:0,Rest:0};
+  MONTHS.forEach(x=>{for(const[c,v]of Object.entries(x.cats)){
+    if(c==='Spiritual')act.Spiritual+=v; else if(c==='Youth')act.Youth+=v;
+    else if(c==='Career')act.Career+=v; else act.Rest+=v;
+  }});
+  const target = {Youth:40,Career:10,Rest:10};
+  const accent = {Youth:'#8DC63F',Career:'#B9BFC7',Rest:'#F5A623'};
+  const avgMonthTot = grand/MONTHS.length/60; // current avg hrs/month
+  const how = {
+    Youth:`Add one extra session or longer stretch — aim ~${(avgMonthTot*0.40/4.3).toFixed(1)}h/week.`,
+    Career:`Biggest gap. Block ~${(avgMonthTot*0.10/4.3).toFixed(1)}h/week for skills, learning or side-work.`,
+    Rest:`Schedule family/health/hobby like an appointment so it doesn't get crowded out.`
+  };
+  const cards = Object.keys(target).map(c=>{
+    const a = Math.round(act[c]/grand*100), t = target[c];
+    const idealH = (avgMonthTot*t/100).toFixed(1);
+    return `<div class="icard" style="border-left-color:${accent[c]}">
+      <b>${c}: ${a}% → ${t}%</b> (~${idealH}h/mo)<br>${how[c]}</div>`;
+  });
+  cards.push(`<div class="icard" style="border-left-color:#4C6EF5">
+    <b>Spiritual stays your anchor</b><br>No need to cut it — as the three above grow, its share naturally settles toward ~40%.</div>`);
+  document.getElementById('suggest').innerHTML = cards.join('');
+}
+
+// ---- General time tips ----
+function renderTips(){
+  const tips = [
+    [`The 6-minute rule`,`Bored or stuck? Set a 6-min timer and just start — momentum beats motivation, and you'll usually keep going.`,'#EF5350'],
+    [`Batch similar tasks`,`Group messages, errands and admin into one block. Context-switching is where hours quietly leak away.`,'#4C6EF5'],
+    [`Time-block, don't to-do`,`Give Career & Rest a fixed slot on the calendar. Unscheduled good intentions lose to whatever's urgent.`,'#8DC63F'],
+    [`Two-minute starter`,`If it takes <2 min, do it now. For bigger tasks, commit to just the first 2 minutes to break inertia.`,'#F5A623'],
+    [`Theme your days`,`Pick a focus per day (e.g. Career on Tue/Thu) so under-served areas get protected, recurring time.`,'#8B2FE0'],
+    [`Review weekly`,`Glance at this dashboard each Sunday — a 5-min check keeps the mix honest before a month slips by.`,'#B9BFC7'],
+  ];
+  document.getElementById('tips').innerHTML = tips.map(([h,b,c])=>
+    `<div class="icard" style="border-left-color:${c}"><b>${h}</b><br>${b}</div>`).join('');
+}
+
+// ================= LOG VIEW =================
+const LS_KEY = 'ptd_entries_v1';
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const PERIOD_LABEL = {P1:'1–10',P2:'11–20',P3:'21–end'};
+let logDonutChart, logTrendChart, logSel=null;
+
+function loadEntries(){ try{return JSON.parse(localStorage.getItem(LS_KEY))||[];}catch(e){return[];} }
+function saveEntries(a){ localStorage.setItem(LS_KEY, JSON.stringify(a)); }
+function colorFor(cat){ if(COLORS[cat])return COLORS[cat];
+  let h=0; for(const c of cat) h=(c.charCodeAt(0)+((h<<5)-h))|0;
+  return `hsl(${Math.abs(h)%360} 65% 55%)`; }
+function ymList(){ // Jun 2026 .. May 2027
+  const out=[]; for(let i=5;i<=16;i++){ const y=2026+Math.floor(i/12), m=i%12; out.push({key:`${y}-${String(m+1).padStart(2,'0')}`, label:`${MONTH_NAMES[m]} ${y}`}); }
+  return out;
+}
+function pkey(e){ return `${e.ym}-${e.period}`; }
+function plabel(k){ const [y,m,p]=[k.slice(0,4),k.slice(5,7),k.slice(8)]; return `${MONTH_NAMES[+m-1]} ${PERIOD_LABEL[p]}`; }
+
+function initLogForm(){
+  document.getElementById('fMonth').innerHTML = ymList().map(o=>`<option value="${o.key}">${o.label}</option>`).join('');
+  refreshCatOptions(); refreshTaskOptions();
+  const clearTask=()=>{document.getElementById('fTask').value=''; refreshTaskOptions();};
+  document.getElementById('fCat').addEventListener('change', clearTask);
+  document.getElementById('fNewCat').addEventListener('input', refreshTaskOptions);
+  document.getElementById('logForm').addEventListener('submit', e=>{
+    e.preventDefault();
+    const hrs=+document.getElementById('fHrs').value||0, min=+document.getElementById('fMin').value||0;
+    const mins=hrs*60+min;
+    const newCat=document.getElementById('fNewCat').value.trim();
+    const cat= newCat || document.getElementById('fCat').value;
+    const task=document.getElementById('fTask').value.trim();
+    if(!task||mins<=0){ flash('Enter a task and a time > 0', true); return; }
+    const all=loadEntries();
+    all.push({id:Date.now()+''+Math.floor(performance.now()), ym:document.getElementById('fMonth').value,
+      period:document.getElementById('fPeriod').value, task, cat, mins});
+    saveEntries(all);
+    logSel = `${document.getElementById('fMonth').value}-${document.getElementById('fPeriod').value}`;
+    document.getElementById('fTask').value=''; document.getElementById('fHrs').value=''; document.getElementById('fMin').value=''; document.getElementById('fNewCat').value='';
+    refreshCatOptions(); refreshTaskOptions(); flash(`Added “${task}” (${fmtShort(mins)})`);
+    renderLog();
+  });
+}
+function flash(msg, err){ const el=document.getElementById('formMsg'); el.textContent=msg; el.style.color=err?'#dc2626':'#16a34a'; }
+function refreshCatOptions(){
+  const custom=[...new Set(loadEntries().map(e=>e.cat))].filter(c=>!ALLCATS.includes(c));
+  const cur=document.getElementById('fCat').value;
+  document.getElementById('fCat').innerHTML=[...ALLCATS,...custom].map(c=>`<option ${c===cur?'selected':''}>${c}</option>`).join('');
+}
+function refreshTaskOptions(){
+  const newCat=document.getElementById('fNewCat').value.trim();
+  const cat= newCat || document.getElementById('fCat').value;
+  const base = TASKS.filter(t=>TASK_CAT[t]===cat);
+  const custom=[...new Set(loadEntries().filter(e=>e.cat===cat).map(e=>e.task))].filter(t=>!base.includes(t));
+  document.getElementById('taskList').innerHTML=[...base,...custom].map(t=>`<option value="${t.replace(/"/g,'&quot;')}">`).join('');
+}
+function deleteEntry(id){ saveEntries(loadEntries().filter(e=>e.id!==id)); refreshCatOptions(); renderLog(); }
+window.deleteEntry=deleteEntry;
+
+function renderLog(){
+  const all=loadEntries();
+  const keys=[...new Set(all.map(pkey))].sort();
+  if(!logSel || !keys.includes(logSel)) logSel = keys.at(-1) || null;
+
+  // period tabs
+  document.getElementById('periodTabs').innerHTML = keys.length
+    ? keys.map(k=>`<button data-k="${k}" class="${k===logSel?'active':''}">${plabel(k)}</button>`).join('')
+    : '';
+  document.querySelectorAll('#periodTabs button').forEach(b=>b.onclick=()=>{logSel=b.dataset.k; renderLog();});
+
+  // entries table (for selected period)
+  const rows = all.filter(e=>pkey(e)===logSel);
+  document.getElementById('entryCount').textContent = all.length? `· ${all.length} total` : '';
+  document.getElementById('entryTable').innerHTML = rows.length
+    ? rows.map(e=>`<div class="trow"><span class="tt">${e.task}</span>
+        <span class="tc" style="background:${colorFor(e.cat)}">${e.cat}</span>
+        <span class="tm">${fmtShort(e.mins)}</span>
+        <button class="del" onclick="deleteEntry('${e.id}')">✕</button></div>`).join('')
+    : `<div class="empty">No entries yet${all.length?' for this period':''}. Add one on the left.</div>`;
+
+  // donut for selected period
+  const agg={}; rows.forEach(e=>agg[e.cat]=(agg[e.cat]||0)+e.mins);
+  const ent=Object.entries(agg).sort((a,b)=>b[1]-a[1]);
+  const tot=ent.reduce((a,[,v])=>a+v,0);
+  document.getElementById('logDonutTitle').textContent = logSel? plabel(logSel)+' breakdown' : 'No data yet';
+  document.getElementById('logCenterVal').innerHTML = tot? `${Math.floor(tot/60)}<span>h</span> ${tot%60}<span>m</span>` : '<span>—</span>';
+  document.getElementById('logLegend').innerHTML = ent.map(([n,v])=>
+    `<div class="lrow"><span class="dot" style="background:${colorFor(n)}"></span><span class="nm">${n}</span>
+     <span class="meta">${fmtShort(v)} · ${Math.round(v/tot*100)}%</span></div>`).join('');
+  const dcfg={type:'doughnut',data:{labels:ent.map(e=>e[0]),datasets:[{data:ent.map(e=>e[1]),
+    backgroundColor:ent.map(e=>colorFor(e[0])),borderWidth:3,borderColor:'#fff',hoverOffset:6}]},
+    options:{cutout:'68%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.label}: ${fmtShort(c.raw)} (${Math.round(c.raw/tot*100)}%)`}}}}};
+  if(logDonutChart){logDonutChart.data=dcfg.data;logDonutChart.update();} else logDonutChart=new Chart(document.getElementById('logDonut'),dcfg);
+
+  // period trend (all periods)
+  const totByKey={}; all.forEach(e=>totByKey[pkey(e)]=(totByKey[pkey(e)]||0)+e.mins);
+  const tcfg={type:'bar',data:{labels:keys.map(plabel),datasets:[{data:keys.map(k=>hrs(totByKey[k])),
+    backgroundColor:shadeScale(keys.map(k=>totByKey[k]||0)),
+    borderColor:keys.map(k=>k===logSel?'#EF5350':'transparent'),borderWidth:2,borderRadius:8,maxBarThickness:46}]},
+    options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.raw} h`}}},
+      scales:{y:{beginAtZero:true,grid:{color:'#eef1f6'},ticks:{callback:v=>v+'h'}},x:{grid:{display:false}}}}};
+  if(logTrendChart){logTrendChart.data=tcfg.data;logTrendChart.options=tcfg.options;logTrendChart.update();}
+  else logTrendChart=new Chart(document.getElementById('logTrend'),tcfg);
+}
+
+// ================= ONLINE / OFFLINE =================
+const LS_ONLINE='ptd_online_v1';
+let onSel=null, onSplitChart;
+function loadOnline(){ try{return JSON.parse(localStorage.getItem(LS_ONLINE))||{};}catch(e){return{};} }
+function saveOnline(o){ localStorage.setItem(LS_ONLINE, JSON.stringify(o)); }
+function daysIn(ym){ const y=+ym.slice(0,4), m=+ym.slice(5,7); return new Date(y,m,0).getDate(); }
+function loggedTotalMins(ym){ return loadEntries().filter(e=>e.ym===ym).reduce((a,e)=>a+e.mins,0); }
+function loggedCatMins(ym,cat){ return loadEntries().filter(e=>e.ym===ym&&e.cat===cat).reduce((a,e)=>a+e.mins,0); }
+
+function initOnline(){
+  document.getElementById('oMonth').innerHTML = ymList().map(o=>`<option value="${o.key}">${o.label}</option>`).join('');
+  document.getElementById('onRedirect').innerHTML = ALLCATS.map(c=>`<option ${c==='Career'?'selected':''}>${c}</option>`).join('');
+  document.getElementById('onRedirect').addEventListener('change', ()=>renderOnline());
+  document.getElementById('onForm').addEventListener('submit', e=>{
+    e.preventDefault();
+    const ym=document.getElementById('oMonth').value;
+    const o=loadOnline();
+    o[ym]={phone:+document.getElementById('oPhone').value||0, lap:+document.getElementById('oLap').value||0,
+           lapWaste:+document.getElementById('oLapWaste').value||0};
+    saveOnline(o); onSel=ym;
+    document.getElementById('onMsg').textContent='Saved ✓'; document.getElementById('onMsg').style.color='#16a34a';
+    renderOnline();
+  });
+}
+function renderOnline(){
+  const data=loadOnline(); const keys=Object.keys(data).sort();
+  if(!onSel||!keys.includes(onSel)) onSel=keys.at(-1)||null;
+  document.getElementById('onMonthTabs').innerHTML = keys.length
+    ? keys.map(k=>`<button data-k="${k}" class="${k===onSel?'active':''}">${ymList().find(o=>o.key===k)?.label||k}</button>`).join('')
+    : '<span class="muted-sm">No months logged yet — add one above.</span>';
+  document.querySelectorAll('#onMonthTabs button').forEach(b=>b.onclick=()=>{onSel=b.dataset.k;renderOnline();});
+
+  const ti=document.getElementById('onTitle');
+  if(!onSel){ ti.textContent='No data yet'; document.getElementById('onKpis').innerHTML=''; document.getElementById('onWhatIf').innerHTML=''; if(onSplitChart){onSplitChart.destroy();onSplitChart=null;} return; }
+  const d=data[onSel], days=daysIn(onSel);
+  const online=d.phone+d.lap, wasted=d.phone + d.lap*(d.lapWaste/100);
+  const offlineH = loggedTotalMins(onSel)/60;
+  const pctMonth=(online/(24*days)*100), pctWake=(online/(16*days)*100);
+  ti.textContent = (ymList().find(o=>o.key===onSel)?.label||onSel)+' — screen time';
+  const k=[
+    {l:'Online total', v:online.toFixed(1)+'h', d:`phone ${d.phone}h + laptop ${d.lap}h`},
+    {l:'% of the month', v:pctMonth.toFixed(1)+'%', d:`of all ${24*days}h`},
+    {l:'Wasted', v:wasted.toFixed(1)+'h', d:`phone + ${d.lapWaste}% of laptop`, cls:'down'},
+    {l:'% of waking life', v:pctWake.toFixed(1)+'%', d:`assuming 16h awake/day`, cls:'down'},
+  ];
+  document.getElementById('onKpis').innerHTML = k.map(x=>`<div class="kpi"><div class="label">${x.l}</div>
+    <div class="val">${x.v}</div><div class="delta ${x.cls||''}">${x.d}</div></div>`).join('');
+
+  const sc={type:'bar',data:{labels:['Online (screen)','Offline (logged)'],
+    datasets:[{data:[+online.toFixed(1),+offlineH.toFixed(1)],backgroundColor:['#EF5350','#8DC63F'],borderRadius:8,maxBarThickness:80}]},
+    options:{indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.raw} h`}}},
+      scales:{x:{beginAtZero:true,grid:{color:'#eef1f6'},ticks:{callback:v=>v+'h'}},y:{grid:{display:false}}}}};
+  if(onSplitChart){onSplitChart.data=sc.data;onSplitChart.update();} else onSplitChart=new Chart(document.getElementById('onSplit'),sc);
+
+  // what-if
+  const cat=document.getElementById('onRedirect').value;
+  const curH=loggedCatMins(onSel,cat)/60;
+  const newH=curH+wasted;
+  const mult = curH>0 ? (newH/curH).toFixed(1)+'×' : '∞';
+  const yearWaste=wasted*12, yearDays=(yearWaste/24).toFixed(1);
+  const cards=[
+    [`Wasted ${wasted.toFixed(1)}h this month`, `That's <b>${pctWake.toFixed(0)}%</b> of your waking hours — gone to a screen.`, '#EF5350'],
+    [`${cat}: ${curH.toFixed(1)}h → ${newH.toFixed(1)}h`, `Redirect the waste and ${cat} would be <b>${mult}</b> what it is now.`, COLORS[cat]||'#4C6EF5'],
+    [`Over a year: ~${yearWaste.toFixed(0)}h`, `≈ <b>${yearDays} full 24h days</b> annually. Reclaim even half and it's life-changing for ${cat}.`, '#F5A623'],
+    [`Phone is 100% waste`, `Every phone hour is pure leak. Laptop at least had ${(100-d.lapWaste)}% real use — the phone had none.`, '#8B2FE0'],
+  ];
+  document.getElementById('onWhatIf').innerHTML = cards.map(([h,b,c])=>
+    `<div class="icard" style="border-left-color:${c}"><b>${h}</b><br>${b}</div>`).join('');
+}
+
+// ================= GOALS =================
+const LS_GOALS='ptd_goals_v1';
+let goalSel=null;
+function loadGoals(){ try{return JSON.parse(localStorage.getItem(LS_GOALS))||{};}catch(e){return{};} }
+function saveGoals(g){ localStorage.setItem(LS_GOALS, JSON.stringify(g)); }
+function initGoals(){
+  document.getElementById('gCat').innerHTML = ALLCATS.map(c=>`<option>${c}</option>`).join('');
+  document.getElementById('goalForm').addEventListener('submit', e=>{
+    e.preventDefault();
+    const g=loadGoals(); g[document.getElementById('gCat').value]=+document.getElementById('gHrs').value||0;
+    saveGoals(g); document.getElementById('goalMsg').textContent='Goal set ✓';
+    renderGoals();
+  });
+}
+function renderGoals(){
+  const goals=loadGoals();
+  const keys=[...new Set(loadEntries().map(e=>e.ym))].sort();
+  if(!goalSel||!keys.includes(goalSel)) goalSel=keys.at(-1)||null;
+  document.getElementById('goalMonthTabs').innerHTML = keys.length
+    ? keys.map(k=>`<button data-k="${k}" class="${k===goalSel?'active':''}">${ymList().find(o=>o.key===k)?.label||k}</button>`).join('')
+    : '<span class="muted-sm">Log some time first, then set goals to track progress.</span>';
+  document.querySelectorAll('#goalMonthTabs button').forEach(b=>b.onclick=()=>{goalSel=b.dataset.k;renderGoals();});
+
+  const cats=Object.keys(goals);
+  if(!cats.length){ document.getElementById('goalBars').innerHTML='<div class="empty">No goals set yet. Add one above.</div>'; return; }
+  document.getElementById('goalBars').innerHTML = cats.map(c=>{
+    const target=goals[c], actualH= goalSel? loggedCatMins(goalSel,c)/60 : 0;
+    const pct=target>0?Math.min(100, actualH/target*100):0;
+    const col= pct>=100?'#16a34a':(COLORS[c]||'#4C6EF5');
+    return `<div class="gbar"><div class="gtop"><b>${c}</b>
+      <span class="gv">${actualH.toFixed(1)}h / ${target}h · ${Math.round(pct)}%</span></div>
+      <div class="gtrack"><div class="gfill" style="width:${pct}%;background:${col}"></div></div></div>`;
+  }).join('');
+}
+
+// ---- view switch ----
+function setView(v){
+  document.getElementById('viewOverview').hidden = v!=='overview';
+  document.getElementById('viewLog').hidden = v!=='log';
+  document.getElementById('viewOnline').hidden = v!=='online';
+  document.getElementById('viewGoals').hidden = v!=='goals';
+  const subs={overview:'Jan – May 2026 · interactive overview', log:'Log & track from June 2026 · saved on this device',
+    online:'Screen time vs real life · the cost of being online', goals:'Targets vs what you actually did'};
+  document.getElementById('sub').textContent = subs[v];
+  document.querySelectorAll('#viewNav button').forEach(b=>b.classList.toggle('active', b.dataset.v===v));
+  if(v==='log') renderLog();
+  if(v==='online') renderOnline();
+  if(v==='goals') renderGoals();
+}
+document.querySelectorAll('#viewNav button').forEach(b=>b.onclick=()=>setView(b.dataset.v));
+
+// init
+renderKPIs(); renderTabs(); renderDonut(current);
+renderTotalTrend(); renderSuggestions(); renderTips();
+initLogForm(); initOnline(); initGoals();
+</script>
+</body>
+</html>
