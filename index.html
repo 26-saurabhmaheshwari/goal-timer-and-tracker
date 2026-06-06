@@ -688,7 +688,7 @@ const YTARGETS = [
   {k:'Youth',     src:['Youth'],     pct:40,    c:'#8DC63F'},
   {k:'SRM Study', src:['Family'],    pct:5,     c:'#F5A623'},
   {k:'Career',    src:['Career'],    h:51,      c:'#5A49B8'},
-  {k:'Hobby',     src:['Hobby'],     pct:10,    c:'#8B2FE0'},
+  {k:'Hobby',     src:['Hobby'],     rest:true, c:'#8B2FE0'},
 ];
 // Shared capsule battery. yp = intentional pool hours; agg = minutes per category;
 // fixScale scales fixed-hour targets to the period (1 for year, days/365 for a month).
@@ -730,7 +730,7 @@ function capsuleBattery(yp, agg, fixScale, lead){
   const dp=zones.map(z=>Math.floor(z.pct));
   let rem=100-dp.reduce((a,b)=>a+b,0);
   zones.map((z,i)=>({i,f:z.pct-dp[i]})).sort((a,b)=>b.f-a.f).forEach((o,k)=>{if(k<rem)dp[o.i]++;});
-  const meta=zones.map((z,i)=>`<span><i style="background:${z.c}">${dp[i]}%</i>${z.k} <b>${fmt(z.doneH)}/${fmt(z.targetH)}h</b></span>`).join('');
+  const meta=zones.map((z,i)=>`<span><i style="background:${z.c}">${dp[i]}%</i>${z.k} <b>${fmt(z.doneH)}/${fmt(z.targetH)}h</b> · ${fmt(Math.max(0,z.targetH-z.doneH))}h left</span>`).join('');
   const leftH=zones.reduce((a,z)=>a+Math.max(0,z.targetH-z.doneH),0);
   const doneTot=zones.reduce((a,z)=>a+Math.min(z.doneH,z.targetH),0);
   return `<div class="batt batt-pro">
