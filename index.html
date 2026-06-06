@@ -685,8 +685,8 @@ function renderKPIs(){
 const YBATT_DAILY = 3;
 const YTARGETS = [
   {k:'Spiritual', src:['Spiritual'], pct:40,    c:'#4C6EF5'},
-  {k:'Youth',     src:['Youth'],     pct:41,    c:'#8DC63F'},
-  {k:'SRM Study', src:['Family'],    h:51,      c:'#F5A623'},
+  {k:'Youth',     src:['Youth'],     pct:40,    c:'#8DC63F'},
+  {k:'SRM Study', src:['Family'],    pct:5,     c:'#F5A623'},
   {k:'Career',    src:['Career'],    h:51,      c:'#5A49B8'},
   {k:'Hobby',     src:['Hobby'],     pct:10,    c:'#8B2FE0'},
 ];
@@ -726,7 +726,11 @@ function capsuleBattery(yp, agg, fixScale, lead){
     }
     return `<div class="zone" style="--zc:${z.c};grid-column:span ${w}">${inner}</div>`;
   }).join('');
-  const meta=zones.map(z=>`<span><i style="background:${z.c}">${Math.round(z.pct)}%</i>${z.k} <b>${fmt(z.doneH)}/${fmt(z.targetH)}h</b></span>`).join('');
+  // integer %s that sum to exactly 100 (largest-remainder) so labels never read 101
+  const dp=zones.map(z=>Math.floor(z.pct));
+  let rem=100-dp.reduce((a,b)=>a+b,0);
+  zones.map((z,i)=>({i,f:z.pct-dp[i]})).sort((a,b)=>b.f-a.f).forEach((o,k)=>{if(k<rem)dp[o.i]++;});
+  const meta=zones.map((z,i)=>`<span><i style="background:${z.c}">${dp[i]}%</i>${z.k} <b>${fmt(z.doneH)}/${fmt(z.targetH)}h</b></span>`).join('');
   const leftH=zones.reduce((a,z)=>a+Math.max(0,z.targetH-z.doneH),0);
   const doneTot=zones.reduce((a,z)=>a+Math.min(z.doneH,z.targetH),0);
   return `<div class="batt batt-pro">
