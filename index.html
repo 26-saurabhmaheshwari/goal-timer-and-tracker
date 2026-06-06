@@ -103,8 +103,10 @@
   .batt-fill{position:absolute;top:0;left:0;width:100%;height:100%;display:flex}
   .bseg{height:100%;transition:width .4s;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;letter-spacing:.2px;overflow:hidden;white-space:nowrap}
   .batt-cells{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(90deg,transparent 0 calc(5% - 2px),rgba(40,50,70,.22) calc(5% - 2px) 5%)}
-  .batt-sq{position:absolute;inset:0;display:flex;gap:2px;padding:3px;align-items:stretch}
-  .batt-sq i{flex:1 1 0;min-width:0;border-radius:2px;box-shadow:inset 0 0 0 .5px rgba(255,255,255,.18)}
+  .batt-sq{position:absolute;inset:0;display:grid;grid-template-columns:repeat(90,minmax(0,1fr));gap:2px;padding:3px;align-items:stretch}
+  .batt-sq .zone{display:grid;grid-template-columns:subgrid;gap:2px;border-radius:6px;background:color-mix(in srgb,var(--zc) 13%,#fff);box-shadow:0 0 0 1px rgba(70,80,100,.28),inset 0 0 0 1px color-mix(in srgb,var(--zc) 26%,transparent)}
+  .batt-sq .zone i{min-width:0;border-radius:2px;box-shadow:inset 0 0 0 .5px rgba(255,255,255,.18)}
+  .batt-sq .zone i.empty{background:rgba(255,255,255,.55);box-shadow:inset 0 0 0 1px rgba(40,50,70,.08)}
   .batt-cap{width:7px;height:22px;background:#b9c1cd;border-radius:0 4px 4px 0}
   .batt-pro .batt-body{height:38px;border:1px solid rgba(40,50,70,.18);border-radius:11px;background:#eef1f6;box-shadow:inset 0 1px 4px rgba(20,30,60,.14)}
   .batt-pro .bseg{box-shadow:inset 1px 0 0 rgba(255,255,255,.45)}
@@ -115,9 +117,10 @@
   .batt-stripes{position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:repeating-linear-gradient(45deg,rgba(255,255,255,.22) 0 2px,transparent 2px 10px)}
   .batt-meta{display:flex;gap:18px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);font-weight:600;margin-top:9px}
   .batt-meta span{display:inline-flex;align-items:center}
-  .batt-meta .ybar-lbl{margin:0;font-weight:600}
+  .batt-meta .ybar-lbl{flex-basis:100%;display:block;margin:0 0 4px;font-weight:600;line-height:1.5}
   .batt-meta b{margin-left:6px;color:var(--text)}
   .batt-meta i{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;margin-right:7px;color:#fff;font-size:10.5px;font-weight:800;font-style:normal;letter-spacing:-.2px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25),0 1px 2px rgba(20,30,60,.18)}
+  .batt-meta i.empty{background:#fff;color:#64748b;box-shadow:inset 0 0 0 1px rgba(40,50,70,.20)}
   .insights{margin-top:16px}
   .insights h2{font-size:15px;font-weight:700;margin-bottom:12px}
   .ibox{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
@@ -675,36 +678,57 @@ function renderKPIs(){
     yr, yearPool, totalDays, aheadPool, aheadDays, elapsedDays, passedPool:elapsedPool, untracked, used:usedH, wasted:wasteKnown?wastedH:null
   });
 }
-// Year KPI — battery of the whole year pool (2920h = 8h/day × 365).
-// Segments left→right: Untracked (light red — unaccounted, likely lost) → Wasted (red)
-//   → Used (green) → Still ahead (blue, hope still to come). They sum to the year pool.
-function yearUsageHTML(o){
-  const w=o.wasted==null?0:o.wasted;
-  const yp=o.yearPool;
+// Year KPI — battery of a 3h/day intentional pool (1095h = 3h/day × 365),
+// split into target zones. Targets are either a % of the pool, a fixed hour count (h),
+// or the leftover after the others (rest). Each zone fills with coloured cells to its
+// actual progress vs its own target; the rest of the zone stays white (still to do).
+const YBATT_DAILY = 3;
+const YTARGETS = [
+  {k:'Spiritual', src:['Spiritual'], pct:40,    c:'#4C6EF5'},
+  {k:'Youth',     src:['Youth'],     pct:40,    c:'#8DC63F'},
+  {k:'SRM Study', src:['Family'],    h:51,      c:'#F5A623'},
+  {k:'Career',    src:['Career'],    h:51,      c:'#5A49B8'},
+  {k:'Hobby',     src:['Hobby'],     rest:true, c:'#8B2FE0'},
+];
+// Shared capsule battery. yp = intentional pool hours; agg = minutes per category;
+// fixScale scales fixed-hour targets to the period (1 for year, days/365 for a month).
+function capsuleBattery(yp, agg, fixScale, lead){
   const fmt=n=>Math.round(n).toLocaleString('en-US');
-  const pctOf=h=>yp>0?h/yp*100:0;
-  const segs=[
-    {k:'Untracked',h:o.untracked,c:'#94A3B8'},
-    {k:'Wasted',h:w,c:'#EF6B5A'},
-    {k:'Used',h:o.used,c:'#37B36B'},
-    {k:'Still ahead',h:o.aheadPool,c:'#F5C451'},
-  ];
+  // target hours: % of pool, fixed h (scaled to period), or the leftover for the 'rest' zone
+  const fixedH=YTARGETS.reduce((a,t)=>a+(t.rest?0:(t.h!=null?t.h*fixScale:yp*t.pct/100)),0);
+  const zones=YTARGETS.map(t=>{
+    const targetH=t.rest?Math.max(0,yp-fixedH):(t.h!=null?t.h*fixScale:yp*t.pct/100);
+    return {
+      k:t.k, c:t.c, targetH,
+      doneH: t.src.reduce((a,c)=>a+(agg[c]||0),0)/60,
+      pct: yp>0?targetH/yp*100:0,
+    };
+  });
   const shade=(hex,amt)=>{hex=hex.replace('#','');const n=parseInt(hex,16);let r=n>>16,g=(n>>8)&255,b=n&255;const t=amt<0?0:255,p=Math.abs(amt);r=Math.round(r+(t-r)*p);g=Math.round(g+(t-g)*p);b=Math.round(b+(t-b)*p);return `rgb(${r},${g},${b})`;};
-  // allocate small cells per segment, proportional to hours, summing to N
+  // allocate cells per zone proportional to its target %, summing to N
   const N=90;
-  let n=segs.map(s=>s.h>0?Math.max(1,Math.round(pctOf(s.h)/100*N)):0);
-  let diff=N-n.reduce((a,b)=>a+b,0);
-  while(diff!==0){ // nudge the biggest segment to hit N exactly
-    let idx=0;n.forEach((v,i)=>{if(diff>0?n[i]>n[idx]:n[i]>1&&n[i]>=n[idx])idx=i;});
-    n[idx]+=diff>0?1:-1; diff+=diff>0?-1:1;
+  let cnt=zones.map(z=>Math.max(1,Math.round(z.pct/100*N)));
+  let diff=N-cnt.reduce((a,b)=>a+b,0);
+  while(diff!==0){ // nudge the biggest zone to hit N exactly
+    let idx=0;cnt.forEach((v,i)=>{if(diff>0?cnt[i]>cnt[idx]:cnt[i]>1&&cnt[i]>=cnt[idx])idx=i;});
+    cnt[idx]+=diff>0?1:-1; diff+=diff>0?-1:1;
   }
-  const cells=segs.map((s,si)=>{
-    const cnt=n[si];let out='';
-    const rev=s.k==='Still ahead'; // yellow goes dark->light
-    for(let j=0;j<cnt;j++){const f=cnt>1?(rev?(cnt-1-j):j)/(cnt-1):0;const amt=0.22-0.40*f;out+=`<i style="background:${shade(s.c,amt)}"></i>`;}
-    return out;
+  const cells=zones.map((z,zi)=>{
+    const w=cnt[zi];
+    const prog=z.targetH>0?Math.min(1,z.doneH/z.targetH):0;
+    let filled=Math.round(prog*w);
+    if(z.doneH>0&&filled<1) filled=1;       // any progress shows at least one cell
+    if(filled>w) filled=w;
+    let inner='';
+    for(let j=0;j<w;j++){
+      if(j<filled){const f=filled>1?j/(filled-1):0;const amt=0.06-0.30*f;inner+=`<i style="background:${shade(z.c,amt)}"></i>`;}
+      else inner+=`<i class="empty"></i>`;
+    }
+    return `<div class="zone" style="--zc:${z.c};grid-column:span ${w}">${inner}</div>`;
   }).join('');
-  const meta=segs.map(s=>`<span><i style="background:${s.c}">${Math.round(pctOf(s.h))}%</i>${s.k} <b>${fmt(s.h)}h</b></span>`).join('');
+  const meta=zones.map(z=>`<span><i style="background:${z.c}">${Math.round(z.pct)}%</i>${z.k} <b>${fmt(z.doneH)}/${fmt(z.targetH)}h</b></span>`).join('');
+  const leftH=zones.reduce((a,z)=>a+Math.max(0,z.targetH-z.doneH),0);
+  const doneTot=zones.reduce((a,z)=>a+Math.min(z.doneH,z.targetH),0);
   return `<div class="batt batt-pro">
       <div class="batt-body">
         <div class="batt-sq">${cells}</div>
@@ -712,7 +736,14 @@ function yearUsageHTML(o){
       </div>
       <div class="batt-cap"></div>
     </div>
-    <div class="batt-meta"><span class="ybar-lbl">Your ${o.yr} — ${fmt(yp)}h of intent · 8h/day × ${o.totalDays} days</span>${meta}</div>`;
+    <div class="batt-meta"><span class="ybar-lbl">${lead}<br><b>${fmt(leftH)}h left</b>&nbsp;to target · ${fmt(doneTot)}h done</span>${meta}</div>`;
+}
+function yearUsageHTML(o){
+  const fmt=n=>Math.round(n).toLocaleString('en-US');
+  const yp=YBATT_DAILY*o.totalDays;
+  const agg={};
+  MONTHS.forEach(M=>{ for(const [c,v] of Object.entries(monthCats(M))) agg[c]=(agg[c]||0)+v; });
+  return capsuleBattery(yp, agg, 1, `Your ${o.yr} — ${fmt(yp)}h of intent · ${YBATT_DAILY}h/day × ${o.totalDays} days`);
 }
 
 // ---- Year donut (category split across all months) ----
@@ -840,15 +871,10 @@ function usageHTML(pool, used, wasted, label, past){
 }
 function renderUsage(i){
   const M=MONTHS[i], ym=ymOf(M.m), days=daysIn(ym);
-  const pool=DAILY_H*days;
-  const usedH=total(monthCats(M))/60;
-  const o=loadOnline()[ym];
-  const wastedH= o ? onlineAgg(o).wasteH : null;
-  // the live/current month → always hopeful, never "gone", to match its by-period view
-  const isCurrent = ym===CUR_YM;
-  const past = !isCurrent && new Date(ym+'-'+String(days).padStart(2,'0')+'T23:59:59') < new Date();
-  document.getElementById('usageHint').textContent = `${M.m} — your ${pool}h of discretionary time (${DAILY_H}h × ${days} days)`;
-  document.getElementById('usage').innerHTML = usageHTML(pool, usedH, wastedH, `${pool}h available · ${DAILY_H}h/day × ${days} days`, past);
+  const yp=YBATT_DAILY*days;                 // 3h/day intentional pool for the month
+  const agg=monthCats(M);                     // minutes per category this month
+  document.getElementById('usageHint').textContent = `${M.m} — your ${yp}h of intent (${YBATT_DAILY}h × ${days} days)`;
+  document.getElementById('usage').innerHTML = capsuleBattery(yp, agg, days/365, `${M.m} — ${yp}h of intent · ${YBATT_DAILY}h/day × ${days} days`);
 }
 
 // ---- Tabs ----
@@ -1484,7 +1510,7 @@ function goalCard(x){
   const doneM = Math.round((+x.cur||0)*mp), totM = Math.round((+x.target||0)*mp);
   const det = [
     mp>0 ? `<div class="gd-row"><span>Done</span><b>≈ ${fmtShort(doneM)} of ${fmtShort(totM)}</b></div>` : '',
-    mp>0 ? `<div class="gd-row"><span>Rate</span><b>${mp} min / ${x.unit||'unit'}</b></div>` : '',
+    mp>0 ? `<div class="gd-row"><span>Left</span><b>≈ ${totM>doneM?fmtShort(totM-doneM)+' to go':'done 🎉'}</b></div>` : '',
     hint ? `<div class="gd-row"><span>Pace</span><b>${hint}</b></div>` : ''
   ].filter(Boolean).join('');
   return `<div class="gcard${overdue?' gcard-overdue':''}" style="--gcol:${col}">
