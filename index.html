@@ -1698,7 +1698,7 @@ const HABITS=[
 ];
 const HABIT_COL={Spiritual:'#4C6EF5',"Life's Big":'#E84393',Youth:'#8DC63F','SRM Study':'#F5A623','Career & Finance':'#5A49B8',Hobby:'#8B2FE0'};
 // per-period activities (period = 10 days: 1-10, 11-20, 21-end of month). hours per period.
-const PERIOD_ITEMS={Youth:[{n:'Cycling',h:80/60,lbl:'1h 20m'}],Hobby:[{n:'Gardening',h:40/60,lbl:'40m'},{n:'Painting',h:1},{n:'Shlok Paath',h:1}],'Career & Finance':[{n:'Finance',h:0.5}]};
+const PERIOD_ITEMS={Youth:[{n:'Cycling',h:1,lbl:'1h'}],Hobby:[{n:'Gardening',h:40/60,lbl:'40m'},{n:'Painting',h:40/60,lbl:'40m'},{n:'Shlok Paath',h:1}],'Career & Finance':[{n:'Finance',h:0.5}]};
 // count 10-day periods still ahead in the year (current period included)
 function periodsLeft(now,yr){let n=0;for(let mo=now.getMonth();mo<12;mo++){const dim=new Date(yr,mo+1,0).getDate();[[1,10],[11,20],[21,dim]].forEach(([s,e])=>{if(mo>now.getMonth()||e>=now.getDate())n++;});}return n;}
 function renderPlanning(){
