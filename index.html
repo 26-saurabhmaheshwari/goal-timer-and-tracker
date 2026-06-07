@@ -71,6 +71,11 @@
   .ms-table.mini td{padding:3px 5px}
   .ms-table.mini .muted{color:var(--muted)}
   .tagnow{font-size:10px;font-weight:700;background:#37b36b;color:#fff;padding:2px 8px;border-radius:20px;vertical-align:middle;margin-left:6px}
+  /* NCERT-style gridlined table */
+  .ptbl{border:1.5px solid #c7ced9}
+  .ptbl th,.ptbl td{border:1px solid #d4dae4}
+  .ptbl thead th{background:#eef1f6;border-bottom:1.5px solid #c7ced9;color:#3a4254}
+  .ptbl tbody td{vertical-align:middle}
   @media(max-width:720px){.pgrid{grid-template-columns:1fr}}
   canvas.chart{width:100%!important;height:280px!important}
   /* life bar */
@@ -263,6 +268,18 @@
   @media(max-width:720px){.gcards{grid-template-columns:repeat(2,1fr)}}
   @media(max-width:460px){.gcards{grid-template-columns:1fr}}
   @media(max-width:880px){.gprog{min-width:110px}}
+  @media print{
+    @page{size:A4;margin:12mm}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    body{padding:0;background:#fff}
+    .wrap{max-width:none}
+    #viewNav,#tabs,.noprint,#fbBtn,#fbWho,.periodtabs{display:none!important}
+    header{margin-bottom:10px}
+    .card{box-shadow:none;border:1px solid #d4dae4;break-inside:avoid;page-break-inside:avoid}
+    table,tr,.ptbl{break-inside:avoid;page-break-inside:avoid}
+    h1{font-size:22px}
+    h2{break-after:avoid;page-break-after:avoid}
+  }
 </style>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
@@ -326,12 +343,19 @@
     <div class="tabs" id="viewNav">
       <button data-v="overview" class="active">Overview</button>
       <button data-v="goals">Goals</button>
+      <button data-v="planning">Time Planning</button>
       <button data-v="log">Log Data</button>
       <button data-v="settings">Settings</button>
     </div>
-    <div style="display:flex;align-items:center;gap:10px">
-      <span id="fbWho" style="font-size:12px;color:#9aa3b2"></span>
-      <button id="fbBtn" onclick="fbToggle()" style="cursor:pointer;border:1px solid #3a4358;background:#1c2333;color:#e6e9ef;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600">Sign in to sync</button>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span id="fbWho" style="font-size:12px;color:#9aa3b2"></span>
+        <button id="fbBtn" onclick="fbToggle()" style="cursor:pointer;border:1px solid #3a4358;background:#1c2333;color:#e6e9ef;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600">Sign in to sync</button>
+      </div>
+      <button class="noprint" onclick="window.print()" title="Export to PDF" aria-label="Export to PDF" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;border:1px solid #e0392b;background:#fff;color:#e0392b;padding:6px 11px;border-radius:8px;font-size:12px;font-weight:700">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm0 1.5L18.5 8H14V3.5z"/><text x="12" y="18" font-size="7" font-weight="700" text-anchor="middle" fill="#fff">PDF</text></svg>
+        PDF
+      </button>
     </div>
   </header>
 
@@ -552,6 +576,10 @@
   <div class="card gsec"><h2>Dreams</h2><div class="hint">Big aspirations — no deadline pressure.</div><div id="secDream"></div></div>
 </div><!-- /viewGoals -->
 
+<div id="viewPlanning" hidden>
+  <div id="planning"></div>
+</div><!-- /viewPlanning -->
+
 <div id="viewSettings" hidden>
   <div class="card" style="max-width:560px">
     <h2>Categories</h2>
@@ -684,10 +712,11 @@ function renderKPIs(){
 // actual progress vs its own target; the rest of the zone stays white (still to do).
 const YBATT_DAILY = 3;
 const YTARGETS = [
-  {k:'Spiritual', src:['Spiritual'], pct:40,    c:'#4C6EF5'},
+  {k:'Spiritual', src:['Spiritual'], h:319,     c:'#4C6EF5'},
+  {k:"Life's Big",src:["Life's Big"],h:123,     c:'#E84393'},
   {k:'Youth',     src:['Youth'],     pct:40,    c:'#8DC63F'},
-  {k:'SRM Study', src:['Family'],    pct:5,     c:'#F5A623'},
-  {k:'Career',    src:['Career'],    h:51,      c:'#5A49B8'},
+  {k:'SRM Study', src:['Family'],    h:51, leftFixed:45, c:'#F5A623'},
+  {k:'Career & Finance', src:['Career'], h:62, c:'#5A49B8'},
   {k:'Hobby',     src:['Hobby'],     rest:true, c:'#8B2FE0'},
 ];
 // Shared capsule battery. yp = intentional pool hours; agg = minutes per category;
@@ -695,12 +724,15 @@ const YTARGETS = [
 function capsuleBattery(yp, agg, fixScale, lead){
   const fmt=n=>Math.round(n).toLocaleString('en-US');
   // target hours: % of pool, fixed h (scaled to period), or the leftover for the 'rest' zone
-  const fixedH=YTARGETS.reduce((a,t)=>a+(t.rest?0:(t.h!=null?t.h*fixScale:yp*t.pct/100)),0);
+  const dhOf=t=>t.src.reduce((a,c)=>a+(agg[c]||0),0)/60;
+  // leftFixed = a fixed remaining (e.g. SRM 48h); its battery target = done + leftFixed
+  const tgtOf=t=>t.h!=null?t.h*fixScale:(t.leftFixed!=null?dhOf(t)+t.leftFixed*fixScale:yp*t.pct/100);
+  const fixedH=YTARGETS.reduce((a,t)=>a+(t.rest?0:tgtOf(t)),0);
   const zones=YTARGETS.map(t=>{
-    const targetH=t.rest?Math.max(0,yp-fixedH):(t.h!=null?t.h*fixScale:yp*t.pct/100);
+    const targetH=t.rest?Math.max(0,yp-fixedH):tgtOf(t);
     return {
       k:t.k, c:t.c, targetH,
-      doneH: t.src.reduce((a,c)=>a+(agg[c]||0),0)/60,
+      doneH: dhOf(t),
       pct: yp>0?targetH/yp*100:0,
     };
   });
@@ -1636,19 +1668,162 @@ window.goalDel=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x||!con
   renderGoals(); if(document.getElementById('entryTable')) renderLog(); };
 
 // ---- view switch ----
+// ================= TIME PLANNING (daily fixed habits vs goal-based) =================
+// Fixed daily rituals/habits. Everything not listed here is goal-based (see Goals tab).
+const HABITS=[
+  {cat:'Spiritual', items:[
+    {n:'Vishnu Sahasranāma',        m:15},
+    {n:'Golden Jewel',              m:18},
+    {n:'Grah Maitree', m:12},
+  ]},
+  {cat:'Youth', items:[
+    {n:'Nurture', m:30},
+    {n:'Balayam', m:10},
+  ]},
+  {cat:'SRM Study', items:[
+    {n:'SRM Study', m:20},
+  ]},
+  {cat:'Hobby', items:[
+    {n:'Pranav', m:6},
+  ]},
+];
+const HABIT_COL={Spiritual:'#4C6EF5',"Life's Big":'#E84393',Youth:'#8DC63F','SRM Study':'#F5A623','Career & Finance':'#5A49B8',Hobby:'#8B2FE0'};
+// per-period activities (period = 10 days: 1-10, 11-20, 21-end of month). hours per period.
+const PERIOD_ITEMS={Youth:[{n:'Cycling',h:80/60,lbl:'1h 20m'}],Hobby:[{n:'Gardening',h:40/60,lbl:'40m'},{n:'Painting',h:1},{n:'Shlok Paath',h:1}],'Career & Finance':[{n:'Finance',h:0.5}]};
+// count 10-day periods still ahead in the year (current period included)
+function periodsLeft(now,yr){let n=0;for(let mo=now.getMonth();mo<12;mo++){const dim=new Date(yr,mo+1,0).getDate();[[1,10],[11,20],[21,dim]].forEach(([s,e])=>{if(mo>now.getMonth()||e>=now.getDate())n++;});}return n;}
+function renderPlanning(){
+  const fmtM=m=>{const h=Math.floor(m/60),mm=Math.round(m%60);return h?(mm?`${h}h ${mm}m`:`${h}h`):`${mm}m`;};
+  const POOL=YBATT_DAILY*60;
+  const habitItems=HABITS.flatMap(g=>g.items.map(i=>({n:i.n,m:i.m,cat:g.cat,c:HABIT_COL[g.cat]||'#8a93a3'})));
+  const fixed=habitItems.reduce((a,i)=>a+i.m,0);
+  const cards=habitItems.map(i=>`<div class="card" style="border-top:3px solid ${i.c};padding:13px 15px">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:${i.c};font-weight:700;margin-bottom:6px">${i.cat}</div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+        <span style="font-weight:600">${i.n}</span><b style="color:${i.c};white-space:nowrap">${i.m}m</b>
+      </div></div>`).join('');
+  // ---- per-category reconciliation: target vs (habits over remaining days + goals' hours-left) ----
+  const fmtH=n=>Math.round(n).toLocaleString('en-US');
+  const fmtHM=h=>{const m=Math.round(h*60);if(m<=0)return '0';const H=Math.floor(m/60),M=m%60;return H?(M?`${H}h ${M}m`:`${H}h`):`${M}m`;};
+  const yr=(new Date()).getFullYear();
+  const totalDays=((yr%4===0&&yr%100!==0)||yr%400===0)?366:365;
+  const yp=YBATT_DAILY*totalDays;
+  const fixedH=YTARGETS.reduce((a,t)=>a+(t.rest?0:(t.h!=null?t.h:(t.leftFixed!=null?t.leftFixed:yp*t.pct/100))),0);
+  const agg={}; MONTHS.forEach(M=>{ for(const [c,v] of Object.entries(monthCats(M))) agg[c]=(agg[c]||0)+v; });
+  const now=new Date(), end=new Date(yr,11,31,23,59,59);
+  const pend=Math.max(0, Math.ceil((end-now)/86400000));
+  const pLeft=periodsLeft(now,yr);
+  const mLeft=Math.max(1,pend/30.44);
+  const goals=loadGoals();
+  // build one reconciliation card for a category. targetH=null → no yearly battery target
+  // (e.g. "Life's Big"); we still show its active goals' hours-left + planned total.
+  const mkRow=(k, srcArr, color, targetH, leftFixed)=>{
+    const doneH=srcArr.reduce((a,c)=>a+(agg[c]||0),0)/60;
+    const hitems=(HABITS.find(h=>h.cat===k)?.items||[]);
+    const habitH=hitems.reduce((a,i)=>a+i.m,0)*pend/60;
+    const gs=goals.filter(g=>srcArr.includes(g.cat) && g.sec==='active').map(g=>{
+      const mp=goalMinPer(g); const leftU=Math.max(0,(+g.target||0)-(+g.cur||0));
+      return {name:g.name, h: mp>0? leftU*mp/60 : 0, leftU, unit:g.unit||''};
+    });
+    const pitems=(PERIOD_ITEMS[k]||[]);
+    const periodH=pitems.reduce((a,i)=>a+i.h,0)*pLeft;
+    const allocated=habitH+gs.reduce((a,g)=>a+(g.h||0),0)+periodH;
+    // new target = no slack: done + everything allocated (leftFixed cats keep their realistic remaining)
+    const target=leftFixed!=null?(doneH+leftFixed):(doneH+allocated);
+    const tasks=[
+      ...pitems.map(it=>({label:`${it.n} · ${it.lbl||it.h+'h'}/period`, h:it.h*pLeft})),
+      ...gs.map(g=>({label:g.name, h:g.h, note:g.h?null:`${fmtH(g.leftU)} ${g.unit} left`})),
+    ];
+    return {k,color,target,done:doneH,allocated,tasks};
+  };
+  const usedCats=new Set(YTARGETS.flatMap(t=>t.src));
+  const extraCats=[...new Set(goals.filter(g=>g.sec==='active' && !usedCats.has(g.cat)).map(g=>g.cat))];
+  const rowsData=[
+    ...YTARGETS.map(t=>mkRow(t.k, t.src, HABIT_COL[t.k]||'#8a93a3', t.rest?Math.max(0,yp-fixedH):(t.h!=null?t.h:yp*t.pct/100), t.leftFixed)),
+    ...extraCats.map(cat=>mkRow(cat, [cat], (typeof COLORS!=='undefined'&&COLORS[cat])||'#8a93a3', null)),
+  ];
+  const tot={target:0,done:0,allocated:0};
+  rowsData.forEach(r=>{tot.target+=r.target;tot.done+=r.done;tot.allocated+=r.allocated;});
+  const th=(t,al)=>`<th style="text-align:${al||'right'};padding:10px 14px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;border-bottom:2px solid var(--line);white-space:nowrap">${t}</th>`;
+  const num=(v,extra)=>`<td style="text-align:right;padding:10px 14px;${extra||''}">${v}</td>`;
+  // daily habits as one group (each row keeps its own category field)
+  const habitRows=HABITS.flatMap(g=>g.items.map(i=>({cat:g.cat,color:HABIT_COL[g.cat]||'#8a93a3',h:i.m*pend/60,label:`${i.n} · ${i.m}m/day`})));
+  // goals + period work grouped by category
+  const goalRows=[];
+  rowsData.forEach(r=>r.tasks.forEach(t=>goalRows.push({cat:r.k,color:r.color,h:t.h||0,label:t.label,note:t.note})));
+  const totH=[...habitRows,...goalRows].reduce((a,t)=>a+(t.h||0),0);
+  const catCell=(t,show)=>`<td style="padding:9px 14px">${show?`<span style="display:inline-flex;align-items:center;gap:8px"><i style="width:11px;height:11px;border-radius:3px;background:${t.color};display:inline-block;flex:none"></i><span style="color:var(--muted)">${t.cat}</span></span>`:''}</td>`;
+  const rowHtml=(t,show,topB)=>`<tr style="border-top:${topB} solid var(--line)">
+      ${num(t.h?fmtHM(t.h/pLeft):'')}
+      <td style="padding:9px 14px;color:var(--ink);font-weight:500">${t.label}</td>
+      ${catCell(t,show)}
+      ${num(t.h?fmtH(t.h)+'h':`<span style="color:#9aa3b2">${t.note}</span>`)}
+      ${num(t.h?fmtHM(t.h/mLeft):'')}
+    </tr>`;
+  const section=(label,rows)=>{
+    if(!rows.length) return '';
+    const hdr=`<tr style="background:rgba(127,127,127,.07)"><td colspan="5" style="padding:8px 14px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;font-weight:700;color:var(--muted)">${label}</td></tr>`;
+    let prev=null;
+    return hdr+rows.map((t,i)=>{const newCat=t.cat!==prev;prev=t.cat;return rowHtml(t,true,newCat?'2px':'1px');}).join('');
+  };
+  const groups=section('Daily habits',habitRows)+section('Goals & period work',goalRows);
+  const totRow=`<tr style="border-top:2px solid var(--line);background:rgba(127,127,127,.09)">
+    ${num('<b>'+fmtHM(totH/pLeft)+'</b>','padding:12px 14px')}
+    <td style="padding:12px 14px"><b>Total</b></td><td></td>
+    ${num('<b>'+fmtH(totH)+'h</b>','padding:12px 14px')}
+    ${num('<b>'+fmtHM(totH/mLeft)+'</b>','padding:12px 14px')}
+  </tr>`;
+  const yearH=tot.done+totH;
+  // battery built from the same table data so it always matches
+  const catDay={};
+  [...habitRows,...goalRows].forEach(r=>{catDay[r.cat]=(catDay[r.cat]||0)+(r.h||0);});
+  const segs=Object.entries(catDay).map(([k,h])=>({k,c:HABIT_COL[k]||(typeof COLORS!=='undefined'&&COLORS[k])||'#8a93a3',m:h*60})).filter(s=>s.m>0).sort((a,b)=>b.m-a.m);
+  const dayMin=segs.reduce((a,s)=>a+s.m,0);
+  const bar=segs.map(s=>`<div title="${s.k} · ${fmtM(s.m)}" style="flex:${s.m};background:${s.c}"></div>`).join('');
+  const legend=segs.map(s=>`<span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;font-size:12px;color:var(--muted)"><i style="width:10px;height:10px;border-radius:3px;background:${s.c};display:inline-block"></i>${s.k} ${fmtM(s.m)} · <b style="color:var(--ink)">${dayMin>0?(s.m/dayMin*100).toFixed(0):0}%</b></span>`).join('');
+  const summary=`<div class="card" style="margin-bottom:16px">
+    <h2>Total allocation across ${pLeft} periods — to finish 2026</h2>
+    <div style="display:flex;height:26px;border-radius:8px;overflow:hidden;gap:2px;margin:12px 0 10px">${bar}</div>
+    <div>${legend}</div>
+  </div>`;
+  const stat=(lbl,val,sub)=>`<div class="card" style="text-align:center;padding:16px"><div class="hint" style="margin-bottom:6px">${lbl}</div><div style="font-size:30px;font-weight:700;line-height:1">${val}</div>${sub?`<div class="hint" style="margin-top:5px">${sub}</div>`:''}</div>`;
+  const moAbbr=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const fmtDate=d=>`${d.getDate()} ${moAbbr[d.getMonth()]} ${d.getFullYear()}`;
+  const strip=`<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+    <span style="text-transform:uppercase;letter-spacing:.06em;font-size:11px;font-weight:700;color:var(--muted)">Planning window</span>
+    <span style="display:inline-flex;align-items:center;gap:9px;background:rgba(127,127,127,.1);padding:5px 13px;border-radius:20px;font-size:13px;font-weight:600;color:var(--ink)">${fmtDate(now)}<span style="color:var(--muted);font-weight:400">→</span>${fmtDate(end)}</span>
+    <span style="display:inline-flex;align-items:center;gap:5px;background:rgba(127,127,127,.1);padding:5px 13px;border-radius:20px;font-size:13px;font-weight:600;color:var(--ink)">${pend}<span style="color:var(--muted);font-weight:400">days left</span></span>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px">
+    ${stat('Total to do',fmtH(totH)+'h','planning window')}
+    ${stat('Per month',fmtHM(totH/mLeft),`${mLeft.toFixed(1)} months left`)}
+    ${stat('Per period required',fmtHM(totH/pLeft),`${pLeft} periods left`)}
+    ${stat('Per day required',fmtHM(totH/pend),`fixed ${fmtM(fixed)} · goals ${fmtM(Math.max(0,dayMin-fixed))}`)}
+  </div>`;
+  const table=`<div class="card" style="padding:0;overflow:hidden">
+    <table class="ptbl" style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead><tr>${th(`Per period<div style="text-transform:none;letter-spacing:0;font-weight:500;font-size:10px;margin-top:2px;color:var(--muted)">${pLeft} left</div>`)}${th('Goal / item','left')}${th('Category','left')}${th(`To do<div style="text-transform:none;letter-spacing:0;font-weight:500;font-size:10px;margin-top:2px;color:var(--muted)">${pend} days left</div>`)}${th(`Per month<div style="text-transform:none;letter-spacing:0;font-weight:500;font-size:10px;margin-top:2px;color:var(--muted)">${mLeft.toFixed(1)} left</div>`)}</tr></thead>
+      <tbody>${groups}${totRow}</tbody>
+    </table></div>`;
+  document.getElementById('planning').innerHTML = strip + summary
+    + `<h2 style="margin:4px 0 10px">Goals & remaining — ${yr} · rest of year (${pend} days)</h2>`
+    + table;
+}
 function setView(v){
   document.getElementById('viewOverview').hidden = v!=='overview';
   document.getElementById('viewLog').hidden = v!=='log';
   document.getElementById('viewGoals').hidden = v!=='goals';
+  document.getElementById('viewPlanning').hidden = v!=='planning';
   document.getElementById('viewSettings').hidden = v!=='settings';
   document.getElementById('lifeBar').hidden = v!=='overview';
   const subs={overview:'your finite hours, on purpose', log:'log time, goals & screen use · saved on this device',
-    goals:'targets vs what you actually did', settings:'manage categories & preferences'};
+    goals:'targets vs what you actually did', planning:'daily habits vs goal-based time', settings:'manage categories & preferences'};
   document.getElementById('sub').textContent = subs[v];
   document.querySelectorAll('#viewNav button').forEach(b=>b.classList.toggle('active', b.dataset.v===v));
   if(v==='overview'){ renderSuggestions(); setOv(ovTab); }
   if(v==='log') renderLog();
   if(v==='goals') renderGoals();
+  if(v==='planning') renderPlanning();
   if(v==='settings') renderSettings();
   try{ localStorage.setItem(LS_VIEW, v); }catch(e){}
 }
