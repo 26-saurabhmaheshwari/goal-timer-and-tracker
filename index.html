@@ -1807,7 +1807,7 @@ function renderPlanning(){
     ${stat('Total to do',fmtH(totH)+'h','planning window')}
     ${stat('Per month',fmtHM(totH/mLeft),`${mLeft.toFixed(1)} months left`)}
     ${stat('Per period required',fmtHM(totH/pLeft),`${pLeft} periods left`)}
-    ${stat('Per day required',fmtHM(totH/pend),`fixed ${fmtM(fixed)} · goals ${fmtM(Math.max(0,dayMin-fixed))}`)}
+    ${stat('Per day required',fmtHM(totH/pend),`fixed ${fmtM(fixed)} · goals ${fmtM(Math.max(0,totH/pend*60-fixed))}`)}
   </div>`;
   const table=`<div class="card" style="padding:0;overflow:hidden">
     <table class="ptbl" style="width:100%;border-collapse:collapse;font-size:13px">
