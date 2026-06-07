@@ -163,6 +163,11 @@
 .catrow .cdot{width:20px;height:20px;border-radius:6px;flex-shrink:0;border:1px solid rgba(0,0,0,.08)}
 .catrow .cedit{border:0;background:#eef1f6;color:#475569;width:28px;height:28px;border-radius:7px;cursor:pointer;font-size:13px;line-height:1}
 .catrow .cedit:hover{background:#e2e6ee}
+  .movnav{display:flex;align-items:center;justify-content:center;gap:18px;margin-bottom:14px}
+  .movnav span{font-size:17px;font-weight:700;color:var(--ink);min-width:140px;text-align:center}
+  .movnav button{width:34px;height:34px;border-radius:50%;border:1px solid #d4dae4;background:#fff;color:var(--ink);font-size:18px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .movnav button:hover:not(:disabled){background:#eef1f6}
+  .movnav button:disabled{opacity:.35;cursor:default}
   .periodtabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
   .periodtabs button{border:1px solid #dfe4ee;background:#fff;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer}
   .periodtabs button.active{background:var(--spiritual);color:#fff;border-color:var(--spiritual)}
@@ -831,6 +836,11 @@ function renderDonut(i){
   destroyDonuts();
   const M=MONTHS[i], ym=ymOf(M.m), wrap=document.getElementById('ovMonthly');
   const isCurrent = ym===CUR_YM; // real calendar month → split by period
+  const nav = `<div class="movnav">
+      <button onclick="ovMonthGo(-1)" ${current<=0?'disabled':''} aria-label="Previous month">‹</button>
+      <span>${M.m}</span>
+      <button onclick="ovMonthGo(1)" ${current>=MONTHS.length-1?'disabled':''} aria-label="Next month">›</button>
+    </div>`;
   const usageHint = `<div class="hint" id="usageHint" style="margin:0 0 12px;font-weight:700;color:#cbd2de"></div>`;
   if(isCurrent){
     const periods=['P1','P2','P3'];
@@ -843,7 +853,7 @@ function renderDonut(i){
         <table class="ms-table mini"><tbody>${tot?legendRows(cats):'<tr><td class="muted">no entries yet</td></tr>'}</tbody></table>
       </div>`;
     }).join('');
-    wrap.innerHTML = `${usageHint}
+    wrap.innerHTML = `${nav}${usageHint}
       <div class="card">
         <div class="usagebox" id="usage"></div>
         <h2 style="margin:16px 0 2px">${M.m} — by period <span class="tagnow">current</span></h2>
@@ -853,7 +863,7 @@ function renderDonut(i){
     periods.forEach((p,idx)=>{ const cats=entryCats(ym,p); if(total(cats)) donutCharts.push(new Chart(document.getElementById('pdonut'+idx), donutCfg(cats))); });
   } else {
     const cats=M.cats, tot=total(cats);
-    wrap.innerHTML = `${usageHint}
+    wrap.innerHTML = `${nav}${usageHint}
       <div class="card monthsplit">
         <div class="ms-left">
           <h2 style="margin-bottom:10px">${M.m} breakdown</h2>
@@ -869,6 +879,7 @@ function renderDonut(i){
   }
   renderUsage(i);
 }
+window.ovMonthGo=function(d){ current=Math.max(0,Math.min(MONTHS.length-1,current+d)); renderDonut(current); };
 
 // ---- Usage: of 8h/day discretionary time → used / wasted / free ----
 const DAILY_H = 8;
@@ -916,12 +927,10 @@ function renderUsage(i){
 // ---- Tabs ----
 function renderTabs(){
   const yearBtn = `<button data-o="year" class="${ovTab==='year'?'active':''}">${CUR_YM.slice(0,4)}</button>`;
-  const monthBtns = MONTHS.map((x,i)=>({i,m:x.m})).reverse().map(o=>
-    `<button data-i="${o.i}" class="${ovTab==='monthly'&&o.i===current?'active':''}">${o.m.split(' ')[0]}</button>`).join('');
-  document.getElementById('tabs').innerHTML = yearBtn + monthBtns;
+  const monthlyBtn = `<button data-o="monthly" class="${ovTab==='monthly'?'active':''}">Monthly</button>`;
+  document.getElementById('tabs').innerHTML = yearBtn + monthlyBtn;
   document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{
-    if(b.dataset.o==='year'){ setOv('year'); }
-    else { current=+b.dataset.i; setOv('monthly'); }
+    setOv(b.dataset.o);
     renderTabs();
   });
 }
