@@ -250,7 +250,8 @@
   .gd-row{display:flex;justify-content:space-between;gap:10px;font-size:11.5px;line-height:1.3}
   .gd-row span{color:var(--muted);font-weight:600}
   .gd-row b{color:#1b2440;font-weight:700;text-align:right}
-  .gcard-foot{display:flex;justify-content:flex-end;align-items:center;border-top:1px solid rgba(20,30,60,.09);padding-top:8px;margin-top:auto}
+  .gcard-foot{display:flex;justify-content:space-between;align-items:center;border-top:1px solid rgba(20,30,60,.09);padding-top:8px;margin-top:auto}
+  .gcat{font-size:15px;line-height:1}
   .gcard-overdue{animation:gpulse 1.8s ease-in-out infinite}
   @keyframes gpulse{0%,100%{box-shadow:0 0 0 0 rgba(239,77,77,.0);border-color:#ef4d4d}50%{box-shadow:0 0 0 4px rgba(239,77,77,.28);border-color:#ef4d4d}}
   .obreak{margin-top:12px;padding:10px 12px;background:#f6f8fc;border-radius:10px}
@@ -1758,7 +1759,7 @@ function goalCard(x){
       </div>
     </div>
     ${det?`<div class="gcard-det">${det}</div>`:''}
-    <div class="gcard-foot"><span class="gwhen">${when}</span></div>
+    <div class="gcard-foot"><span class="gcat" title="${x.cat}">${iconFor(x.cat)}</span><span class="gwhen">${when}</span></div>
   </div>`;
 }
 function renderSec(sec, el){
