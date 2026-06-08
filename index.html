@@ -601,7 +601,8 @@
 </div><!-- /viewAudit -->
 
 <div id="viewSettings" hidden>
-  <div class="card" style="max-width:560px">
+  <div class="grid">
+  <div class="card">
     <h2>Categories</h2>
     <div class="hint">Manage the categories used across the timer and goals. Deleting one won't change past entries.</div>
     <div id="catList" class="catlist"></div>
@@ -617,7 +618,7 @@
     </form>
   </div>
 
-  <div class="card" style="max-width:560px;margin-top:18px">
+  <div class="card">
     <h2>Habits</h2>
     <div class="hint">Daily habits shown in Time Planning. Editing only affects future planning — past logged time is never changed.</div>
     <div id="habitList" class="catlist"></div>
@@ -632,6 +633,28 @@
         <span id="habitMsg" class="fmsg"></span>
       </div>
     </form>
+  </div>
+  </div>
+
+  <div id="habitModal" class="modal-ov" hidden>
+   <div class="card modal-card" style="max-width:400px">
+    <button type="button" id="habitEditClose" class="modal-x" title="Close">✕</button>
+    <h2 id="habitEditTitle">Edit habit</h2>
+    <div class="hint">Changes only affect future Time Planning — past logged time is never changed.</div>
+    <form id="habitEditForm" class="form">
+      <div class="frow">
+        <label>Name <input id="habitEditName" type="text"></label>
+        <label>Category <select id="habitEditCat"></select></label>
+        <label>Min/day <input id="habitEditMin" type="number" min="0" step="1" style="width:80px"></label>
+      </div>
+      <div class="gform-foot">
+        <button type="submit" class="btn">Save</button>
+        <button type="button" id="habitEditCancel" class="btn" style="background:#94a3b8">Cancel</button>
+        <button type="button" id="habitEditDelete" class="btn" style="background:#ef4444;margin-left:auto">Delete</button>
+        <span id="habitEditMsg" class="fmsg"></span>
+      </div>
+    </form>
+   </div>
   </div>
 
   <div id="catModal" class="modal-ov" hidden>
@@ -1227,32 +1250,48 @@ function renderSettings(){
     </div>`; }).join('') || '<div class="empty">No categories. Add one below.</div>';
   renderHabitsSettings();
 }
+function habitCatOpts(c){ return ALLCATS.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"${x===c?' selected':''}>${x}</option>`).join(''); }
 function renderHabitsSettings(){
   const el=document.getElementById('habitList'); if(!el) return;
   const h=loadHabits();
-  const catOpts=c=>ALLCATS.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"${x===c?' selected':''}>${x}</option>`).join('');
   el.innerHTML = h.map((it,i)=>`<div class="catrow">
       <span class="cdot" style="background:${HABIT_COL[it.cat]||colorFor(it.cat)}"></span>
-      <input class="nm" type="text" value="${it.n.replace(/"/g,'&quot;')}" onchange="habitEdit(${i},'n',this.value)" style="flex:1;border:1px solid var(--line);border-radius:6px;padding:4px 6px">
-      <select onchange="habitEdit(${i},'cat',this.value)" style="border:1px solid var(--line);border-radius:6px;padding:4px 6px">${catOpts(it.cat)}</select>
-      <input type="number" min="0" step="1" value="${it.m}" onchange="habitEdit(${i},'m',this.value)" style="width:60px">
-      <span class="muted-sm">m/day</span>
-      <button class="cedit" title="Delete" onclick="habitDel(${i})">🗑</button>
+      <span class="nm">${habitIcon(it.cat)} ${it.n}</span>
+      <span class="muted-sm">${it.cat} · ${it.m}m</span>
+      <button class="cedit" title="Edit" onclick="habitEditStart(${i})">✎</button>
     </div>`).join('') || '<div class="empty">No habits. Add one below.</div>';
-  const sel=document.getElementById('newHabitCat'); if(sel) sel.innerHTML=catOpts(sel.value||ALLCATS[0]);
+  const sel=document.getElementById('newHabitCat'); if(sel) sel.innerHTML=habitCatOpts(sel.value||ALLCATS[0]);
 }
-window.habitEdit=function(i,k,v){
+let habitEditIdx=null;
+function habitModalShow(on){ document.getElementById('habitModal').hidden=!on; document.body.style.overflow=on?'hidden':''; }
+window.habitEditStart=function(i){
   const h=loadHabits(); if(!h[i]) return;
-  if(k==='m') v=Math.max(0,Math.floor(+v||0)); else v=(''+v).trim();
-  if(k==='n'&&!v){ renderHabitsSettings(); return; }
-  h[i][k]=v; saveHabits(h); renderHabitsSettings(); refreshHabitOptions();
-  if(!document.getElementById('viewPlanning').hidden) renderPlanning();
+  habitEditIdx=i;
+  document.getElementById('habitEditTitle').textContent=`Edit “${h[i].n}”`;
+  document.getElementById('habitEditName').value=h[i].n;
+  document.getElementById('habitEditCat').innerHTML=habitCatOpts(h[i].cat);
+  document.getElementById('habitEditMin').value=h[i].m;
+  document.getElementById('habitEditMsg').textContent='';
+  habitModalShow(true);
 };
-window.habitDel=function(i){
-  const h=loadHabits(); if(!h[i]) return;
-  if(!confirm(`Delete habit “${h[i].n}”? Past logged time is unaffected.`)) return;
-  h.splice(i,1); saveHabits(h); renderHabitsSettings(); refreshHabitOptions();
+function habitSaveEdit(){
+  if(habitEditIdx==null) return false;
+  const h=loadHabits(), it=h[habitEditIdx]; if(!it) return false;
+  const name=document.getElementById('habitEditName').value.trim();
+  if(!name) return false;
+  it.n=name; it.cat=document.getElementById('habitEditCat').value;
+  it.m=Math.max(0,Math.floor(+document.getElementById('habitEditMin').value||0));
+  saveHabits(h); renderHabitsSettings(); refreshHabitOptions();
   if(!document.getElementById('viewPlanning').hidden) renderPlanning();
+  return true;
+}
+window.habitDelCurrent=function(){
+  if(habitEditIdx==null) return;
+  const h=loadHabits(), it=h[habitEditIdx]; if(!it) return;
+  if(!confirm(`Delete habit “${it.n}”? Past logged time is unaffected.`)) return;
+  h.splice(habitEditIdx,1); saveHabits(h); renderHabitsSettings(); refreshHabitOptions();
+  if(!document.getElementById('viewPlanning').hidden) renderPlanning();
+  habitModalShow(false);
 };
 let catEdit=null;
 function catModalShow(on){ document.getElementById('catModal').hidden=!on; document.body.style.overflow=on?'hidden':''; }
@@ -2002,6 +2041,15 @@ document.getElementById('habitForm').addEventListener('submit', e=>{
   document.getElementById('newHabitName').value='';
   msg.textContent=`Added “${name}” ✓`; msg.style.color='#16a34a';
   if(!document.getElementById('viewPlanning').hidden) renderPlanning();
+});
+document.getElementById('habitEditCancel').onclick=()=>habitModalShow(false);
+document.getElementById('habitEditClose').onclick=()=>habitModalShow(false);
+document.getElementById('habitModal').onclick=(e)=>{ if(e.target.id==='habitModal') habitModalShow(false); };
+document.getElementById('habitEditDelete').onclick=()=>window.habitDelCurrent();
+document.getElementById('habitEditForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  if(habitSaveEdit()){ habitModalShow(false); }
+  else { const m=document.getElementById('habitEditMsg'); m.textContent='Enter a name'; m.style.color='#dc2626'; }
 });
 document.getElementById('catEditCancel').onclick=()=>catModalShow(false);
 document.getElementById('catEditClose').onclick=()=>catModalShow(false);
