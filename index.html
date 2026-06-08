@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <!--
   FILE MAP - grep these exact tags to jump (line numbers drift, names don't)
-  HTML views:   /viewOverview  /viewLog  /viewGoals  /viewPlanning  /viewAudit  /viewSettings  (each closes with a div comment)
+  HTML views:   /viewOverview  /viewLog  /viewGoals  /viewPlanning  /viewAudit  /viewTips  /viewSettings  (each closes with a div comment)
   JS sections:  "===== LOG VIEW"  "category management (Settings)"  "===== ONLINE / OFFLINE"
                 "===== LIFE BAR"  "===== GOALS"  "===== TIME PLANNING"  "===== AUDIT"  "===== ARCHIVE"
-  Data/state:   LS_GOALS / SEED_GOALS . LS_HABITS / SEED_HABITS / loadHabits / groupHabits . HABIT_COL / CAT_ICON
+  Data/state:   LS_GOALS / SEED_GOALS . LS_HABITS / SEED_HABITS / loadHabits / groupHabits . HABIT_COL . LS_ICONS / SEED_ICONS / ICONS / iconFor (category icons, Settings-managed) . LS_TIPS / TIP_SECTIONS / loadTips / renderTips / tipMd
   Sync:         fbBlob (Firestore sync shape) . fb-data listener (incoming sync)
   Key fns:      renderLog . submitProject . refreshHabitOptions . renderPlanning . renderSettings . renderHabitsSettings
 -->
@@ -151,6 +151,8 @@
   .form input:focus,.form select:focus{outline:none;border-color:var(--spiritual)}
   .time2{display:flex;gap:8px}.time2 input{width:100%}
   .btn{align-self:flex-start;background:var(--spiritual);color:#fff;border:0;padding:11px 20px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer}
+  .btn-sm{background:#eef1f8;color:#3a4256;border:1px solid var(--line);padding:7px 13px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer}
+  .btn-sm:hover{background:#e2e7f3}
   .btn:hover{filter:brightness(1.05)}
   .fmsg{font-size:12.5px;font-weight:600;color:#16a34a}
   .muted-sm{font-size:12px;color:var(--muted);font-weight:500}
@@ -283,7 +285,24 @@
   @media(max-width:720px){.gcards{grid-template-columns:repeat(2,1fr)}}
   @media(max-width:460px){.gcards{grid-template-columns:1fr}}
   @media(max-width:880px){.gprog{min-width:110px}}
+  .tipswrap{display:flex;gap:18px;align-items:flex-start}
+  .tipside{flex:0 0 200px;display:flex;flex-direction:column;gap:6px}
+  .tipside button{text-align:left;border:0;background:#eef1f8;padding:11px 14px;border-radius:10px;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer;transition:.15s}
+  .tipside button:hover{background:#e2e7f3}
+  .tipside button.active{background:var(--accent,#4C6EF5);color:#fff}
+  .tipmain{flex:1;min-width:0}
+  .tipbody{line-height:1.7;font-size:15px;color:#2a3040;white-space:normal}
+  .tipbody h3{margin:18px 0 6px;font-size:19px}
+  .tipbody h4{margin:14px 0 4px;font-size:16px}
+  .tipbody p{margin:0 0 12px}
+  .tipbody ul{margin:0 0 12px 22px}
+  .tipbody li{margin:3px 0}
+  .tipbody .empty{color:var(--muted);font-style:italic}
+  #tipEdit{width:100%;min-height:420px;font:14px/1.6 ui-monospace,Menlo,Consolas,monospace;padding:12px;border:1px solid var(--line);border-radius:10px;resize:vertical}
+  @media (max-width:760px){.tipswrap{flex-direction:column}.tipside{flex-basis:auto;flex-direction:row;flex-wrap:wrap}}
   @media print{
+    .tipside,.tipswrap .tipmain .noprint{display:none!important}
+    .tipswrap{display:block}.tipbody{font-size:12px}
     @page{size:A4;margin:12mm}
     *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
     body{padding:0;background:#fff}
@@ -361,6 +380,7 @@
       <button data-v="planning">Time Planning</button>
       <button data-v="log">Log Data</button>
       <button data-v="audit">Audit</button>
+      <button data-v="tips">Life Tips</button>
       <button data-v="settings">Settings</button>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
@@ -555,9 +575,9 @@
         <option value="dream">Dream</option>
       </select></label>
       <div class="gform-foot">
+        <button type="button" id="gDelete" class="btn" style="background:#ef4444;margin-right:auto;display:none">Delete goal</button>
+        <button type="button" id="gCancel" class="btn" style="background:#94a3b8;margin-left:auto">Cancel</button>
         <button type="submit" class="btn">Save goal</button>
-        <button type="button" id="gCancel" class="btn" style="background:#94a3b8">Cancel</button>
-        <button type="button" id="gDelete" class="btn" style="background:#ef4444;margin-left:auto;display:none">Delete goal</button>
         <span id="goalMsg" class="fmsg"></span>
       </div>
     </form>
@@ -576,8 +596,8 @@
       </div>
       <div class="hint" id="aPeriod" style="margin:0"></div>
       <div class="gform-foot">
+        <button type="button" id="aCancel" class="btn" style="background:#94a3b8;margin-left:auto">Cancel</button>
         <button type="submit" class="btn">Add</button>
-        <button type="button" id="aCancel" class="btn" style="background:#94a3b8">Cancel</button>
         <span id="addMsg" class="fmsg"></span>
       </div>
     </form>
@@ -600,15 +620,44 @@
   </div>
 </div><!-- /viewAudit -->
 
-<div id="viewSettings" hidden>
-  <div class="grid">
+<div id="viewTips" hidden>
   <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <h2 style="margin:0">Life Tips</h2>
+      <div class="noprint" style="display:flex;gap:8px">
+        <button id="tipEditBtn" class="btn-sm">✎ Edit</button>
+        <button id="tipSaveBtn" class="btn-sm" style="display:none">Save</button>
+        <button id="tipCancelBtn" class="btn-sm" style="display:none">Cancel</button>
+        <button id="tipPdfBtn" class="btn-sm">⤓ Export PDF</button>
+      </div>
+    </div>
+    <div class="hint">Long-form notes &amp; wisdom. Plain text with simple markdown: <code># Heading</code>, <code>## Sub</code>, <code>- bullet</code>. Export PDF prints all sections.</div>
+    <div class="tipswrap" style="margin-top:14px">
+      <div class="tipside noprint" id="tipSide"></div>
+      <div class="tipmain">
+        <div id="tipBody" class="tipbody"></div>
+        <textarea id="tipEdit" style="display:none"></textarea>
+        <div id="tipMsg" class="muted-sm" style="margin-top:6px"></div>
+      </div>
+    </div>
+  </div>
+</div><!-- /viewTips -->
+
+<div id="viewSettings" hidden>
+  <div class="tipswrap">
+    <div class="tipside" id="setSide">
+      <button data-s="cats" class="active">Categories</button>
+      <button data-s="habits">Habits</button>
+    </div>
+    <div class="tipmain">
+  <div class="card" id="setCats">
     <h2>Categories</h2>
     <div class="hint">Manage the categories used across the timer and goals. Deleting one won't change past entries.</div>
     <div id="catList" class="catlist"></div>
     <form id="catForm" class="form" style="margin-top:14px">
       <div class="frow">
         <label>New category <input id="newCatName" type="text" placeholder="e.g. Health"></label>
+        <label>Icon <input id="newCatIcon" type="text" maxlength="4" placeholder="🏷️" style="width:60px;text-align:center"></label>
         <label>Colour <input id="newCatColor" type="color" value="#4C6EF5"></label>
       </div>
       <div class="gform-foot">
@@ -618,7 +667,7 @@
     </form>
   </div>
 
-  <div class="card">
+  <div class="card" id="setHabits" hidden>
     <h2>Habits</h2>
     <div class="hint">Daily habits shown in Time Planning. Editing only affects future planning — past logged time is never changed.</div>
     <div id="habitList" class="catlist"></div>
@@ -634,6 +683,7 @@
       </div>
     </form>
   </div>
+    </div>
   </div>
 
   <div id="habitModal" class="modal-ov" hidden>
@@ -648,9 +698,9 @@
         <label>Min/day <input id="habitEditMin" type="number" min="0" step="1" style="width:80px"></label>
       </div>
       <div class="gform-foot">
+        <button type="button" id="habitEditDelete" class="btn" style="background:#ef4444;margin-right:auto">Delete</button>
+        <button type="button" id="habitEditCancel" class="btn" style="background:#94a3b8;margin-left:auto">Cancel</button>
         <button type="submit" class="btn">Save</button>
-        <button type="button" id="habitEditCancel" class="btn" style="background:#94a3b8">Cancel</button>
-        <button type="button" id="habitEditDelete" class="btn" style="background:#ef4444;margin-left:auto">Delete</button>
         <span id="habitEditMsg" class="fmsg"></span>
       </div>
     </form>
@@ -665,12 +715,13 @@
     <form id="catEditForm" class="form">
       <div class="frow">
         <label>Name <input id="catEditName" type="text"></label>
+        <label>Icon <input id="catEditIcon" type="text" maxlength="4" placeholder="🏷️" style="width:60px;text-align:center"></label>
         <label>Colour <input id="catEditColor" type="color"></label>
       </div>
       <div class="gform-foot">
+        <button type="button" id="catEditDelete" class="btn" style="background:#ef4444;margin-right:auto">Delete</button>
+        <button type="button" id="catEditCancel" class="btn" style="background:#94a3b8;margin-left:auto">Cancel</button>
         <button type="submit" class="btn">Save</button>
-        <button type="button" id="catEditCancel" class="btn" style="background:#94a3b8">Cancel</button>
-        <button type="button" id="catEditDelete" class="btn" style="background:#ef4444;margin-left:auto">Delete</button>
         <span id="catEditMsg" class="fmsg"></span>
       </div>
     </form>
@@ -711,11 +762,14 @@ const SEED_TASK_CAT = {
   'OppurtunityPrep':'Career','Study':'Career',
   'Book Reading':'Hobby','Gardening':'Hobby','Pranav':'Hobby'
 };
-const LS_COLORS='ptd_colors_v1', LS_ALLCATS='ptd_allcats_v1', LS_TASKCAT='ptd_taskcat_v1';
+const LS_COLORS='ptd_colors_v1', LS_ALLCATS='ptd_allcats_v1', LS_TASKCAT='ptd_taskcat_v1', LS_ICONS='ptd_icons_v1';
+const SEED_ICONS = {Spiritual:'🕉️',Youth:'💪',Family:'👨‍👩‍👧',Career:'💼',Hobby:'🎨',Mental:'🧠'};
 function loadObj(k,seed){ try{ const v=JSON.parse(localStorage.getItem(k)); return (v&&typeof v==='object'&&Object.keys(v).length)?v:seed; }catch(e){ return seed; } }
 function loadArr(k,seed){ try{ const v=JSON.parse(localStorage.getItem(k)); return (Array.isArray(v)&&v.length)?v:seed; }catch(e){ return seed; } }
 let COLORS  = {...loadObj(LS_COLORS, SEED_COLORS), ...SEED_COLORS};
+let ICONS   = {...SEED_ICONS, ...loadObj(LS_ICONS, {})};
 let ALLCATS = loadArr(LS_ALLCATS, SEED_ALLCATS);
+function iconFor(cat){ return ICONS[cat]||'🏷️'; }
 let TASK_CAT= loadObj(LS_TASKCAT, SEED_TASK_CAT);
 let TASKS   = Object.keys(TASK_CAT);
 
@@ -1146,9 +1200,15 @@ function setLogType(t){
   if(t==='screen') document.getElementById('fScrWasteRow').hidden = document.getElementById('fDevice').value!=='laptop';
   document.getElementById('formMsg').textContent='';
 }
+function goalIcon(cat){ return iconFor(cat); }
 function refreshGoalOptions(){
   const g=loadGoals(), cur=document.getElementById('fGoal').value;
-  document.getElementById('fGoal').innerHTML = g.map(x=>`<option value="${x.id}" ${x.id===cur?'selected':''}>${x.name} — ${x.cat}</option>`).join('');
+  const opt=x=>`<option value="${x.id}" ${x.id===cur?'selected':''}>${goalIcon(x.cat)} ${x.name}</option>`;
+  const groups=[['active','Active'],['backlog','Backlog'],['dream','Dream']];
+  document.getElementById('fGoal').innerHTML = groups.map(([sec,label])=>{
+    const rows=g.filter(x=>(x.sec||'active')===sec);
+    return rows.length?`<optgroup label="${label}">${rows.map(opt).join('')}</optgroup>`:'';
+  }).join('');
   syncGoalFields();
 }
 function syncGoalFields(){
@@ -1233,7 +1293,7 @@ function refreshHabitOptions(){
     : '<option value="">No habits — add some in Settings</option>';
 }
 // ---- category management (Settings) ----
-function persistCats(){ localStorage.setItem(LS_ALLCATS, JSON.stringify(ALLCATS)); localStorage.setItem(LS_COLORS, JSON.stringify(COLORS)); fbSyncPush(); }
+function persistCats(){ localStorage.setItem(LS_ALLCATS, JSON.stringify(ALLCATS)); localStorage.setItem(LS_COLORS, JSON.stringify(COLORS)); localStorage.setItem(LS_ICONS, JSON.stringify(ICONS)); fbSyncPush(); }
 function refreshAllCatPickers(){
   if(document.getElementById('fCat')) refreshCatOptions();
   ['gCat','onRedirect'].forEach(id=>{ const el=document.getElementById(id); if(el){ const cur=el.value; el.innerHTML=ALLCATS.map(c=>`<option ${c===cur?'selected':''}>${c}</option>`).join(''); } });
@@ -1244,11 +1304,19 @@ function renderSettings(){
   el.innerHTML = ALLCATS.map(c=>{ const e=c.replace(/'/g,"\\'");
     return `<div class="catrow">
       <span class="cdot" style="background:${colorFor(c)}"></span>
-      <span class="nm">${c}</span>
+      <span class="nm">${iconFor(c)} ${c}</span>
       ${used.has(c)?'<span class="muted-sm">in use</span>':''}
       <button class="cedit" title="Edit" onclick="catEditStart('${e}')">✎</button>
     </div>`; }).join('') || '<div class="empty">No categories. Add one below.</div>';
   renderHabitsSettings();
+  setSettab(setSel);
+}
+let setSel='cats';
+function setSettab(s){
+  setSel=s;
+  document.getElementById('setCats').hidden = s!=='cats';
+  document.getElementById('setHabits').hidden = s!=='habits';
+  document.querySelectorAll('#setSide button').forEach(b=>b.classList.toggle('active', b.dataset.s===s));
 }
 function habitCatOpts(c){ return ALLCATS.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"${x===c?' selected':''}>${x}</option>`).join(''); }
 function renderHabitsSettings(){
@@ -1298,6 +1366,7 @@ function catModalShow(on){ document.getElementById('catModal').hidden=!on; docum
 window.catEditStart=function(c){
   catEdit=c;
   document.getElementById('catEditName').value=c;
+  document.getElementById('catEditIcon').value=ICONS[c]||'';
   document.getElementById('catEditColor').value=colorFor(c);
   document.getElementById('catEditTitle').textContent=`Edit “${c}”`;
   const inUse=loadEntries().some(e=>e.cat===c);
@@ -1305,13 +1374,14 @@ window.catEditStart=function(c){
   document.getElementById('catEditMsg').textContent='';
   catModalShow(true);
 };
-function catRename(oldName,newName,color){
+function catRename(oldName,newName,color,icon){
   newName=newName.trim(); if(!newName) return false;
   if(newName!==oldName && ALLCATS.some(c=>c.toLowerCase()===newName.toLowerCase())) return false;
   const i=ALLCATS.indexOf(oldName); if(i<0) return false;
   ALLCATS[i]=newName;
-  if(oldName!==newName){ delete COLORS[oldName]; }
+  if(oldName!==newName){ delete COLORS[oldName]; delete ICONS[oldName]; }
   COLORS[newName]=color;
+  icon=(icon||'').trim(); if(icon) ICONS[newName]=icon; else delete ICONS[newName];
   if(oldName!==newName){
     const all=loadEntries(); let ch=false; all.forEach(e=>{ if(e.cat===oldName){ e.cat=newName; ch=true; } }); if(ch) saveEntries(all);
     const g=loadGoals(); let gch=false; g.forEach(x=>{ if(x.cat===oldName){ x.cat=newName; gch=true; } }); if(gch) saveGoals(g);
@@ -1325,7 +1395,7 @@ function catRename(oldName,newName,color){
 window.delCategory=function(c){
   const inUse=loadEntries().some(e=>e.cat===c);
   if(!confirm(`Delete category “${c}”?${inUse?' It is used by existing entries — they keep their old label.':''} This can't be undone.`)) return;
-  ALLCATS=ALLCATS.filter(x=>x!==c); persistCats(); refreshAllCatPickers(); renderSettings(); catModalShow(false);
+  ALLCATS=ALLCATS.filter(x=>x!==c); delete ICONS[c]; persistCats(); refreshAllCatPickers(); renderSettings(); catModalShow(false);
 };
 function refreshTaskOptions(){
   const el=document.getElementById('taskList'); if(!el) return;
@@ -1800,20 +1870,93 @@ function loadHabits(){ try{ const v=JSON.parse(localStorage.getItem(LS_HABITS));
 function saveHabits(h){ localStorage.setItem(LS_HABITS, JSON.stringify(h)); fbSyncPush(); }
 function groupHabits(flat){ const o=[]; flat.forEach(i=>{ let g=o.find(x=>x.cat===i.cat); if(!g){g={cat:i.cat,items:[]};o.push(g);} g.items.push({n:i.n,m:i.m}); }); return o; }
 const HABIT_COL={Spiritual:'#4C6EF5',"Life's Big":'#E84393',Youth:'#8DC63F','SRM Study':'#F5A623','Career & Finance':'#5A49B8',Hobby:'#8B2FE0'};
-const CAT_ICON={Spiritual:'🕉️',"Life's Big":'🌟',Youth:'💪','SRM Study':'📖','Career & Finance':'💰',Hobby:'🎨'};
-function habitIcon(cat){ return CAT_ICON[cat]||'🔁'; }
+
+// ===== LIFE TIPS (text-heavy notes) =====
+const LS_TIPS='ptd_tips_v1';
+const TIP_SECTIONS=[
+  {key:'priorities', title:"Life's Big Priorities"},
+  {key:'spiritual',  title:'Spiritual'},
+  {key:'youth',      title:'Youth'},
+  {key:'katha',      title:'Katha'},
+];
+const SEED_TIPS={
+  priorities:"# Life's Big Priorities\n\n- Health first — body and mind.\n- Relationships that matter.\n- Meaningful work over busy work.\n- Keep learning.\n\n## Notes\nWrite freely here. Click Edit to begin.",
+  spiritual:"# Spiritual\n\nDaily practice keeps the mind steady.\n\n## Reminders\n- Consistency over intensity.\n- Gratitude.",
+  youth:"# Youth\n\nNotes for staying sharp and energetic.\n\n## Habits\n- Move every day.\n- Sleep well.",
+  katha:"# Katha\n\nStories, parables, and lessons worth remembering.",
+};
+function loadTips(){ try{ const v=JSON.parse(localStorage.getItem(LS_TIPS)); return (v&&typeof v==='object')?{...SEED_TIPS,...v}:{...SEED_TIPS}; }catch(e){ return {...SEED_TIPS}; } }
+function saveTips(t){ localStorage.setItem(LS_TIPS, JSON.stringify(t)); fbSyncPush(); }
+let tipSel='priorities', tipEditing=false;
+function tipMd(src){
+  const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const lines=(src||'').split('\n'); let html='', inUl=false;
+  const closeUl=()=>{ if(inUl){ html+='</ul>'; inUl=false; } };
+  for(let raw of lines){
+    const l=raw.trimEnd();
+    if(/^#\s+/.test(l)){ closeUl(); html+='<h3>'+esc(l.replace(/^#\s+/,''))+'</h3>'; }
+    else if(/^##\s+/.test(l)){ closeUl(); html+='<h4>'+esc(l.replace(/^##\s+/,''))+'</h4>'; }
+    else if(/^[-*]\s+/.test(l)){ if(!inUl){ html+='<ul>'; inUl=true; } html+='<li>'+esc(l.replace(/^[-*]\s+/,''))+'</li>'; }
+    else if(l===''){ closeUl(); }
+    else { closeUl(); html+='<p>'+esc(l)+'</p>'; }
+  }
+  closeUl();
+  return html||'<div class="empty">Empty. Click Edit to add notes.</div>';
+}
+function renderTips(){
+  const side=document.getElementById('tipSide'); if(!side) return;
+  side.innerHTML=TIP_SECTIONS.map(s=>`<button data-k="${s.key}"${s.key===tipSel?' class="active"':''}>${s.title}</button>`).join('');
+  side.querySelectorAll('button').forEach(b=>b.onclick=()=>{ if(tipEditing) tipCancelEdit(); tipSel=b.dataset.k; renderTips(); });
+  const t=loadTips();
+  document.getElementById('tipBody').innerHTML=tipMd(t[tipSel]);
+}
+function tipStartEdit(){
+  tipEditing=true;
+  const t=loadTips();
+  const ta=document.getElementById('tipEdit'); ta.value=t[tipSel]||'';
+  ta.style.display=''; document.getElementById('tipBody').style.display='none';
+  document.getElementById('tipEditBtn').style.display='none';
+  document.getElementById('tipSaveBtn').style.display='';
+  document.getElementById('tipCancelBtn').style.display='';
+  ta.focus();
+}
+function tipFinishEdit(){
+  tipEditing=false;
+  document.getElementById('tipEdit').style.display='none';
+  document.getElementById('tipBody').style.display='';
+  document.getElementById('tipEditBtn').style.display='';
+  document.getElementById('tipSaveBtn').style.display='none';
+  document.getElementById('tipCancelBtn').style.display='none';
+}
+function tipSaveEdit(){
+  const t=loadTips(); t[tipSel]=document.getElementById('tipEdit').value; saveTips(t);
+  tipFinishEdit(); renderTips();
+  const m=document.getElementById('tipMsg'); m.textContent='Saved.'; setTimeout(()=>{ if(m) m.textContent=''; },1500);
+}
+function tipCancelEdit(){ tipFinishEdit(); renderTips(); }
+function exportTipsPdf(){
+  if(tipEditing) tipSaveEdit();
+  const t=loadTips();
+  const body=document.getElementById('tipBody');
+  const saved=body.innerHTML;
+  body.innerHTML=TIP_SECTIONS.map(s=>'<div style="page-break-inside:avoid">'+tipMd(t[s.key])+'</div>').join('<hr style="margin:18px 0;border:0;border-top:1px solid #ddd">');
+  window.print();
+  setTimeout(()=>{ body.innerHTML=saved; },300);
+}
+function habitIcon(cat){ return iconFor(cat); }
 // per-period activities (period = 10 days: 1-10, 11-20, 21-end of month). hours per period.
 const PERIOD_ITEMS={Youth:[{n:'Cycling',h:1,lbl:'1h'}],Hobby:[{n:'Gardening',h:40/60,lbl:'40m'},{n:'Painting',h:40/60,lbl:'40m'},{n:'Shlok Paath',h:1}],'Career & Finance':[{n:'Finance',h:0.5}]};
 // count 10-day periods still ahead in the year (current period included)
 function periodsLeft(now,yr){let n=0;for(let mo=now.getMonth();mo<12;mo++){const dim=new Date(yr,mo+1,0).getDate();[[1,10],[11,20],[21,dim]].forEach(([s,e])=>{if(mo>now.getMonth()||e>=now.getDate())n++;});}return n;}
 function renderPlanning(){
   const HABITS=groupHabits(loadHabits());
+  const cIcon=c=>iconFor(c);
   const fmtM=m=>{const h=Math.floor(m/60),mm=Math.round(m%60);return h?(mm?`${h}h ${mm}m`:`${h}h`):`${mm}m`;};
   const POOL=YBATT_DAILY*60;
   const habitItems=HABITS.flatMap(g=>g.items.map(i=>({n:i.n,m:i.m,cat:g.cat,c:HABIT_COL[g.cat]||'#8a93a3'})));
   const fixed=habitItems.reduce((a,i)=>a+i.m,0);
   const cards=habitItems.map(i=>`<div class="card" style="border-top:3px solid ${i.c};padding:13px 15px">
-      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:${i.c};font-weight:700;margin-bottom:6px">${i.cat}</div>
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:${i.c};font-weight:700;margin-bottom:6px">${cIcon(i.cat)} ${i.cat}</div>
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
         <span style="font-weight:600">${i.n}</span><b style="color:${i.c};white-space:nowrap">${i.m}m</b>
       </div></div>`).join('');
@@ -1868,23 +2011,9 @@ function renderPlanning(){
   rowsData.forEach(r=>r.tasks.forEach(t=>goalRows.push({cat:r.k,color:r.color,h:t.h||0,label:t.label,note:t.note})));
   const totH=[...habitRows,...goalRows].reduce((a,t)=>a+(t.h||0),0);
   const catCell=(t,show)=>`<td style="padding:9px 14px">${show?`<span style="display:inline-flex;align-items:center;gap:8px"><i style="width:11px;height:11px;border-radius:3px;background:${t.color};display:inline-block;flex:none"></i><span style="color:var(--muted)">${t.cat}</span></span>`:''}</td>`;
-  // line icon per category (stroke = category colour)
-  const catIcon=(cat,color)=>{
-    if(cat==='Career & Finance') return '<span style="font-size:15px;font-weight:700;line-height:1;color:'+color+';flex:none">₹</span>';
-    const sw='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="'+color+'" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none">';
-    const ic={
-      'Spiritual':'<circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="4.3" r="1.7"/><circle cx="17.4" cy="6.6" r="1.2"/><circle cx="19.7" cy="12" r="1.2"/><circle cx="17.4" cy="17.4" r="1.2"/><circle cx="12" cy="19.7" r="1.2"/><circle cx="6.6" cy="17.4" r="1.2"/><circle cx="4.3" cy="12" r="1.2"/><circle cx="6.6" cy="6.6" r="1.2"/>',
-      "Life's Big":'<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/>',
-      'Youth':'<path d="M13 2 4.5 13.5H10l-1 8.5 9.5-12.5H13l1-7.5z"/>',
-      'SRM Study':'<path d="M12 5v15"/><path d="M12 5a4 4 0 0 0-4-2H4v14h4a4 4 0 0 1 4 2"/><path d="M12 5a4 4 0 0 1 4-2h4v14h-4a4 4 0 0 0-4 2"/>',
-      'Career & Finance':'<rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 9.5v5M18 9.5v5"/>',
-      'Hobby':'<path d="M12 3a9 9 0 1 0 .5 18c1 0 1.4-1 .9-1.9-.5-.9.1-2 1.1-2H17a4 4 0 0 0 4-4.2C20.7 7 16.9 3 12 3z"/><circle cx="8" cy="11" r="1"/><circle cx="12" cy="8.5" r="1"/><circle cx="16" cy="11" r="1"/>',
-    };
-    return sw+(ic[cat]||'<circle cx="12" cy="12" r="6"/>')+'</svg>';
-  };
-  // single table row: icon+item | per period | per month | to do
+  // single table row: icon+task | per period | per month | to do
   const rowP=(t,show,topB)=>`<tr style="border-top:${topB} solid var(--line)">
-      <td style="padding:6px 12px;color:var(--ink);font-weight:500"><span style="display:inline-flex;align-items:center;gap:7px">${catIcon(t.cat,t.color)}${t.label}</span></td>
+      <td style="padding:6px 12px;color:var(--ink);font-weight:500"><span style="display:inline-flex;align-items:center;gap:7px" title="${t.cat}">${cIcon(t.cat)} ${t.label}</span></td>
       ${num(t.h?fmtHM(t.h/pLeft):`<span style="color:#9aa3b2">${t.note||''}</span>`,'padding:6px 12px;white-space:nowrap;font-weight:600;color:var(--ink)')}
       ${num(t.h?fmtHM(t.h/mLeft):'','padding:6px 12px;white-space:nowrap;color:var(--muted);font-weight:400;font-size:12px')}
       ${num(t.h?fmtH(t.h)+'h':'','padding:6px 12px;white-space:nowrap;font-weight:600;color:var(--ink)')}
@@ -1918,7 +2047,7 @@ function renderPlanning(){
   const segs=Object.entries(catDay).map(([k,h])=>({k,c:HABIT_COL[k]||(typeof COLORS!=='undefined'&&COLORS[k])||'#8a93a3',m:h*60})).filter(s=>s.m>0).sort((a,b)=>b.m-a.m);
   const dayMin=segs.reduce((a,s)=>a+s.m,0);
   const bar=segs.map(s=>`<div title="${s.k} · ${fmtM(s.m)}" style="flex:${s.m};background:${s.c}"></div>`).join('');
-  const legend=segs.map(s=>`<span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;font-size:12px;color:var(--muted)"><i style="width:10px;height:10px;border-radius:3px;background:${s.c};display:inline-block"></i>${s.k} ${fmtM(s.m)} · <b style="color:var(--ink)">${dayMin>0?(s.m/dayMin*100).toFixed(0):0}%</b></span>`).join('');
+  const legend=segs.map(s=>`<span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;font-size:12px;color:var(--muted)"><i style="width:10px;height:10px;border-radius:3px;background:${s.c};display:inline-block"></i>${cIcon(s.k)} ${s.k} ${fmtM(s.m)} · <b style="color:var(--ink)">${dayMin>0?(s.m/dayMin*100).toFixed(0):0}%</b></span>`).join('');
   const summary=`<div class="card" style="margin-bottom:16px">
     <h2>Total allocation across ${pLeft} periods — to finish 2026</h2>
     <div style="display:flex;height:26px;border-radius:8px;overflow:hidden;gap:2px;margin:12px 0 10px">${bar}</div>
@@ -1940,7 +2069,7 @@ function renderPlanning(){
   </div>`;
   const tableP=`<div class="card" style="padding:0;overflow:hidden;max-width:560px">
     <table class="ptbl" style="width:100%;border-collapse:collapse;font-size:13px">
-      <thead><tr>${th('Goal / item','left')}${th(`Per period<div style="text-transform:none;letter-spacing:0;font-weight:500;font-size:10px;margin-top:2px;color:var(--muted)">${pLeft} left</div>`)}${th(`Per month<div style="text-transform:none;letter-spacing:0;font-weight:500;font-size:10px;margin-top:2px;color:var(--muted)">${mLeft.toFixed(1)} left</div>`)}${th(`To do<div style="text-transform:none;letter-spacing:0;font-weight:500;font-size:10px;margin-top:2px;color:var(--muted)">${pend}d left</div>`)}</tr></thead>
+      <thead><tr>${th('Task','left')}${th(`Per period<div style="text-transform:none;letter-spacing:0;font-weight:500;font-size:10px;margin-top:2px;color:var(--muted)">${pLeft} left</div>`)}${th(`Per month<div style="text-transform:none;letter-spacing:0;font-weight:500;font-size:10px;margin-top:2px;color:var(--muted)">${mLeft.toFixed(1)} left</div>`)}${th(`To do<div style="text-transform:none;letter-spacing:0;font-weight:500;font-size:10px;margin-top:2px;color:var(--muted)">${pend}d left</div>`)}</tr></thead>
       <tbody>${groupsP}${totRowP}</tbody>
     </table></div>`;
   document.getElementById('planning').innerHTML = strip + summary
@@ -1948,17 +2077,19 @@ function renderPlanning(){
     + tableP;
 }
 function setView(v){
-  if(!['overview','log','goals','planning','audit','settings'].includes(v)) v='overview';
+  if(!['overview','log','goals','planning','audit','tips','settings'].includes(v)) v='overview';
   document.getElementById('viewOverview').hidden = v!=='overview';
   document.getElementById('viewLog').hidden = v!=='log';
   document.getElementById('viewGoals').hidden = v!=='goals';
   document.getElementById('viewPlanning').hidden = v!=='planning';
   document.getElementById('viewAudit').hidden = v!=='audit';
+  document.getElementById('viewTips').hidden = v!=='tips';
   document.getElementById('viewSettings').hidden = v!=='settings';
   document.getElementById('lifeBar').hidden = v!=='overview';
   const subs={overview:'your finite hours, on purpose', log:'log time, goals & screen use · saved on this device',
     goals:'targets vs what you actually did', planning:'daily habits vs goal-based time',
     audit:'recent entries & their exact effect',
+    tips:'long-form notes & wisdom',
     settings:'manage categories & preferences'};
   document.getElementById('sub').textContent = subs[v];
   document.querySelectorAll('#viewNav button').forEach(b=>b.classList.toggle('active', b.dataset.v===v));
@@ -1967,6 +2098,7 @@ function setView(v){
   if(v==='goals') renderGoals();
   if(v==='planning') renderPlanning();
   if(v==='audit') renderAudit();
+  if(v==='tips') renderTips();
   if(v==='settings') renderSettings();
   try{ localStorage.setItem(LS_VIEW, v); }catch(e){}
 }
@@ -1983,7 +2115,7 @@ function setOv(o){
 }
 
 // --- Firebase sync glue ---
-function fbBlob(){ return {version:1, months:MONTHS, colors:COLORS, allcats:ALLCATS, taskcat:TASK_CAT, entries:loadEntries(), online:loadOnline(), goals:loadGoals(), habits:loadHabits(), dob:loadDob(), lockMig:localStorage.getItem('ptd_lockmig_v1')==='1'}; }
+function fbBlob(){ return {version:1, months:MONTHS, colors:COLORS, icons:ICONS, allcats:ALLCATS, taskcat:TASK_CAT, entries:loadEntries(), online:loadOnline(), goals:loadGoals(), habits:loadHabits(), tips:loadTips(), dob:loadDob(), lockMig:localStorage.getItem('ptd_lockmig_v1')==='1'}; }
 function fbSyncPush(){ window.fbPushRaw && window.fbPushRaw(fbBlob()); }
 window.fbToggle = function(){ if(window.__fbIn){ window.fbSignOut(); } else { window.fbSignIn(); } };
 document.addEventListener('fb-auth', e=>{
@@ -1995,8 +2127,8 @@ document.addEventListener('fb-auth', e=>{
 document.addEventListener('fb-data', e=>{
   const d=e.detail||{}; let changed=false;
   const set=(k,v)=>{ if(v===undefined||v===null) return; const s=JSON.stringify(v); if(localStorage.getItem(k)!==s){ localStorage.setItem(k,s); changed=true; } };
-  set(LS_MONTHS,d.months); set(LS_COLORS,d.colors); set(LS_ALLCATS,d.allcats); set(LS_TASKCAT,d.taskcat);
-  set(LS_KEY,d.entries); set(LS_ONLINE,d.online); set(LS_GOALS,d.goals); set(LS_HABITS,d.habits);
+  set(LS_MONTHS,d.months); set(LS_COLORS,d.colors); set(LS_ICONS,d.icons); set(LS_ALLCATS,d.allcats); set(LS_TASKCAT,d.taskcat);
+  set(LS_KEY,d.entries); set(LS_ONLINE,d.online); set(LS_GOALS,d.goals); set(LS_HABITS,d.habits); set(LS_TIPS,d.tips);
   if(typeof d.dob==='string' && d.dob && localStorage.getItem(LS_DOB)!==d.dob){ localStorage.setItem(LS_DOB,d.dob); changed=true; }
   // one-time backfill: lock goal-linked entries that already exist, so a later
   // minutes-per-unit change never retroactively rewrites them. Flag is synced
@@ -2024,11 +2156,12 @@ document.getElementById('catForm').addEventListener('submit', e=>{
   e.preventDefault();
   const name=document.getElementById('newCatName').value.trim();
   const color=document.getElementById('newCatColor').value;
+  const icon=document.getElementById('newCatIcon').value.trim();
   const msg=document.getElementById('catMsg');
   if(!name){ msg.textContent='Enter a name'; msg.style.color='#dc2626'; return; }
   if(ALLCATS.some(c=>c.toLowerCase()===name.toLowerCase())){ msg.textContent='Already exists'; msg.style.color='#dc2626'; return; }
-  ALLCATS.push(name); COLORS[name]=color; persistCats(); refreshAllCatPickers(); renderSettings();
-  document.getElementById('newCatName').value=''; msg.textContent=`Added “${name}” ✓`; msg.style.color='#16a34a';
+  ALLCATS.push(name); COLORS[name]=color; if(icon) ICONS[name]=icon; persistCats(); refreshAllCatPickers(); renderSettings();
+  document.getElementById('newCatName').value=''; document.getElementById('newCatIcon').value=''; msg.textContent=`Added “${name}” ✓`; msg.style.color='#16a34a';
 });
 document.getElementById('habitForm').addEventListener('submit', e=>{
   e.preventDefault();
@@ -2057,10 +2190,17 @@ document.getElementById('catModal').onclick=(e)=>{ if(e.target.id==='catModal') 
 document.getElementById('catEditDelete').onclick=()=>{ if(catEdit) window.delCategory(catEdit); };
 document.getElementById('catEditForm').addEventListener('submit', e=>{
   e.preventDefault(); if(!catEdit) return;
-  const ok=catRename(catEdit, document.getElementById('catEditName').value, document.getElementById('catEditColor').value);
+  const ok=catRename(catEdit, document.getElementById('catEditName').value, document.getElementById('catEditColor').value, document.getElementById('catEditIcon').value);
   const m=document.getElementById('catEditMsg');
   if(ok){ catModalShow(false); } else { m.textContent='Name empty or already exists'; m.style.color='#dc2626'; }
 });
+// ----- Life Tips wiring -----
+document.getElementById('tipEditBtn').onclick=tipStartEdit;
+document.getElementById('tipSaveBtn').onclick=tipSaveEdit;
+document.getElementById('tipCancelBtn').onclick=tipCancelEdit;
+document.getElementById('tipPdfBtn').onclick=exportTipsPdf;
+document.querySelectorAll('#setSide button').forEach(b=>b.onclick=()=>setSettab(b.dataset.s));
+
 // ================= AUDIT (rolling 20-day entry ledger) =================
 function renderAudit(){
   const el=document.getElementById('auditTable'); if(!el) return;
