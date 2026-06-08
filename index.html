@@ -1909,6 +1909,7 @@ function renderPlanning(){
     + tableP;
 }
 function setView(v){
+  if(!['overview','log','goals','planning','audit','settings'].includes(v)) v='overview';
   document.getElementById('viewOverview').hidden = v!=='overview';
   document.getElementById('viewLog').hidden = v!=='log';
   document.getElementById('viewGoals').hidden = v!=='goals';
