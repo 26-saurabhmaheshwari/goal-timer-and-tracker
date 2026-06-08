@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
   FILE MAP - grep these exact tags to jump (line numbers drift, names don't)
-  HTML views:   /viewOverview  /viewLog  /viewGoals  /viewPlanning  /viewAudit  /viewTips  /viewSettings  (each closes with a div comment)
+  HTML views:   /viewOverview  /viewLog  /viewGoals  /viewPlanning  /viewAudit  /viewReports  /viewTips  /viewSettings  (each closes with a div comment)
   JS sections:  "===== LOG VIEW"  "category management (Settings)"  "===== ONLINE / OFFLINE"
                 "===== LIFE BAR"  "===== GOALS"  "===== TIME PLANNING"  "===== AUDIT"  "===== ARCHIVE"
   Data/state:   LS_GOALS / SEED_GOALS . LS_HABITS / SEED_HABITS / loadHabits / groupHabits . HABIT_COL . LS_ICONS / SEED_ICONS / ICONS / iconFor (category icons, Settings-managed) . LS_TIPS / TIP_SECTIONS / loadTips / renderTips / tipMd
@@ -315,6 +315,13 @@
     h1{font-size:22px}
     h2{break-after:avoid;page-break-after:avoid}
   }
+  .repchip{border:1px solid var(--line);background:#fff;color:var(--muted);padding:5px 11px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;margin:0 6px 6px 0}
+  .repchip:hover{border-color:#c3ccda}
+  .repchip.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .repgrp{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:700;margin:10px 0 6px}
+  #repGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));gap:16px}
+  .repcard canvas{max-height:230px}
+  @media print{ #repGrid{display:grid;grid-template-columns:1fr 1fr} .repcard{page-break-inside:avoid} }
 </style>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
@@ -381,6 +388,7 @@
       <button data-v="planning">Time Planning</button>
       <button data-v="log">Log Data</button>
       <button data-v="audit">Audit</button>
+      <button data-v="reports">Reports</button>
       <button data-v="tips">Life Tips</button>
       <button data-v="settings">Settings</button>
     </div>
@@ -620,6 +628,20 @@
     <div id="auditTable" style="margin-top:12px"></div>
   </div>
 </div><!-- /viewAudit -->
+
+<div id="viewReports" hidden>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <h2 style="margin:0">Reports</h2>
+      <div class="noprint" style="display:flex;gap:8px">
+        <button id="repPdfBtn" class="btn-sm">⤓ Export PDF</button>
+      </div>
+    </div>
+    <div class="hint">Compare tracked hours over time. Pick a time grouping, then one or more subjects — each gets its own bar chart. Based on logged entries.</div>
+    <div id="repControls" class="noprint" style="margin-top:14px"></div>
+  </div>
+  <div id="repGrid" style="margin-top:16px"></div>
+</div><!-- /viewReports -->
 
 <div id="viewTips" hidden>
   <div class="card">
@@ -1166,6 +1188,11 @@ let logDonutChart, logTrendChart, logSel=null;
 
 function loadEntries(){ try{return JSON.parse(localStorage.getItem(LS_KEY))||[];}catch(e){return[];} }
 function saveEntries(a){ localStorage.setItem(LS_KEY, JSON.stringify(a)); fbSyncPush(); }
+// permanent monthly per-metric rollup (written at archive time; preserves goal/habit/cat
+// monthly totals after raw entries are purged at 3 months). Shape: { '2026-03': {g:{goalId:mins}, h:{habitName:mins}, c:{cat:mins}} }
+const LS_ROLLUP='ptd_rollup_v1';
+function loadRollup(){ try{ const v=JSON.parse(localStorage.getItem(LS_ROLLUP)); return (v&&typeof v==='object'&&!Array.isArray(v))?v:{}; }catch(e){ return {}; } }
+function saveRollup(r){ localStorage.setItem(LS_ROLLUP, JSON.stringify(r)); }
 function colorFor(cat){ if(COLORS[cat])return COLORS[cat];
   let h=0; for(const c of cat) h=(c.charCodeAt(0)+((h<<5)-h))|0;
   return `hsl(${Math.abs(h)%360} 65% 55%)`; }
@@ -2078,18 +2105,20 @@ function renderPlanning(){
     + tableP;
 }
 function setView(v){
-  if(!['overview','log','goals','planning','audit','tips','settings'].includes(v)) v='overview';
+  if(!['overview','log','goals','planning','audit','reports','tips','settings'].includes(v)) v='overview';
   document.getElementById('viewOverview').hidden = v!=='overview';
   document.getElementById('viewLog').hidden = v!=='log';
   document.getElementById('viewGoals').hidden = v!=='goals';
   document.getElementById('viewPlanning').hidden = v!=='planning';
   document.getElementById('viewAudit').hidden = v!=='audit';
+  document.getElementById('viewReports').hidden = v!=='reports';
   document.getElementById('viewTips').hidden = v!=='tips';
   document.getElementById('viewSettings').hidden = v!=='settings';
   document.getElementById('lifeBar').hidden = v!=='overview';
   const subs={overview:'your finite hours, on purpose', log:'log time, goals & screen use · saved on this device',
     goals:'targets vs what you actually did', planning:'daily habits vs goal-based time',
     audit:'recent entries & their exact effect',
+    reports:'compare tracked hours across periods',
     tips:'long-form notes & wisdom',
     settings:'manage categories & preferences'};
   document.getElementById('sub').textContent = subs[v];
@@ -2099,6 +2128,7 @@ function setView(v){
   if(v==='goals') renderGoals();
   if(v==='planning') renderPlanning();
   if(v==='audit') renderAudit();
+  if(v==='reports') renderReports();
   if(v==='tips') renderTips();
   if(v==='settings') renderSettings();
   try{ localStorage.setItem(LS_VIEW, v); }catch(e){}
@@ -2115,8 +2145,109 @@ function setOv(o){
   if(o==='monthly') renderDonut(current);
 }
 
+// ===== REPORTS =====
+let repCharts=[], repGran='month', repSel=null;
+const REP_GRANS=[['period','Period'],['month','Month'],['quarter','Quarter'],['half','Half-year'],['year','Year']];
+function repBkt(e,g){
+  if(!e.ym) return null;
+  const y=e.ym.slice(0,4), m=+e.ym.slice(5,7);
+  if(g==='year')    return {key:y, label:y};
+  if(g==='half')    return {key:`${y}-H${m<=6?1:2}`, label:`H${m<=6?1:2} ${y}`};
+  if(g==='quarter'){ const q=Math.floor((m-1)/3)+1; return {key:`${y}-Q${q}`, label:`Q${q} ${y}`}; }
+  if(g==='month')   return {key:e.ym, label:`${MONTH_NAMES[m-1]} ${y.slice(2)}`};
+  if(g==='period'){ if(!e.period) return null; return {key:`${e.ym}-${e.period}`, label:plabel(`${e.ym}-${e.period}`)}; }
+  return null;
+}
+// subject's tracked minutes as {ym, period, mins} samples — raw entries (recent, with period)
+// plus archived rollup months (older, period-less). A ym present in raw is never taken from rollup.
+function repSubjSamples(s, es, roll){
+  const out=[], rawYms=new Set();
+  repSubjEntries(s,es).forEach(e=>{ out.push({ym:e.ym, period:e.period, mins:+e.mins||0}); rawYms.add(e.ym); });
+  const sum=o=>Object.values(o||{}).reduce((a,b)=>a+(+b||0),0);
+  Object.entries(roll).forEach(([ym,r])=>{
+    if(rawYms.has(ym)) return;
+    let mins=0;
+    if(s.kind==='goalsAll')      mins=sum(r.g);
+    else if(s.kind==='habitsAll')mins=sum(r.h);
+    else if(s.kind==='goal')     mins=(r.g||{})[s.id]||0;
+    else if(s.kind==='habit')    mins=(r.h||{})[s.name]||0;
+    else if(s.kind==='cat')      mins=(r.c||{})[s.name]||0;
+    if(mins>0) out.push({ym, period:null, mins});
+  });
+  return out;
+}
+function repSubjects(){
+  const out=[
+    {key:'goalsAll', kind:'goalsAll', grp:'Overall', title:'All Goals',  cat:null},
+    {key:'habitsAll',kind:'habitsAll',grp:'Overall', title:'All Habits', cat:null},
+  ];
+  ALLCATS.forEach(c=>out.push({key:'cat:'+c, kind:'cat', grp:'Categories', name:c, title:c, cat:c}));
+  loadGoals().forEach(g=>out.push({key:'goal:'+g.id, kind:'goal', grp:'Goals', id:g.id, title:g.name, cat:g.cat}));
+  loadHabits().forEach(h=>out.push({key:'habit:'+h.n, kind:'habit', grp:'Habits', name:h.n, title:h.n, cat:h.cat}));
+  return out;
+}
+function repSubjEntries(s, es){
+  if(s.kind==='goalsAll')  return es.filter(e=>e.type==='goal');
+  if(s.kind==='habitsAll') return es.filter(e=>e.type==='project');
+  if(s.kind==='goal')      return es.filter(e=>e.type==='goal' && e.goalId===s.id);
+  if(s.kind==='habit')     return es.filter(e=>e.type==='project' && e.task===s.name);
+  if(s.kind==='cat')       return es.filter(e=>e.cat===s.name);
+  return [];
+}
+function renderReports(){
+  const subs=repSubjects();
+  if(repSel===null) repSel=new Set(['goalsAll','habitsAll']);
+  // controls
+  const granBtns=REP_GRANS.map(([k,l])=>`<button data-g="${k}" class="${k===repGran?'active':''}">${l}</button>`).join('');
+  const order=['Overall','Categories','Goals','Habits'];
+  const chips=order.map(grp=>{
+    const items=subs.filter(s=>s.grp===grp); if(!items.length) return '';
+    return `<div class="repgrp">${grp}</div>`+items.map(s=>
+      `<button class="repchip ${repSel.has(s.key)?'active':''}" data-k="${s.key}">${s.cat?iconFor(s.cat)+' ':''}${s.title}</button>`).join('');
+  }).join('');
+  const periodNote = repGran==='period' && Object.keys(loadRollup()).length
+    ? `<div class="hint" style="margin-bottom:10px">Period view shows only the last ~3 months — older data is kept as monthly totals (no period detail).</div>` : '';
+  document.getElementById('repControls').innerHTML =
+    `<div style="margin-bottom:10px"><span style="font-size:12px;color:var(--muted);font-weight:700;margin-right:8px">Group by</span>`
+    +`<span class="tabs" style="display:inline-flex;vertical-align:middle">${granBtns}</span></div>${periodNote}${chips}`;
+  // data — raw entries (recent) merged with archived monthly rollup (older)
+  const es=loadEntries(), roll=loadRollup();
+  const chosen=subs.filter(s=>repSel.has(s.key));
+  const samplesByKey={}; chosen.forEach(s=>samplesByKey[s.key]=repSubjSamples(s,es,roll));
+  const bMap=new Map();
+  Object.values(samplesByKey).forEach(arr=>arr.forEach(x=>{ const b=repBkt(x,repGran); if(b) bMap.set(b.key,b.label); }));
+  const buckets=[...bMap].sort((a,b)=>a[0]<b[0]?-1:a[0]>b[0]?1:0).map(([key,label])=>({key,label}));
+  const labels=buckets.map(b=>b.label);
+  repCharts.forEach(c=>{try{c.destroy();}catch(_){}}); repCharts=[];
+  const grid=document.getElementById('repGrid');
+  if(!chosen.length){ grid.innerHTML=`<div class="card" style="color:var(--muted)">Select at least one subject above.</div>`; }
+  else if(!buckets.length){ grid.innerHTML=`<div class="card" style="color:var(--muted)">No data for this selection yet — log time in the Log Data tab.</div>`; }
+  else {
+    grid.innerHTML=chosen.map((s,i)=>
+      `<div class="card repcard"><h2 style="font-size:15px;margin:0">${s.cat?iconFor(s.cat)+' ':''}${s.title}</h2>`
+      +`<div class="hint" id="repSub${i}" style="margin-bottom:8px"></div><canvas id="repC${i}"></canvas></div>`).join('');
+    chosen.forEach((s,i)=>{
+      const rows=samplesByKey[s.key], byB={};
+      rows.forEach(x=>{ const b=repBkt(x,repGran); if(b) byB[b.key]=(byB[b.key]||0)+(+x.mins||0); });
+      const data=buckets.map(b=>+((byB[b.key]||0)/60).toFixed(2));
+      const totH=+(rows.reduce((a,x)=>a+(+x.mins||0),0)/60).toFixed(1);
+      document.getElementById('repSub'+i).textContent=`${totH}h total`;
+      const col=s.cat?colorFor(s.cat):(s.kind==='goalsAll'?'#4C6EF5':'#8DC63F');
+      repCharts.push(new Chart(document.getElementById('repC'+i),{type:'bar',
+        data:{labels,datasets:[{data,backgroundColor:col,borderRadius:4,maxBarThickness:46}]},
+        options:{animation:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.raw} h`}}},
+          scales:{x:{grid:{display:false},ticks:{font:{size:10},autoSkip:false,maxRotation:60}},
+                  y:{beginAtZero:true,grid:{color:'#eef1f6'},ticks:{callback:v=>v+'h'}}}}}));
+    });
+  }
+  // bind
+  document.querySelectorAll('#repControls [data-g]').forEach(b=>b.onclick=()=>{ repGran=b.dataset.g; renderReports(); });
+  document.querySelectorAll('#repControls [data-k]').forEach(b=>b.onclick=()=>{ const k=b.dataset.k; repSel.has(k)?repSel.delete(k):repSel.add(k); renderReports(); });
+  document.getElementById('repPdfBtn').onclick=()=>window.print();
+}
+
 // --- Firebase sync glue ---
-function fbBlob(){ return {version:1, months:MONTHS, colors:COLORS, icons:ICONS, allcats:ALLCATS, taskcat:TASK_CAT, entries:loadEntries(), online:loadOnline(), goals:loadGoals(), habits:loadHabits(), tips:loadTips(), dob:loadDob(), lockMig:localStorage.getItem('ptd_lockmig_v1')==='1'}; }
+function fbBlob(){ return {version:1, months:MONTHS, colors:COLORS, icons:ICONS, allcats:ALLCATS, taskcat:TASK_CAT, entries:loadEntries(), rollup:loadRollup(), online:loadOnline(), goals:loadGoals(), habits:loadHabits(), tips:loadTips(), dob:loadDob(), lockMig:localStorage.getItem('ptd_lockmig_v1')==='1'}; }
 function fbSyncPush(){ window.fbPushRaw && window.fbPushRaw(fbBlob()); }
 window.fbToggle = function(){ if(window.__fbIn){ window.fbSignOut(); } else { window.fbSignIn(); } };
 document.addEventListener('fb-auth', e=>{
@@ -2129,7 +2260,7 @@ document.addEventListener('fb-data', e=>{
   const d=e.detail||{}; let changed=false;
   const set=(k,v)=>{ if(v===undefined||v===null) return; const s=JSON.stringify(v); if(localStorage.getItem(k)!==s){ localStorage.setItem(k,s); changed=true; } };
   set(LS_MONTHS,d.months); set(LS_COLORS,d.colors); set(LS_ICONS,d.icons); set(LS_ALLCATS,d.allcats); set(LS_TASKCAT,d.taskcat);
-  set(LS_KEY,d.entries); set(LS_ONLINE,d.online); set(LS_GOALS,d.goals); set(LS_HABITS,d.habits); set(LS_TIPS,d.tips);
+  set(LS_KEY,d.entries); set(LS_ROLLUP,d.rollup); set(LS_ONLINE,d.online); set(LS_GOALS,d.goals); set(LS_HABITS,d.habits); set(LS_TIPS,d.tips);
   if(typeof d.dob==='string' && d.dob && localStorage.getItem(LS_DOB)!==d.dob){ localStorage.setItem(LS_DOB,d.dob); changed=true; }
   // one-time backfill: lock goal-linked entries that already exist, so a later
   // minutes-per-unit change never retroactively rewrites them. Flag is synced
@@ -2230,18 +2361,25 @@ function archiveOldEntries(){
   for(let i=0;i<3;i++){ const dt=new Date(d.getFullYear(),d.getMonth()-i,1); keep.add(`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`); }
   const all=loadEntries(), old=all.filter(e=>!keep.has(e.ym)); if(!old.length) return;
   let months=loadMonths(); const byYm={}; old.forEach(e=>{ (byYm[e.ym]=byYm[e.ym]||[]).push(e); });
-  const archived=new Set();
+  const archived=new Set(), roll=loadRollup();
   Object.entries(byYm).forEach(([ym,es])=>{
     const M=months.find(x=>ymOf(x.m)===ym);
     if(M && total(M.cats||{})>0) return;            // already summarised — don't double-count
-    const cats={}; es.forEach(e=>cats[e.cat]=(cats[e.cat]||0)+(+e.mins||0));
+    const cats={}, g={}, h={};
+    es.forEach(e=>{
+      cats[e.cat]=(cats[e.cat]||0)+(+e.mins||0);
+      if(e.type==='goal' && e.goalId) g[e.goalId]=(g[e.goalId]||0)+(+e.mins||0);
+      else if(e.type==='project' && e.task) h[e.task]=(h[e.task]||0)+(+e.mins||0);
+    });
     if(M) M.cats=cats; else months.push({m:ymLabel(ym),cats});
+    roll[ym]={g,h,c:cats};                          // preserve per-goal/habit/cat monthly totals forever
     archived.add(ym);
   });
   if(archived.size){
+    saveRollup(roll);
     localStorage.setItem(LS_MONTHS, JSON.stringify(months.filter(x=>ymOf(x.m)!==CUR_YM)));
     MONTHS=loadMonths();
-    saveEntries(all.filter(e=>!archived.has(e.ym)));
+    saveEntries(all.filter(e=>!archived.has(e.ym)));  // triggers one fbSyncPush incl. rollup
   }
 }
 try{ archiveOldEntries(); }catch(e){}
