@@ -560,25 +560,30 @@
     <h2 id="goalFormTitle">Add a goal</h2>
     <div class="hint">Named goal with its own unit, target and deadline. Progress = current ÷ target.</div>
     <form id="goalForm" class="form">
+      <label style="display:flex;flex-direction:row;align-items:center;gap:10px;max-width:none;background:#f5f8fd;padding:11px 13px;border-radius:8px;cursor:pointer"><input type="checkbox" id="gRecurring" style="width:18px;height:18px;flex:none;margin:0"> <span>🔁 Recurring goal — fixed amount per period, target builds up over the year</span></label>
       <label>Name <input id="gName" placeholder="e.g. N. MAHOTSAV"></label>
       <div class="frow">
         <label>Category <select id="gCat"></select></label>
-        <label>Unit <input id="gUnit" placeholder="Paath / mala / Minutes"></label>
+        <label id="gUnitWrap">Unit <input id="gUnit" placeholder="Paath / mala / Minutes"></label>
+      </div>
+      <div class="frow" id="gRecurRow" hidden>
+        <label>Hours / period <input id="gPerPeriod" type="number" min="0" step="any" placeholder="e.g. 0.5"></label>
+        <div class="hint" id="gRecurCalc" style="align-self:end;margin:0 0 8px">—</div>
       </div>
       <div class="frow">
-        <label>Current <input id="gCur" type="number" min="0" step="any" placeholder="0"></label>
-        <label>Target <input id="gTarget" type="number" min="0" step="any" placeholder="e.g. 1250"></label>
+        <label id="gCurWrap"><span id="gCurLab">Current</span> <input id="gCur" type="number" min="0" step="any" placeholder="0"></label>
+        <label id="gTargetWrap">Target <input id="gTarget" type="number" min="0" step="any" placeholder="e.g. 1250"></label>
       </div>
       <div class="frow">
         <label>Start <input id="gStart" type="date"></label>
         <label>Deadline <input id="gBy" type="date"></label>
       </div>
-      <div class="gmap">
+      <div class="gmap" id="gMapWrap">
         <div class="gmap-lab">Time mapping</div>
         <div class="gmap-row">1 <b id="gUnitLab">unit</b> = <input id="gMinPer" type="number" min="0" step="any" placeholder="e.g. 1.5"> min</div>
         <div class="hint" style="margin:0">How one unit converts to tracked minutes (decimals ok). Leave blank if this goal isn't time-based.</div>
       </div>
-      <label class="gform-sec">Section <select id="gSec">
+      <label class="gform-sec" id="gSecWrap">Section <select id="gSec">
         <option value="active">Active goal</option>
         <option value="backlog">Backlog</option>
         <option value="dream">Dream</option>
@@ -613,6 +618,7 @@
    </div>
   </div>
   <div class="card gsec"><h2>Active goals</h2><div id="secActive"></div></div>
+  <div class="card gsec"><h2>🔁 Recurring goals</h2><div class="hint">Per-period commitments that accumulate over the year — caught up like goals, not lapsed like habits.</div><div id="secRecurring"></div></div>
   <div class="card gsec"><h2>Backlog goals</h2><div class="hint">Things to start later.</div><div id="secBacklog"></div></div>
   <div class="card gsec"><h2>Dreams</h2><div class="hint">Big aspirations — no deadline pressure.</div><div id="secDream"></div></div>
 </div><!-- /viewGoals -->
@@ -1682,14 +1688,28 @@ function paceHint(x){ // "~N/day needed" to finish by deadline
   return per>=1 ? `~${Math.ceil(per)}/day to finish` : `~${Math.ceil(per*7)}/wk to finish`;
 }
 function goalFormShow(on){ document.getElementById('goalModal').hidden=!on; document.body.style.overflow=on?'hidden':''; }
-function goalFormReset(){ goalEdit=null; document.getElementById('goalForm').reset(); document.getElementById('gUnitLab').textContent='unit'; document.getElementById('goalFormTitle').textContent='Add a goal'; document.getElementById('gDelete').style.display='none'; goalFormShow(false); }
+function goalRecurUpdate(){
+  const on=document.getElementById('gRecurring').checked;
+  document.getElementById('gRecurRow').hidden=!on;
+  // recurring derives target/unit/mapping/section — hide those fields entirely
+  ['gUnitWrap','gTargetWrap','gMapWrap','gSecWrap'].forEach(id=>document.getElementById(id).style.display=on?'none':'');
+  document.getElementById('gCurLab').textContent=on?'Done so far (h)':'Current';
+  if(!on){ document.getElementById('gRecurCalc').textContent='—'; return; }
+  const pp=+document.getElementById('gPerPeriod').value||0;
+  const ex=goalEdit?loadGoals().find(x=>x.id===goalEdit):null;
+  const now=new Date(), pl=(ex&&ex.recurPeriods)?ex.recurPeriods:periodsLeft(now,now.getFullYear());
+  document.getElementById('gRecurCalc').textContent=`= ${pl} periods × ${pp}h = ${(+(pp*pl).toFixed(2))}h total target`;
+}
+function goalFormReset(){ goalEdit=null; document.getElementById('goalForm').reset(); document.getElementById('gUnitLab').textContent='unit'; document.getElementById('goalFormTitle').textContent='Add a goal'; document.getElementById('gDelete').style.display='none'; goalRecurUpdate(); goalFormShow(false); }
 function initGoals(){
   document.getElementById('gCat').innerHTML = ALLCATS.map(c=>`<option>${c}</option>`).join('');
-  document.getElementById('goalCreateBtn').onclick=()=>{ goalEdit=null; document.getElementById('goalForm').reset(); document.getElementById('gUnitLab').textContent='unit'; document.getElementById('goalFormTitle').textContent='Add a goal'; document.getElementById('gDelete').style.display='none'; document.getElementById('goalMsg').textContent=''; goalFormShow(true); };
+  document.getElementById('goalCreateBtn').onclick=()=>{ goalEdit=null; document.getElementById('goalForm').reset(); document.getElementById('gUnitLab').textContent='unit'; document.getElementById('goalFormTitle').textContent='Add a goal'; document.getElementById('gDelete').style.display='none'; document.getElementById('goalMsg').textContent=''; goalRecurUpdate(); goalFormShow(true); };
   document.getElementById('gCancel').onclick=()=>{ goalFormReset(); document.getElementById('goalMsg').textContent=''; };
   document.getElementById('gClose').onclick=()=>{ goalFormReset(); document.getElementById('goalMsg').textContent=''; };
   document.getElementById('goalModal').onclick=(e)=>{ if(e.target.id==='goalModal'){ goalFormReset(); document.getElementById('goalMsg').textContent=''; } };
   document.getElementById('gDelete').onclick=()=>{ if(goalEdit){ const id=goalEdit; goalFormReset(); window.goalDel(id); } };
+  document.getElementById('gRecurring').addEventListener('change', goalRecurUpdate);
+  document.getElementById('gPerPeriod').addEventListener('input', goalRecurUpdate);
   document.getElementById('gUnit').addEventListener('input', ()=>{
     const u=document.getElementById('gUnit').value.trim();
     document.getElementById('gUnitLab').textContent = u||'unit';
@@ -1715,10 +1735,21 @@ function initGoals(){
     e.preventDefault();
     const name=document.getElementById('gName').value.trim(); if(!name) return;
     const mpRaw=document.getElementById('gMinPer').value;
+    const recurring=document.getElementById('gRecurring').checked;
     const o={ name, cat:document.getElementById('gCat').value,
       cur:+document.getElementById('gCur').value||0, target:+document.getElementById('gTarget').value||0,
       unit:document.getElementById('gUnit').value.trim(), start:document.getElementById('gStart').value, by:document.getElementById('gBy').value,
-      sec:document.getElementById('gSec').value, minPerUnit: mpRaw===''?null:(+mpRaw||0) };
+      sec:document.getElementById('gSec').value, minPerUnit: mpRaw===''?null:(+mpRaw||0), recurring:false };
+    if(recurring){
+      const pp=+document.getElementById('gPerPeriod').value||0;
+      const now=new Date(), yr=now.getFullYear();
+      const existing=goalEdit?loadGoals().find(x=>x.id===goalEdit):null;
+      const pl=(existing&&existing.recurPeriods)?existing.recurPeriods:periodsLeft(now,yr);  // freeze period count at creation
+      o.recurring=true; o.perPeriod=pp; o.recurPeriods=pl; o.sec='active'; o.unit='hrs'; o.minPerUnit=60;
+      o.target=+(pp*pl).toFixed(2);
+      if(!o.start) o.start=`${yr}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+      if(!o.by) o.by=`${yr}-12-31`;
+    }
     const g=loadGoals();
     if(goalEdit){ const i=g.findIndex(x=>x.id===goalEdit); if(i>=0){ g[i]={...g[i],...o}; saveGoals(g); syncGoalEntries(g[i]); } }
     else { o.id='g'+Date.now(); g.push(o); saveGoals(g); }
@@ -1759,6 +1790,7 @@ function goalCard(x){
   const mp = goalMinPer(x);
   const doneM = Math.round((+x.cur||0)*mp), totM = Math.round((+x.target||0)*mp);
   const det = [
+    x.recurring ? `<div class="gd-row"><span>Per period</span><b>${x.perPeriod}h × ${x.recurPeriods||'?'} periods</b></div>` : '',
     mp>0 ? `<div class="gd-row"><span>Done</span><b>≈ ${fmtShort(doneM)} of ${fmtShort(totM)}</b></div>` : '',
     mp>0 ? `<div class="gd-row"><span>Left</span><b>≈ ${totM>doneM?fmtShort(totM-doneM)+' to go':'done 🎉'}</b></div>` : '',
     hint ? `<div class="gd-row"><span>Pace</span><b>${hint}</b></div>` : ''
@@ -1780,7 +1812,7 @@ function goalCard(x){
         <div class="gring-txt">${raw}%</div>
       </div>
       <div class="gcard-head">
-        <div class="gcard-name" title="${x.name}">${x.name}</div>
+        <div class="gcard-name" title="${x.name}">${x.recurring?'🔁 ':''}${x.name}</div>
         <div class="gcard-sub"><b>${x.cur}</b>${x.target>0?` / ${x.target}`:''} ${x.unit||''}</div>
         <span class="gbadge" style="background:${col}">${badge}</span>
       </div>
@@ -1789,9 +1821,9 @@ function goalCard(x){
     <div class="gcard-foot"><span class="gcat" title="${x.cat}">${iconFor(x.cat)}</span><span class="gwhen">${when}</span></div>
   </div>`;
 }
-function renderSec(sec, el){
-  const rows=loadGoals().filter(g=>g.sec===sec);
-  if(sec==='active') rows.sort((a,b)=>{ // attention first: lagging, then nearest deadline
+function renderSec(filterFn, el, attention){
+  const rows=loadGoals().filter(filterFn);
+  if(attention) rows.sort((a,b)=>{ // attention first: lagging, then nearest deadline
     const r=paceRank(paceLabel(a))-paceRank(paceLabel(b)); if(r) return r;
     const da=daysLeft(a.by), db=daysLeft(b.by);
     return (da==null?1e9:da)-(db==null?1e9:db);
@@ -1827,7 +1859,12 @@ function renderGoalStats(){
       </div>
     </div>`;
 }
-function renderGoals(){ renderGoalStats(); renderSec('active','secActive'); renderSec('backlog','secBacklog'); renderSec('dream','secDream'); if(document.getElementById('fGoal')) refreshGoalOptions(); }
+function renderGoals(){ renderGoalStats();
+  renderSec(g=>g.sec==='active'&&!g.recurring,'secActive',true);
+  renderSec(g=>g.sec==='active'&&g.recurring,'secRecurring',true);
+  renderSec(g=>g.sec==='backlog','secBacklog',false);
+  renderSec(g=>g.sec==='dream','secDream',false);
+  if(document.getElementById('fGoal')) refreshGoalOptions(); }
 function goalMinPer(x){ if(x.minPerUnit!=null && x.minPerUnit!=='') return +x.minPerUnit||0; const u=(x.unit||'').toLowerCase(); if(/min/.test(u)) return 1; if(/hour|hr/.test(u)) return 60; return 0; }
 function goalMins(x,amt){ return Math.round(goalMinPer(x)*amt); }
 // Propagate a goal's name/category/mapping to all its linked time entries (so editing a goal updates the time tracker, incl. via Firebase).
@@ -1875,6 +1912,7 @@ window.goalEditStart=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x
   document.getElementById('gUnit').value=x.unit; document.getElementById('gStart').value=x.start||''; document.getElementById('gBy').value=x.by||'';
   document.getElementById('gMinPer').value=(x.minPerUnit==null?'':x.minPerUnit); document.getElementById('gUnitLab').textContent=x.unit||'unit';
   document.getElementById('gSec').value=x.sec; document.getElementById('goalFormTitle').textContent='Edit goal';
+  document.getElementById('gRecurring').checked=!!x.recurring; document.getElementById('gPerPeriod').value=(x.perPeriod==null?'':x.perPeriod); goalRecurUpdate();
   document.getElementById('gDelete').style.display=''; };
 window.goalDel=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x||!confirm(`Delete "${x.name}"? This also removes its tracked time entries.`)) return;
   saveGoals(loadGoals().filter(o=>o.id!==id));
@@ -2008,6 +2046,7 @@ function renderPlanning(){
     const hitems=(HABITS.find(h=>h.cat===k)?.items||[]);
     const habitH=hitems.reduce((a,i)=>a+i.m,0)*pend/60;
     const gs=goals.filter(g=>srcArr.includes(g.cat) && g.sec==='active').map(g=>{
+      if(g.recurring){ const pp=+g.perPeriod||0; return {name:g.name, h: pp*pLeft, leftU:0, unit:'hrs', recurring:true}; } // flat forward commitment
       const mp=goalMinPer(g); const leftU=Math.max(0,(+g.target||0)-(+g.cur||0));
       return {name:g.name, h: mp>0? leftU*mp/60 : 0, leftU, unit:g.unit||''};
     });
@@ -2018,7 +2057,7 @@ function renderPlanning(){
     const target=leftFixed!=null?(doneH+leftFixed):(doneH+allocated);
     const tasks=[
       ...pitems.map(it=>({label:`${it.n} · ${it.lbl||it.h+'h'}/period`, h:it.h*pLeft})),
-      ...gs.map(g=>({label:g.name, h:g.h, note:g.h?null:`${fmtH(g.leftU)} ${g.unit} left`})),
+      ...gs.map(g=>({label:(g.recurring?'🔁 ':'')+g.name, h:g.h, note:g.h?null:`${fmtH(g.leftU)} ${g.unit} left`})),
     ];
     return {k,color,target,done:doneH,allocated,tasks};
   };
