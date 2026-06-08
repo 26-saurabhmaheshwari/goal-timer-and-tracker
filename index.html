@@ -349,7 +349,9 @@
       <button data-v="overview" class="active">Overview</button>
       <button data-v="goals">Goals</button>
       <button data-v="planning">Time Planning</button>
+      <button data-v="habits">Habits</button>
       <button data-v="log">Log Data</button>
+      <button data-v="audit">Audit</button>
       <button data-v="settings">Settings</button>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
@@ -584,6 +586,34 @@
 <div id="viewPlanning" hidden>
   <div id="planning"></div>
 </div><!-- /viewPlanning -->
+
+<div id="viewHabits" hidden>
+  <div class="card" style="max-width:620px">
+    <h2>Habits — per period</h2>
+    <div class="hint">Record how many times you did each habit this 10-day period. Each save is tracked as time and feeds your totals. Per period only — a missed period doesn't carry over.</div>
+    <div class="frow" style="margin:12px 0">
+      <label>Month <select id="hbMonth"></select></label>
+      <label>Period <select id="hbPeriod">
+        <option value="P1">Days 1–10</option>
+        <option value="P2">Days 11–20</option>
+        <option value="P3">Days 21–end</option>
+      </select></label>
+    </div>
+    <div id="hbTable"></div>
+    <div class="gform-foot" style="margin-top:12px">
+      <button type="button" class="btn" id="hbSave">Save period</button>
+      <span id="hbMsg" class="fmsg"></span>
+    </div>
+  </div>
+</div><!-- /viewHabits -->
+
+<div id="viewAudit" hidden>
+  <div class="card" style="max-width:680px">
+    <h2>Audit — recent entries</h2>
+    <div class="hint">Every entry from the last 20 days and exactly how it affected your goals and planning. A rolling validation log.</div>
+    <div id="auditTable" style="margin-top:12px"></div>
+  </div>
+</div><!-- /viewAudit -->
 
 <div id="viewSettings" hidden>
   <div class="card" style="max-width:560px">
@@ -1846,16 +1876,22 @@ function setView(v){
   document.getElementById('viewLog').hidden = v!=='log';
   document.getElementById('viewGoals').hidden = v!=='goals';
   document.getElementById('viewPlanning').hidden = v!=='planning';
+  document.getElementById('viewHabits').hidden = v!=='habits';
+  document.getElementById('viewAudit').hidden = v!=='audit';
   document.getElementById('viewSettings').hidden = v!=='settings';
   document.getElementById('lifeBar').hidden = v!=='overview';
   const subs={overview:'your finite hours, on purpose', log:'log time, goals & screen use · saved on this device',
-    goals:'targets vs what you actually did', planning:'daily habits vs goal-based time', settings:'manage categories & preferences'};
+    goals:'targets vs what you actually did', planning:'daily habits vs goal-based time',
+    habits:'per-period habit completion · tracked as time', audit:'recent entries & their exact effect',
+    settings:'manage categories & preferences'};
   document.getElementById('sub').textContent = subs[v];
   document.querySelectorAll('#viewNav button').forEach(b=>b.classList.toggle('active', b.dataset.v===v));
   if(v==='overview'){ renderSuggestions(); setOv(ovTab); }
   if(v==='log') renderLog();
   if(v==='goals') renderGoals();
   if(v==='planning') renderPlanning();
+  if(v==='habits') renderHabits();
+  if(v==='audit') renderAudit();
   if(v==='settings') renderSettings();
   try{ localStorage.setItem(LS_VIEW, v); }catch(e){}
 }
@@ -1929,6 +1965,91 @@ document.getElementById('catEditForm').addEventListener('submit', e=>{
   const m=document.getElementById('catEditMsg');
   if(ok){ catModalShow(false); } else { m.textContent='Name empty or already exists'; m.style.color='#dc2626'; }
 });
+// ================= HABITS (per-period completion → tracked time) =================
+let hbInit=false;
+function habitFlat(){ return HABITS.flatMap(g=>g.items.map(i=>({n:i.n,m:i.m,cat:g.cat,c:HABIT_COL[g.cat]||'#8a93a3'}))); }
+function habitCount(ym,period,name){ return loadEntries().filter(e=>e.type==='habit'&&e.ym===ym&&e.period===period&&e.task===name).reduce((a,e)=>a+(+e.cnt||0),0); }
+function curPeriodKey(){ const d=new Date(); return {ym:CUR_YM, period:periodOfDay(d.getDate())}; }
+function renderHabits(){
+  const mSel=document.getElementById('hbMonth'); if(!mSel) return;
+  if(!mSel.options.length) mSel.innerHTML=ymList().map(o=>`<option value="${o.key}">${o.label}</option>`).join('');
+  if(!hbInit){ const cp=curPeriodKey(); mSel.value=cp.ym; document.getElementById('hbPeriod').value=cp.period;
+    mSel.onchange=renderHabits; document.getElementById('hbPeriod').onchange=renderHabits;
+    document.getElementById('hbSave').onclick=saveHabitPeriod; hbInit=true; }
+  const ym=mSel.value, period=document.getElementById('hbPeriod').value;
+  const rows=habitFlat().map(h=>{ const cnt=habitCount(ym,period,h.n);
+    return `<div class="trow" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)">
+      <span style="flex:1;font-weight:600">${h.n}</span>
+      <span class="tc" style="background:${h.c}">${h.cat}</span>
+      <span style="color:var(--muted);font-size:12px;width:50px;text-align:right">${h.m}m ea</span>
+      <input type="number" min="0" step="1" data-h="${h.n.replace(/"/g,'&quot;')}" value="${cnt||''}" placeholder="0" style="width:60px" oninput="hbRecalc()">
+      <span class="hbmin" style="width:72px;text-align:right;font-weight:600">${cnt?fmtShort(cnt*h.m):'—'}</span>
+    </div>`; }).join('');
+  document.getElementById('hbTable').innerHTML=rows+`<div style="display:flex;justify-content:flex-end;gap:12px;padding:12px 0 0;font-weight:700"><span>Period total</span><span id="hbTotal" style="width:72px;text-align:right">—</span></div>`;
+  hbRecalc();
+}
+function hbRecalc(){
+  const map={}; habitFlat().forEach(h=>map[h.n]=h.m); let tot=0;
+  document.querySelectorAll('#hbTable input[data-h]').forEach(inp=>{
+    const m=map[inp.dataset.h]||0, cnt=Math.max(0,+inp.value||0), mins=cnt*m; tot+=mins;
+    const span=inp.parentElement.querySelector('.hbmin'); if(span) span.textContent=mins?fmtShort(mins):'—'; });
+  const t=document.getElementById('hbTotal'); if(t) t.textContent=tot?fmtShort(tot):'—';
+}
+function saveHabitPeriod(){
+  const ym=document.getElementById('hbMonth').value, period=document.getElementById('hbPeriod').value;
+  const map={},catOf={}; habitFlat().forEach(h=>{map[h.n]=h.m;catOf[h.n]=h.cat;});
+  let all=loadEntries().filter(e=>!(e.type==='habit'&&e.ym===ym&&e.period===period));
+  let n=0;
+  document.querySelectorAll('#hbTable input[data-h]').forEach(inp=>{
+    const name=inp.dataset.h, cnt=Math.floor(+inp.value||0); if(cnt<=0) return;
+    const m=map[name]||0; all.push({id:eid(), ym, period, type:'habit', task:name, cat:catOf[name], cnt, mins:cnt*m}); n++; });
+  saveEntries(all);
+  const msg=document.getElementById('hbMsg'); msg.textContent=`Saved ${n} habit${n!==1?'s':''} for ${plabel(ym+'-'+period)} ✓`; msg.style.color='#16a34a';
+  renderHabits();
+}
+// ================= AUDIT (rolling 20-day entry ledger) =================
+function renderAudit(){
+  const el=document.getElementById('auditTable'); if(!el) return;
+  const now=Date.now(), win=20*86400000, goals=loadGoals(), r=n=>Math.round(n).toLocaleString('en-US');
+  const ents=loadEntries().map(e=>({e,ts:parseInt(String(e.id).slice(0,13),10)}))
+    .filter(o=>!isNaN(o.ts)&&now-o.ts<=win).sort((a,b)=>b.ts-a.ts);
+  if(!ents.length){ el.innerHTML='<div class="empty">No entries in the last 20 days.</div>'; return; }
+  const fmtDt=ts=>{const d=new Date(ts);return `${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;};
+  el.innerHTML=ents.map(({e,ts})=>{
+    const typ=e.type==='goal'?'🎯 Goal':e.type==='habit'?'🔁 Habit':e.type==='screen'?'📱 Screen':'⏱ Timer';
+    let effect='';
+    if(e.type==='goal'){ const g=goals.find(o=>o.id===e.goalId);
+      if(g){ const left=Math.max(0,(+g.target||0)-(+g.cur||0)); effect=`+${r(e.amt)} ${g.unit||''} → now ${r(g.cur)}/${r(g.target)} (${r(left)} left) · −${fmtShort(e.mins)} off ${e.cat} remaining`; }
+      else effect=`+${r(e.amt)} · −${fmtShort(e.mins)} off ${e.cat} remaining`;
+    } else if(e.type==='habit'){ effect=`${r(e.cnt)}× = ${fmtShort(e.mins)} → ${e.cat} · per-period, no carryover`; }
+    else if(e.type==='screen'){ effect=`${fmtShort(e.mins)} screen`; }
+    else effect=`${fmtShort(e.mins)} → ${e.cat} done`;
+    return `<div class="trow" style="display:block;padding:10px 0;border-bottom:1px solid var(--line)">
+      <div style="display:flex;justify-content:space-between;gap:10px"><span style="font-weight:600">${typ} · ${e.task||'—'}</span><span style="color:var(--muted);font-size:12px;white-space:nowrap">${fmtDt(ts)} · ${plabel(e.ym+'-'+e.period)}</span></div>
+      <div style="color:var(--muted);font-size:13px;margin-top:3px">${effect}</div>
+    </div>`; }).join('');
+}
+// ================= ARCHIVE (keep raw log to last 3 months; roll older into summaries) =================
+function archiveOldEntries(){
+  const keep=new Set(), d=new Date();
+  for(let i=0;i<3;i++){ const dt=new Date(d.getFullYear(),d.getMonth()-i,1); keep.add(`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`); }
+  const all=loadEntries(), old=all.filter(e=>!keep.has(e.ym)); if(!old.length) return;
+  let months=loadMonths(); const byYm={}; old.forEach(e=>{ (byYm[e.ym]=byYm[e.ym]||[]).push(e); });
+  const archived=new Set();
+  Object.entries(byYm).forEach(([ym,es])=>{
+    const M=months.find(x=>ymOf(x.m)===ym);
+    if(M && total(M.cats||{})>0) return;            // already summarised — don't double-count
+    const cats={}; es.forEach(e=>cats[e.cat]=(cats[e.cat]||0)+(+e.mins||0));
+    if(M) M.cats=cats; else months.push({m:ymLabel(ym),cats});
+    archived.add(ym);
+  });
+  if(archived.size){
+    localStorage.setItem(LS_MONTHS, JSON.stringify(months.filter(x=>ymOf(x.m)!==CUR_YM)));
+    MONTHS=loadMonths();
+    saveEntries(all.filter(e=>!archived.has(e.ym)));
+  }
+}
+try{ archiveOldEntries(); }catch(e){}
 (function(){ try{ const sv=localStorage.getItem(LS_VIEW); if(sv&&sv!=='overview') setView(sv); }catch(e){} })();
 </script>
 </body>
