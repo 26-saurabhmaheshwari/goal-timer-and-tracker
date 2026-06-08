@@ -567,7 +567,7 @@
         <label id="gUnitWrap">Unit <input id="gUnit" placeholder="Paath / mala / Minutes"></label>
       </div>
       <div class="frow" id="gRecurRow" hidden>
-        <label>Hours / period <input id="gPerPeriod" type="number" min="0" step="any" placeholder="e.g. 0.5"></label>
+        <label>Minutes / period <input id="gPerPeriod" type="number" min="0" step="any" placeholder="e.g. 40"></label>
         <div class="hint" id="gRecurCalc" style="align-self:end;margin:0 0 8px">—</div>
       </div>
       <div class="frow">
@@ -1693,12 +1693,12 @@ function goalRecurUpdate(){
   document.getElementById('gRecurRow').hidden=!on;
   // recurring derives target/unit/mapping/section — hide those fields entirely
   ['gUnitWrap','gTargetWrap','gMapWrap','gSecWrap'].forEach(id=>document.getElementById(id).style.display=on?'none':'');
-  document.getElementById('gCurLab').textContent=on?'Done so far (h)':'Current';
+  document.getElementById('gCurLab').textContent=on?'Done so far (min)':'Current';
   if(!on){ document.getElementById('gRecurCalc').textContent='—'; return; }
   const pp=+document.getElementById('gPerPeriod').value||0;
   const ex=goalEdit?loadGoals().find(x=>x.id===goalEdit):null;
   const now=new Date(), pl=(ex&&ex.recurPeriods)?ex.recurPeriods:periodsLeft(now,now.getFullYear());
-  document.getElementById('gRecurCalc').textContent=`= ${pl} periods × ${pp}h = ${(+(pp*pl).toFixed(2))}h total target`;
+  document.getElementById('gRecurCalc').textContent=`= ${pl} periods × ${pp} min = ${pp*pl} min total target`;
 }
 function goalFormReset(){ goalEdit=null; document.getElementById('goalForm').reset(); document.getElementById('gUnitLab').textContent='unit'; document.getElementById('goalFormTitle').textContent='Add a goal'; document.getElementById('gDelete').style.display='none'; goalRecurUpdate(); goalFormShow(false); }
 function initGoals(){
@@ -1745,7 +1745,7 @@ function initGoals(){
       const now=new Date(), yr=now.getFullYear();
       const existing=goalEdit?loadGoals().find(x=>x.id===goalEdit):null;
       const pl=(existing&&existing.recurPeriods)?existing.recurPeriods:periodsLeft(now,yr);  // freeze period count at creation
-      o.recurring=true; o.perPeriod=pp; o.recurPeriods=pl; o.sec='active'; o.unit='hrs'; o.minPerUnit=60;
+      o.recurring=true; o.perPeriod=pp; o.recurPeriods=pl; o.sec='active'; o.unit='mins'; o.minPerUnit=1;
       o.target=+(pp*pl).toFixed(2);
       if(!o.start) o.start=`${yr}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
       if(!o.by) o.by=`${yr}-12-31`;
@@ -1790,7 +1790,7 @@ function goalCard(x){
   const mp = goalMinPer(x);
   const doneM = Math.round((+x.cur||0)*mp), totM = Math.round((+x.target||0)*mp);
   const det = [
-    x.recurring ? `<div class="gd-row"><span>Per period</span><b>${x.perPeriod}h × ${x.recurPeriods||'?'} periods</b></div>` : '',
+    x.recurring ? `<div class="gd-row"><span>Per period</span><b>${x.perPeriod} min × ${x.recurPeriods||'?'} periods</b></div>` : '',
     mp>0 ? `<div class="gd-row"><span>Done</span><b>≈ ${fmtShort(doneM)} of ${fmtShort(totM)}</b></div>` : '',
     mp>0 ? `<div class="gd-row"><span>Left</span><b>≈ ${totM>doneM?fmtShort(totM-doneM)+' to go':'done 🎉'}</b></div>` : '',
     hint ? `<div class="gd-row"><span>Pace</span><b>${hint}</b></div>` : ''
@@ -2011,7 +2011,7 @@ function exportTipsPdf(){
 }
 function habitIcon(cat){ return iconFor(cat); }
 // per-period activities (period = 10 days: 1-10, 11-20, 21-end of month). hours per period.
-const PERIOD_ITEMS={Youth:[{n:'Cycling',h:1,lbl:'1h'}],Hobby:[{n:'Gardening',h:40/60,lbl:'40m'},{n:'Painting',h:40/60,lbl:'40m'},{n:'Shlok Paath',h:1}],'Career & Finance':[{n:'Finance',h:0.5}]};
+const PERIOD_ITEMS={}; // migrated to recurring goals (sec:'active', recurring:true)
 // count 10-day periods still ahead in the year (current period included)
 function periodsLeft(now,yr){let n=0;for(let mo=now.getMonth();mo<12;mo++){const dim=new Date(yr,mo+1,0).getDate();[[1,10],[11,20],[21,dim]].forEach(([s,e])=>{if(mo>now.getMonth()||e>=now.getDate())n++;});}return n;}
 function renderPlanning(){
@@ -2046,7 +2046,7 @@ function renderPlanning(){
     const hitems=(HABITS.find(h=>h.cat===k)?.items||[]);
     const habitH=hitems.reduce((a,i)=>a+i.m,0)*pend/60;
     const gs=goals.filter(g=>srcArr.includes(g.cat) && g.sec==='active').map(g=>{
-      if(g.recurring){ const pp=+g.perPeriod||0; return {name:g.name, h: pp*pLeft, leftU:0, unit:'hrs', recurring:true}; } // flat forward commitment
+      if(g.recurring){ const pp=+g.perPeriod||0; return {name:g.name, h: pp/60*pLeft, leftU:0, unit:'mins', recurring:true}; } // perPeriod in minutes; flat forward commitment
       const mp=goalMinPer(g); const leftU=Math.max(0,(+g.target||0)-(+g.cur||0));
       return {name:g.name, h: mp>0? leftU*mp/60 : 0, leftU, unit:g.unit||''};
     });
@@ -2100,7 +2100,7 @@ function renderPlanning(){
     return hdr+body+sub;
   };
   const spacer=`<tr><td colspan="4" style="height:16px;border:0;padding:0"></td></tr>`;
-  const groupsP=section('Daily habits',habitRows,rowP,4)+spacer+section('Goals & period work',goalRows,rowP,4);
+  const groupsP=section('Daily habits',habitRows,rowP,4)+spacer+section('Goals',goalRows,rowP,4);
   const totRowP=`<tr style="border-top:2.5px solid var(--ink);background:rgba(127,127,127,.12)">
     <td style="padding:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;font-size:12px"><b>Total</b></td>
     ${num('<b>'+fmtHM(totH/pLeft)+'</b>','padding:12px;white-space:nowrap;font-size:16px;color:var(--ink)')}
