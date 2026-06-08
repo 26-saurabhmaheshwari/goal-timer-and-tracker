@@ -767,7 +767,7 @@ const LS_COLORS='ptd_colors_v1', LS_ALLCATS='ptd_allcats_v1', LS_TASKCAT='ptd_ta
 const SEED_ICONS = {Spiritual:'🕉️',Youth:'💪',Family:'👨‍👩‍👧',Career:'💼',Hobby:'🎨',Mental:'🧠'};
 function loadObj(k,seed){ try{ const v=JSON.parse(localStorage.getItem(k)); return (v&&typeof v==='object'&&Object.keys(v).length)?v:seed; }catch(e){ return seed; } }
 function loadArr(k,seed){ try{ const v=JSON.parse(localStorage.getItem(k)); return (Array.isArray(v)&&v.length)?v:seed; }catch(e){ return seed; } }
-let COLORS  = {...loadObj(LS_COLORS, SEED_COLORS), ...SEED_COLORS};
+let COLORS  = {...SEED_COLORS, ...loadObj(LS_COLORS, {})};
 let ICONS   = {...SEED_ICONS, ...loadObj(LS_ICONS, {})};
 let ALLCATS = loadArr(LS_ALLCATS, SEED_ALLCATS);
 function iconFor(cat){ return ICONS[cat]||'🏷️'; }
