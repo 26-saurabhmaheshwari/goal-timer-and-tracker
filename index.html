@@ -1762,25 +1762,48 @@ function renderPlanning(){
   rowsData.forEach(r=>r.tasks.forEach(t=>goalRows.push({cat:r.k,color:r.color,h:t.h||0,label:t.label,note:t.note})));
   const totH=[...habitRows,...goalRows].reduce((a,t)=>a+(t.h||0),0);
   const catCell=(t,show)=>`<td style="padding:9px 14px">${show?`<span style="display:inline-flex;align-items:center;gap:8px"><i style="width:11px;height:11px;border-radius:3px;background:${t.color};display:inline-block;flex:none"></i><span style="color:var(--muted)">${t.cat}</span></span>`:''}</td>`;
-  const rowHtml=(t,show,topB)=>`<tr style="border-top:${topB} solid var(--line)">
-      ${num(t.h?fmtHM(t.h/pLeft):'')}
-      <td style="padding:9px 14px;color:var(--ink);font-weight:500">${t.label}</td>
-      ${catCell(t,show)}
-      ${num(t.h?fmtH(t.h)+'h':`<span style="color:#9aa3b2">${t.note}</span>`)}
-      ${num(t.h?fmtHM(t.h/mLeft):'')}
-    </tr>`;
-  const section=(label,rows)=>{
-    if(!rows.length) return '';
-    const hdr=`<tr style="background:rgba(127,127,127,.07)"><td colspan="5" style="padding:8px 14px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;font-weight:700;color:var(--muted)">${label}</td></tr>`;
-    let prev=null;
-    return hdr+rows.map((t,i)=>{const newCat=t.cat!==prev;prev=t.cat;return rowHtml(t,true,newCat?'2px':'1px');}).join('');
+  // line icon per category (stroke = category colour)
+  const catIcon=(cat,color)=>{
+    if(cat==='Career & Finance') return '<span style="font-size:15px;font-weight:700;line-height:1;color:'+color+';flex:none">₹</span>';
+    const sw='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="'+color+'" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none">';
+    const ic={
+      'Spiritual':'<circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="4.3" r="1.7"/><circle cx="17.4" cy="6.6" r="1.2"/><circle cx="19.7" cy="12" r="1.2"/><circle cx="17.4" cy="17.4" r="1.2"/><circle cx="12" cy="19.7" r="1.2"/><circle cx="6.6" cy="17.4" r="1.2"/><circle cx="4.3" cy="12" r="1.2"/><circle cx="6.6" cy="6.6" r="1.2"/>',
+      "Life's Big":'<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/>',
+      'Youth':'<path d="M13 2 4.5 13.5H10l-1 8.5 9.5-12.5H13l1-7.5z"/>',
+      'SRM Study':'<path d="M12 5v15"/><path d="M12 5a4 4 0 0 0-4-2H4v14h4a4 4 0 0 1 4 2"/><path d="M12 5a4 4 0 0 1 4-2h4v14h-4a4 4 0 0 0-4 2"/>',
+      'Career & Finance':'<rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 9.5v5M18 9.5v5"/>',
+      'Hobby':'<path d="M12 3a9 9 0 1 0 .5 18c1 0 1.4-1 .9-1.9-.5-.9.1-2 1.1-2H17a4 4 0 0 0 4-4.2C20.7 7 16.9 3 12 3z"/><circle cx="8" cy="11" r="1"/><circle cx="12" cy="8.5" r="1"/><circle cx="16" cy="11" r="1"/>',
+    };
+    return sw+(ic[cat]||'<circle cx="12" cy="12" r="6"/>')+'</svg>';
   };
-  const groups=section('Daily habits',habitRows)+section('Goals & period work',goalRows);
-  const totRow=`<tr style="border-top:2px solid var(--line);background:rgba(127,127,127,.09)">
-    ${num('<b>'+fmtHM(totH/pLeft)+'</b>','padding:12px 14px')}
-    <td style="padding:12px 14px"><b>Total</b></td><td></td>
-    ${num('<b>'+fmtH(totH)+'h</b>','padding:12px 14px')}
-    ${num('<b>'+fmtHM(totH/mLeft)+'</b>','padding:12px 14px')}
+  // single table row: icon+item | per period | per month | to do
+  const rowP=(t,show,topB)=>`<tr style="border-top:${topB} solid var(--line)">
+      <td style="padding:6px 12px;color:var(--ink);font-weight:500"><span style="display:inline-flex;align-items:center;gap:7px">${catIcon(t.cat,t.color)}${t.label}</span></td>
+      ${num(t.h?fmtHM(t.h/pLeft):`<span style="color:#9aa3b2">${t.note||''}</span>`,'padding:6px 12px;white-space:nowrap;font-weight:600;color:var(--ink)')}
+      ${num(t.h?fmtHM(t.h/mLeft):'','padding:6px 12px;white-space:nowrap;color:var(--muted);font-weight:400;font-size:12px')}
+      ${num(t.h?fmtH(t.h)+'h':'','padding:6px 12px;white-space:nowrap;font-weight:600;color:var(--ink)')}
+    </tr>`;
+  const section=(label,rows,rowFn,cols)=>{
+    if(!rows.length) return '';
+    const hdr=`<tr style="background:rgba(127,127,127,.07)"><td colspan="${cols}" style="padding:8px 14px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;font-weight:700;color:var(--muted)">${label}</td></tr>`;
+    let prev=null;
+    const body=rows.map(t=>{const newCat=t.cat!==prev;prev=t.cat;return rowFn(t,true,newCat?'2px':'1px');}).join('');
+    const s=rows.reduce((a,t)=>a+(t.h||0),0);
+    const sub=`<tr style="border-top:1.5px solid var(--line);background:rgba(127,127,127,.05)">
+      <td style="padding:9px 12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:11px;color:var(--muted)">Subtotal</td>
+      ${num('<b>'+fmtHM(s/pLeft)+'</b>','padding:9px 12px;white-space:nowrap;font-size:14.5px;color:var(--ink)')}
+      ${num('<b>'+fmtHM(s/mLeft)+'</b>','padding:9px 12px;white-space:nowrap;font-size:14.5px;color:var(--ink)')}
+      ${num('<b>'+fmtH(s)+'h</b>','padding:9px 12px;white-space:nowrap;font-size:14.5px;color:var(--ink)')}
+    </tr>`;
+    return hdr+body+sub;
+  };
+  const spacer=`<tr><td colspan="4" style="height:16px;border:0;padding:0"></td></tr>`;
+  const groupsP=section('Daily habits',habitRows,rowP,4)+spacer+section('Goals & period work',goalRows,rowP,4);
+  const totRowP=`<tr style="border-top:2.5px solid var(--ink);background:rgba(127,127,127,.12)">
+    <td style="padding:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;font-size:12px"><b>Total</b></td>
+    ${num('<b>'+fmtHM(totH/pLeft)+'</b>','padding:12px;white-space:nowrap;font-size:16px;color:var(--ink)')}
+    ${num('<b>'+fmtHM(totH/mLeft)+'</b>','padding:12px;white-space:nowrap;font-size:16px;color:var(--ink)')}
+    ${num('<b>'+fmtH(totH)+'h</b>','padding:12px;white-space:nowrap;font-size:16px;color:var(--ink)')}
   </tr>`;
   const yearH=tot.done+totH;
   // battery built from the same table data so it always matches
@@ -1809,14 +1832,14 @@ function renderPlanning(){
     ${stat('Per period required',fmtHM(totH/pLeft),`${pLeft} periods left`)}
     ${stat('Per day required',fmtHM(totH/pend),`fixed ${fmtM(fixed)} · goals ${fmtM(Math.max(0,totH/pend*60-fixed))}`)}
   </div>`;
-  const table=`<div class="card" style="padding:0;overflow:hidden">
+  const tableP=`<div class="card" style="padding:0;overflow:hidden;max-width:560px">
     <table class="ptbl" style="width:100%;border-collapse:collapse;font-size:13px">
-      <thead><tr>${th(`Per period<div style="text-transform:none;letter-spacing:0;font-weight:500;font-size:10px;margin-top:2px;color:var(--muted)">${pLeft} left</div>`)}${th('Goal / item','left')}${th('Category','left')}${th(`To do<div style="text-transform:none;letter-spacing:0;font-weight:500;font-size:10px;margin-top:2px;color:var(--muted)">${pend} days left</div>`)}${th(`Per month<div style="text-transform:none;letter-spacing:0;font-weight:500;font-size:10px;margin-top:2px;color:var(--muted)">${mLeft.toFixed(1)} left</div>`)}</tr></thead>
-      <tbody>${groups}${totRow}</tbody>
+      <thead><tr>${th('Goal / item','left')}${th(`Per period<div style="text-transform:none;letter-spacing:0;font-weight:500;font-size:10px;margin-top:2px;color:var(--muted)">${pLeft} left</div>`)}${th(`Per month<div style="text-transform:none;letter-spacing:0;font-weight:500;font-size:10px;margin-top:2px;color:var(--muted)">${mLeft.toFixed(1)} left</div>`)}${th(`To do<div style="text-transform:none;letter-spacing:0;font-weight:500;font-size:10px;margin-top:2px;color:var(--muted)">${pend}d left</div>`)}</tr></thead>
+      <tbody>${groupsP}${totRowP}</tbody>
     </table></div>`;
   document.getElementById('planning').innerHTML = strip + summary
     + `<h2 style="margin:4px 0 10px">Goals & remaining — ${yr} · rest of year (${pend} days)</h2>`
-    + table;
+    + tableP;
 }
 function setView(v){
   document.getElementById('viewOverview').hidden = v!=='overview';
