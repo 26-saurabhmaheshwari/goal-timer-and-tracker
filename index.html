@@ -1,13 +1,12 @@
 <!DOCTYPE html>
 <!--
-  ┌─ FILE MAP — grep these exact tags to jump (line numbers drift, names don't) ─┐
-  HTML views:   <!-- /viewOverview -->  /viewLog  /viewGoals  /viewPlanning  /viewAudit  /viewSettings
+  FILE MAP - grep these exact tags to jump (line numbers drift, names don't)
+  HTML views:   /viewOverview  /viewLog  /viewGoals  /viewPlanning  /viewAudit  /viewSettings  (each closes with a div comment)
   JS sections:  "===== LOG VIEW"  "category management (Settings)"  "===== ONLINE / OFFLINE"
                 "===== LIFE BAR"  "===== GOALS"  "===== TIME PLANNING"  "===== AUDIT"  "===== ARCHIVE"
-  Data/state:   LS_GOALS / SEED_GOALS · LS_HABITS / SEED_HABITS / loadHabits / groupHabits · HABIT_COL / CAT_ICON
-  Sync:         fbBlob (Firestore sync shape) · fb-data listener (incoming sync)
-  Key fns:      renderLog · submitProject · refreshHabitOptions · renderPlanning · renderSettings · renderHabitsSettings
-  └──────────────────────────────────────────────────────────────────────────┘
+  Data/state:   LS_GOALS / SEED_GOALS . LS_HABITS / SEED_HABITS / loadHabits / groupHabits . HABIT_COL / CAT_ICON
+  Sync:         fbBlob (Firestore sync shape) . fb-data listener (incoming sync)
+  Key fns:      renderLog . submitProject . refreshHabitOptions . renderPlanning . renderSettings . renderHabitsSettings
 -->
 <html lang="en">
 <head>
