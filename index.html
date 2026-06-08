@@ -25,8 +25,9 @@
   .sub{color:var(--muted);font-size:13px;margin-top:2px}
   .wrap{max-width:1280px;margin:0 auto}
   header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:12px}
-  .tabs{display:flex;gap:6px;background:#e8ecf4;padding:5px;border-radius:12px}
-  .tabs button{border:0;background:transparent;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:.15s}
+  #viewNav{flex-basis:100%;order:3;justify-content:center}
+  .tabs{display:flex;flex-wrap:wrap;gap:5px;background:#e8ecf4;padding:5px;border-radius:12px}
+  .tabs button{border:0;background:transparent;padding:8px 13px;border-radius:8px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:.15s;white-space:nowrap}
   .tabs button.active{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(20,30,60,.12)}
   .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
   .kpi{background:var(--card);border-radius:16px;padding:18px 20px;box-shadow:0 1px 4px rgba(20,30,60,.05)}
@@ -349,7 +350,6 @@
       <button data-v="overview" class="active">Overview</button>
       <button data-v="goals">Goals</button>
       <button data-v="planning">Time Planning</button>
-      <button data-v="habits">Habits</button>
       <button data-v="log">Log Data</button>
       <button data-v="audit">Audit</button>
       <button data-v="settings">Settings</button>
@@ -413,7 +413,7 @@
       <div class="hint">Pick what you're logging, then fill the few fields. Saved on this device · periods are 10-day blocks.</div>
       <form id="logForm" class="form">
         <div class="typetabs" id="typeTabs">
-          <button type="button" data-t="project" class="active">⏱ Timer</button>
+          <button type="button" data-t="project" class="active">🔁 Habits</button>
           <button type="button" data-t="goal">🎯 Goal</button>
           <button type="button" data-t="screen">📱 Screen</button>
         </div>
@@ -428,12 +428,8 @@
 
         <div class="tgroup" data-type="project">
           <div class="frow">
-            <label>Task <input id="fTask" type="text" list="taskList" placeholder="pick or type a task"><datalist id="taskList"></datalist></label>
-            <label>Category <select id="fCat"></select></label>
-          </div>
-          <div class="frow">
+            <label>Habit <select id="fHabit"></select></label>
             <label>Time <span class="time2"><input id="fHrs" type="number" min="0" placeholder="h"> <input id="fMin" type="number" min="0" max="59" placeholder="m"></span></label>
-            <label></label>
           </div>
         </div>
 
@@ -587,26 +583,6 @@
   <div id="planning"></div>
 </div><!-- /viewPlanning -->
 
-<div id="viewHabits" hidden>
-  <div class="card" style="max-width:620px">
-    <h2>Habits — per period</h2>
-    <div class="hint">Record how many times you did each habit this 10-day period. Each save is tracked as time and feeds your totals. Per period only — a missed period doesn't carry over.</div>
-    <div class="frow" style="margin:12px 0">
-      <label>Month <select id="hbMonth"></select></label>
-      <label>Period <select id="hbPeriod">
-        <option value="P1">Days 1–10</option>
-        <option value="P2">Days 11–20</option>
-        <option value="P3">Days 21–end</option>
-      </select></label>
-    </div>
-    <div id="hbTable"></div>
-    <div class="gform-foot" style="margin-top:12px">
-      <button type="button" class="btn" id="hbSave">Save period</button>
-      <span id="hbMsg" class="fmsg"></span>
-    </div>
-  </div>
-</div><!-- /viewHabits -->
-
 <div id="viewAudit" hidden>
   <div class="card" style="max-width:680px">
     <h2>Audit — recent entries</h2>
@@ -628,6 +604,23 @@
       <div class="gform-foot">
         <button type="submit" class="btn">+ Add category</button>
         <span id="catMsg" class="fmsg"></span>
+      </div>
+    </form>
+  </div>
+
+  <div class="card" style="max-width:560px;margin-top:18px">
+    <h2>Habits</h2>
+    <div class="hint">Daily habits shown in Time Planning. Editing only affects future planning — past logged time is never changed.</div>
+    <div id="habitList" class="catlist"></div>
+    <form id="habitForm" class="form" style="margin-top:14px">
+      <div class="frow">
+        <label>New habit <input id="newHabitName" type="text" placeholder="e.g. Meditation"></label>
+        <label>Category <select id="newHabitCat"></select></label>
+        <label>Min/day <input id="newHabitMin" type="number" min="0" step="1" value="10" style="width:80px"></label>
+      </div>
+      <div class="gform-foot">
+        <button type="submit" class="btn">+ Add habit</button>
+        <span id="habitMsg" class="fmsg"></span>
       </div>
     </form>
   </div>
@@ -1101,9 +1094,7 @@ let logType='project';
 function eid(){ return Date.now()+''+Math.floor(performance.now()); }
 function initLogForm(){
   document.getElementById('fMonth').innerHTML = ymList().map(o=>`<option value="${o.key}">${o.label}</option>`).join('');
-  refreshCatOptions(); refreshTaskOptions(); refreshGoalOptions();
-  const clearTask=()=>{document.getElementById('fTask').value=''; refreshTaskOptions();};
-  document.getElementById('fCat').addEventListener('change', clearTask);
+  refreshHabitOptions(); refreshGoalOptions();
   document.querySelectorAll('#typeTabs button').forEach(b=>b.onclick=()=>setLogType(b.dataset.t));
   document.getElementById('fGoal').addEventListener('change', syncGoalFields);
   document.getElementById('fGoalAmt').addEventListener('input', syncGoalFields);
@@ -1149,15 +1140,16 @@ function onLogSubmit(e){
 function submitProject(ym,period){
   const hrs=+document.getElementById('fHrs').value||0, min=+document.getElementById('fMin').value||0;
   const mins=hrs*60+min;
-  const cat=document.getElementById('fCat').value;
-  const task=document.getElementById('fTask').value.trim();
-  if(!task||mins<=0){ flash('Enter a task and a time > 0', true); return; }
+  const sel=document.getElementById('fHabit'), opt=sel.options[sel.selectedIndex];
+  const task=sel.value.trim();
+  const cat=opt?opt.dataset.cat:'';
+  if(!task||mins<=0){ flash('Pick a habit and a time > 0', true); return; }
   const all=loadEntries();
   all.push({id:eid(), ym, period, type:'project', task, cat, mins});
   saveEntries(all);
   logSel = `${ym}-${period}`;
-  document.getElementById('fTask').value=''; document.getElementById('fHrs').value=''; document.getElementById('fMin').value='';
-  refreshCatOptions(); refreshTaskOptions(); flash(`Added “${task}” (${fmtShort(mins)})`);
+  document.getElementById('fHrs').value=''; document.getElementById('fMin').value='';
+  flash(`Added “${task}” (${fmtShort(mins)})`);
   renderLog();
 }
 function submitGoal(ym,period){
@@ -1196,9 +1188,17 @@ function submitScreen(ym,period){
 }
 function flash(msg, err){ const el=document.getElementById('formMsg'); el.textContent=msg; el.style.color=err?'#dc2626':'#16a34a'; }
 function refreshCatOptions(){
+  const el=document.getElementById('fCat'); if(!el) return;
   const custom=[...new Set(loadEntries().map(e=>e.cat))].filter(c=>!ALLCATS.includes(c));
-  const cur=document.getElementById('fCat').value;
-  document.getElementById('fCat').innerHTML=[...ALLCATS,...custom].map(c=>`<option ${c===cur?'selected':''}>${c}</option>`).join('');
+  const cur=el.value;
+  el.innerHTML=[...ALLCATS,...custom].map(c=>`<option ${c===cur?'selected':''}>${c}</option>`).join('');
+}
+function refreshHabitOptions(){
+  const el=document.getElementById('fHabit'); if(!el) return;
+  const cur=el.value, h=loadHabits();
+  el.innerHTML = h.length
+    ? h.map(it=>`<option value="${it.n.replace(/"/g,'&quot;')}" data-cat="${(it.cat||'').replace(/"/g,'&quot;')}"${it.n===cur?' selected':''}>${habitIcon(it.cat)} ${it.n} · ${it.m}m</option>`).join('')
+    : '<option value="">No habits — add some in Settings</option>';
 }
 // ---- category management (Settings) ----
 function persistCats(){ localStorage.setItem(LS_ALLCATS, JSON.stringify(ALLCATS)); localStorage.setItem(LS_COLORS, JSON.stringify(COLORS)); fbSyncPush(); }
@@ -1216,7 +1216,35 @@ function renderSettings(){
       ${used.has(c)?'<span class="muted-sm">in use</span>':''}
       <button class="cedit" title="Edit" onclick="catEditStart('${e}')">✎</button>
     </div>`; }).join('') || '<div class="empty">No categories. Add one below.</div>';
+  renderHabitsSettings();
 }
+function renderHabitsSettings(){
+  const el=document.getElementById('habitList'); if(!el) return;
+  const h=loadHabits();
+  const catOpts=c=>ALLCATS.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"${x===c?' selected':''}>${x}</option>`).join('');
+  el.innerHTML = h.map((it,i)=>`<div class="catrow">
+      <span class="cdot" style="background:${HABIT_COL[it.cat]||colorFor(it.cat)}"></span>
+      <input class="nm" type="text" value="${it.n.replace(/"/g,'&quot;')}" onchange="habitEdit(${i},'n',this.value)" style="flex:1;border:1px solid var(--line);border-radius:6px;padding:4px 6px">
+      <select onchange="habitEdit(${i},'cat',this.value)" style="border:1px solid var(--line);border-radius:6px;padding:4px 6px">${catOpts(it.cat)}</select>
+      <input type="number" min="0" step="1" value="${it.m}" onchange="habitEdit(${i},'m',this.value)" style="width:60px">
+      <span class="muted-sm">m/day</span>
+      <button class="cedit" title="Delete" onclick="habitDel(${i})">🗑</button>
+    </div>`).join('') || '<div class="empty">No habits. Add one below.</div>';
+  const sel=document.getElementById('newHabitCat'); if(sel) sel.innerHTML=catOpts(sel.value||ALLCATS[0]);
+}
+window.habitEdit=function(i,k,v){
+  const h=loadHabits(); if(!h[i]) return;
+  if(k==='m') v=Math.max(0,Math.floor(+v||0)); else v=(''+v).trim();
+  if(k==='n'&&!v){ renderHabitsSettings(); return; }
+  h[i][k]=v; saveHabits(h); renderHabitsSettings(); refreshHabitOptions();
+  if(!document.getElementById('viewPlanning').hidden) renderPlanning();
+};
+window.habitDel=function(i){
+  const h=loadHabits(); if(!h[i]) return;
+  if(!confirm(`Delete habit “${h[i].n}”? Past logged time is unaffected.`)) return;
+  h.splice(i,1); saveHabits(h); renderHabitsSettings(); refreshHabitOptions();
+  if(!document.getElementById('viewPlanning').hidden) renderPlanning();
+};
 let catEdit=null;
 function catModalShow(on){ document.getElementById('catModal').hidden=!on; document.body.style.overflow=on?'hidden':''; }
 window.catEditStart=function(c){
@@ -1252,10 +1280,11 @@ window.delCategory=function(c){
   ALLCATS=ALLCATS.filter(x=>x!==c); persistCats(); refreshAllCatPickers(); renderSettings(); catModalShow(false);
 };
 function refreshTaskOptions(){
+  const el=document.getElementById('taskList'); if(!el) return;
   const cat=document.getElementById('fCat').value;
   const base = TASKS.filter(t=>TASK_CAT[t]===cat);
   const custom=[...new Set(loadEntries().filter(e=>e.cat===cat).map(e=>e.task))].filter(t=>!base.includes(t));
-  document.getElementById('taskList').innerHTML=[...base,...custom].map(t=>`<option value="${t.replace(/"/g,'&quot;')}">`).join('');
+  el.innerHTML=[...base,...custom].map(t=>`<option value="${t.replace(/"/g,'&quot;')}">`).join('');
 }
 function deleteEntry(id){
   const all=loadEntries(); const e=all.find(x=>x.id===id);
@@ -1709,29 +1738,28 @@ window.goalDel=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x||!con
 // ---- view switch ----
 // ================= TIME PLANNING (daily fixed habits vs goal-based) =================
 // Fixed daily rituals/habits. Everything not listed here is goal-based (see Goals tab).
-const HABITS=[
-  {cat:'Spiritual', items:[
-    {n:'Vishnu Sahasranāma',        m:15},
-    {n:'Golden Jewel',              m:18},
-    {n:'Grah Maitree', m:12},
-  ]},
-  {cat:'Youth', items:[
-    {n:'Nurture', m:30},
-    {n:'Balayam', m:10},
-  ]},
-  {cat:'SRM Study', items:[
-    {n:'SRM Study', m:20},
-  ]},
-  {cat:'Hobby', items:[
-    {n:'Pranav', m:6},
-  ]},
+const LS_HABITS='ptd_habits_v1';
+const SEED_HABITS=[
+  {n:'Vishnu Sahasranāma', cat:'Spiritual', m:15},
+  {n:'Golden Jewel',       cat:'Spiritual', m:18},
+  {n:'Grah Maitree',       cat:'Spiritual', m:12},
+  {n:'Nurture',            cat:'Youth',     m:30},
+  {n:'Balayam',            cat:'Youth',     m:10},
+  {n:'SRM Study',          cat:'SRM Study', m:20},
+  {n:'Pranav',             cat:'Hobby',     m:6},
 ];
+function loadHabits(){ try{ const v=JSON.parse(localStorage.getItem(LS_HABITS)); return Array.isArray(v)?v:SEED_HABITS; }catch(e){ return SEED_HABITS; } }
+function saveHabits(h){ localStorage.setItem(LS_HABITS, JSON.stringify(h)); fbSyncPush(); }
+function groupHabits(flat){ const o=[]; flat.forEach(i=>{ let g=o.find(x=>x.cat===i.cat); if(!g){g={cat:i.cat,items:[]};o.push(g);} g.items.push({n:i.n,m:i.m}); }); return o; }
 const HABIT_COL={Spiritual:'#4C6EF5',"Life's Big":'#E84393',Youth:'#8DC63F','SRM Study':'#F5A623','Career & Finance':'#5A49B8',Hobby:'#8B2FE0'};
+const CAT_ICON={Spiritual:'🕉️',"Life's Big":'🌟',Youth:'💪','SRM Study':'📖','Career & Finance':'💰',Hobby:'🎨'};
+function habitIcon(cat){ return CAT_ICON[cat]||'🔁'; }
 // per-period activities (period = 10 days: 1-10, 11-20, 21-end of month). hours per period.
 const PERIOD_ITEMS={Youth:[{n:'Cycling',h:1,lbl:'1h'}],Hobby:[{n:'Gardening',h:40/60,lbl:'40m'},{n:'Painting',h:40/60,lbl:'40m'},{n:'Shlok Paath',h:1}],'Career & Finance':[{n:'Finance',h:0.5}]};
 // count 10-day periods still ahead in the year (current period included)
 function periodsLeft(now,yr){let n=0;for(let mo=now.getMonth();mo<12;mo++){const dim=new Date(yr,mo+1,0).getDate();[[1,10],[11,20],[21,dim]].forEach(([s,e])=>{if(mo>now.getMonth()||e>=now.getDate())n++;});}return n;}
 function renderPlanning(){
+  const HABITS=groupHabits(loadHabits());
   const fmtM=m=>{const h=Math.floor(m/60),mm=Math.round(m%60);return h?(mm?`${h}h ${mm}m`:`${h}h`):`${mm}m`;};
   const POOL=YBATT_DAILY*60;
   const habitItems=HABITS.flatMap(g=>g.items.map(i=>({n:i.n,m:i.m,cat:g.cat,c:HABIT_COL[g.cat]||'#8a93a3'})));
@@ -1876,13 +1904,12 @@ function setView(v){
   document.getElementById('viewLog').hidden = v!=='log';
   document.getElementById('viewGoals').hidden = v!=='goals';
   document.getElementById('viewPlanning').hidden = v!=='planning';
-  document.getElementById('viewHabits').hidden = v!=='habits';
   document.getElementById('viewAudit').hidden = v!=='audit';
   document.getElementById('viewSettings').hidden = v!=='settings';
   document.getElementById('lifeBar').hidden = v!=='overview';
   const subs={overview:'your finite hours, on purpose', log:'log time, goals & screen use · saved on this device',
     goals:'targets vs what you actually did', planning:'daily habits vs goal-based time',
-    habits:'per-period habit completion · tracked as time', audit:'recent entries & their exact effect',
+    audit:'recent entries & their exact effect',
     settings:'manage categories & preferences'};
   document.getElementById('sub').textContent = subs[v];
   document.querySelectorAll('#viewNav button').forEach(b=>b.classList.toggle('active', b.dataset.v===v));
@@ -1890,7 +1917,6 @@ function setView(v){
   if(v==='log') renderLog();
   if(v==='goals') renderGoals();
   if(v==='planning') renderPlanning();
-  if(v==='habits') renderHabits();
   if(v==='audit') renderAudit();
   if(v==='settings') renderSettings();
   try{ localStorage.setItem(LS_VIEW, v); }catch(e){}
@@ -1908,7 +1934,7 @@ function setOv(o){
 }
 
 // --- Firebase sync glue ---
-function fbBlob(){ return {version:1, months:MONTHS, colors:COLORS, allcats:ALLCATS, taskcat:TASK_CAT, entries:loadEntries(), online:loadOnline(), goals:loadGoals(), dob:loadDob(), lockMig:localStorage.getItem('ptd_lockmig_v1')==='1'}; }
+function fbBlob(){ return {version:1, months:MONTHS, colors:COLORS, allcats:ALLCATS, taskcat:TASK_CAT, entries:loadEntries(), online:loadOnline(), goals:loadGoals(), habits:loadHabits(), dob:loadDob(), lockMig:localStorage.getItem('ptd_lockmig_v1')==='1'}; }
 function fbSyncPush(){ window.fbPushRaw && window.fbPushRaw(fbBlob()); }
 window.fbToggle = function(){ if(window.__fbIn){ window.fbSignOut(); } else { window.fbSignIn(); } };
 document.addEventListener('fb-auth', e=>{
@@ -1921,7 +1947,7 @@ document.addEventListener('fb-data', e=>{
   const d=e.detail||{}; let changed=false;
   const set=(k,v)=>{ if(v===undefined||v===null) return; const s=JSON.stringify(v); if(localStorage.getItem(k)!==s){ localStorage.setItem(k,s); changed=true; } };
   set(LS_MONTHS,d.months); set(LS_COLORS,d.colors); set(LS_ALLCATS,d.allcats); set(LS_TASKCAT,d.taskcat);
-  set(LS_KEY,d.entries); set(LS_ONLINE,d.online); set(LS_GOALS,d.goals);
+  set(LS_KEY,d.entries); set(LS_ONLINE,d.online); set(LS_GOALS,d.goals); set(LS_HABITS,d.habits);
   if(typeof d.dob==='string' && d.dob && localStorage.getItem(LS_DOB)!==d.dob){ localStorage.setItem(LS_DOB,d.dob); changed=true; }
   // one-time backfill: lock goal-linked entries that already exist, so a later
   // minutes-per-unit change never retroactively rewrites them. Flag is synced
@@ -1955,6 +1981,18 @@ document.getElementById('catForm').addEventListener('submit', e=>{
   ALLCATS.push(name); COLORS[name]=color; persistCats(); refreshAllCatPickers(); renderSettings();
   document.getElementById('newCatName').value=''; msg.textContent=`Added “${name}” ✓`; msg.style.color='#16a34a';
 });
+document.getElementById('habitForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const name=document.getElementById('newHabitName').value.trim();
+  const cat=document.getElementById('newHabitCat').value;
+  const m=Math.max(0,Math.floor(+document.getElementById('newHabitMin').value||0));
+  const msg=document.getElementById('habitMsg');
+  if(!name){ msg.textContent='Enter a name'; msg.style.color='#dc2626'; return; }
+  const h=loadHabits(); h.push({n:name,cat,m}); saveHabits(h); renderHabitsSettings(); refreshHabitOptions();
+  document.getElementById('newHabitName').value='';
+  msg.textContent=`Added “${name}” ✓`; msg.style.color='#16a34a';
+  if(!document.getElementById('viewPlanning').hidden) renderPlanning();
+});
 document.getElementById('catEditCancel').onclick=()=>catModalShow(false);
 document.getElementById('catEditClose').onclick=()=>catModalShow(false);
 document.getElementById('catModal').onclick=(e)=>{ if(e.target.id==='catModal') catModalShow(false); };
@@ -1965,48 +2003,6 @@ document.getElementById('catEditForm').addEventListener('submit', e=>{
   const m=document.getElementById('catEditMsg');
   if(ok){ catModalShow(false); } else { m.textContent='Name empty or already exists'; m.style.color='#dc2626'; }
 });
-// ================= HABITS (per-period completion → tracked time) =================
-let hbInit=false;
-function habitFlat(){ return HABITS.flatMap(g=>g.items.map(i=>({n:i.n,m:i.m,cat:g.cat,c:HABIT_COL[g.cat]||'#8a93a3'}))); }
-function habitCount(ym,period,name){ return loadEntries().filter(e=>e.type==='habit'&&e.ym===ym&&e.period===period&&e.task===name).reduce((a,e)=>a+(+e.cnt||0),0); }
-function curPeriodKey(){ const d=new Date(); return {ym:CUR_YM, period:periodOfDay(d.getDate())}; }
-function renderHabits(){
-  const mSel=document.getElementById('hbMonth'); if(!mSel) return;
-  if(!mSel.options.length) mSel.innerHTML=ymList().map(o=>`<option value="${o.key}">${o.label}</option>`).join('');
-  if(!hbInit){ const cp=curPeriodKey(); mSel.value=cp.ym; document.getElementById('hbPeriod').value=cp.period;
-    mSel.onchange=renderHabits; document.getElementById('hbPeriod').onchange=renderHabits;
-    document.getElementById('hbSave').onclick=saveHabitPeriod; hbInit=true; }
-  const ym=mSel.value, period=document.getElementById('hbPeriod').value;
-  const rows=habitFlat().map(h=>{ const cnt=habitCount(ym,period,h.n);
-    return `<div class="trow" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)">
-      <span style="flex:1;font-weight:600">${h.n}</span>
-      <span class="tc" style="background:${h.c}">${h.cat}</span>
-      <span style="color:var(--muted);font-size:12px;width:50px;text-align:right">${h.m}m ea</span>
-      <input type="number" min="0" step="1" data-h="${h.n.replace(/"/g,'&quot;')}" value="${cnt||''}" placeholder="0" style="width:60px" oninput="hbRecalc()">
-      <span class="hbmin" style="width:72px;text-align:right;font-weight:600">${cnt?fmtShort(cnt*h.m):'—'}</span>
-    </div>`; }).join('');
-  document.getElementById('hbTable').innerHTML=rows+`<div style="display:flex;justify-content:flex-end;gap:12px;padding:12px 0 0;font-weight:700"><span>Period total</span><span id="hbTotal" style="width:72px;text-align:right">—</span></div>`;
-  hbRecalc();
-}
-function hbRecalc(){
-  const map={}; habitFlat().forEach(h=>map[h.n]=h.m); let tot=0;
-  document.querySelectorAll('#hbTable input[data-h]').forEach(inp=>{
-    const m=map[inp.dataset.h]||0, cnt=Math.max(0,+inp.value||0), mins=cnt*m; tot+=mins;
-    const span=inp.parentElement.querySelector('.hbmin'); if(span) span.textContent=mins?fmtShort(mins):'—'; });
-  const t=document.getElementById('hbTotal'); if(t) t.textContent=tot?fmtShort(tot):'—';
-}
-function saveHabitPeriod(){
-  const ym=document.getElementById('hbMonth').value, period=document.getElementById('hbPeriod').value;
-  const map={},catOf={}; habitFlat().forEach(h=>{map[h.n]=h.m;catOf[h.n]=h.cat;});
-  let all=loadEntries().filter(e=>!(e.type==='habit'&&e.ym===ym&&e.period===period));
-  let n=0;
-  document.querySelectorAll('#hbTable input[data-h]').forEach(inp=>{
-    const name=inp.dataset.h, cnt=Math.floor(+inp.value||0); if(cnt<=0) return;
-    const m=map[name]||0; all.push({id:eid(), ym, period, type:'habit', task:name, cat:catOf[name], cnt, mins:cnt*m}); n++; });
-  saveEntries(all);
-  const msg=document.getElementById('hbMsg'); msg.textContent=`Saved ${n} habit${n!==1?'s':''} for ${plabel(ym+'-'+period)} ✓`; msg.style.color='#16a34a';
-  renderHabits();
-}
 // ================= AUDIT (rolling 20-day entry ledger) =================
 function renderAudit(){
   const el=document.getElementById('auditTable'); if(!el) return;
