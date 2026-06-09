@@ -753,7 +753,7 @@
       <div class="frow">
         <label>Name <input id="catEditName" type="text"></label>
         <label>Icon <input id="catEditIcon" type="text" maxlength="4" placeholder="🏷️" style="width:60px;text-align:center"></label>
-        <label>Colour <input id="catEditColor" type="color"></label>
+        <label>Colour <span style="display:inline-flex;gap:6px;align-items:center"><input id="catEditColor" type="color"><input id="catEditHex" type="text" maxlength="7" placeholder="#4C6EF5" style="width:84px;text-transform:uppercase;font-family:monospace"></span></label>
       </div>
       <div class="gform-foot">
         <button type="button" id="catEditDelete" class="btn" style="background:#ef4444;margin-right:auto">Delete</button>
@@ -1207,9 +1207,12 @@ function saveEntries(a){ localStorage.setItem(LS_KEY, JSON.stringify(a)); fbSync
 const LS_ROLLUP='ptd_rollup_v1';
 function loadRollup(){ try{ const v=JSON.parse(localStorage.getItem(LS_ROLLUP)); return (v&&typeof v==='object'&&!Array.isArray(v))?v:{}; }catch(e){ return {}; } }
 function saveRollup(r){ localStorage.setItem(LS_ROLLUP, JSON.stringify(r)); }
+function hslToHex(h,s,l){ const a=s*Math.min(l,1-l);
+  const f=n=>{ const k=(n+h/30)%12, c=l-a*Math.max(Math.min(k-3,9-k,1),-1); return Math.round(255*c).toString(16).padStart(2,'0'); };
+  return `#${f(0)}${f(8)}${f(4)}`.toUpperCase(); }
 function colorFor(cat){ if(COLORS[cat])return COLORS[cat];
   let h=0; for(const c of cat) h=(c.charCodeAt(0)+((h<<5)-h))|0;
-  return `hsl(${Math.abs(h)%360} 65% 55%)`; }
+  return hslToHex(Math.abs(h)%360,0.65,0.55); }
 function ymList(){ // Jun 2026 .. May 2027
   const out=[]; for(let i=5;i<=16;i++){ const y=2026+Math.floor(i/12), m=i%12; out.push({key:`${y}-${String(m+1).padStart(2,'0')}`, label:`${MONTH_NAMES[m]} ${y}`}); }
   return out;
@@ -1410,6 +1413,7 @@ window.catEditStart=function(c){
   document.getElementById('catEditName').value=c;
   document.getElementById('catEditIcon').value=ICONS[c]||'';
   document.getElementById('catEditColor').value=colorFor(c);
+  document.getElementById('catEditHex').value=colorFor(c).toUpperCase();
   document.getElementById('catEditTitle').textContent=`Edit “${c}”`;
   const inUse=loadEntries().some(e=>e.cat===c);
   document.getElementById('catEditUse').textContent = inUse ? 'Used by existing entries — renaming updates them; deleting keeps their old label.' : 'Not used by any entry yet.';
@@ -2370,9 +2374,15 @@ document.getElementById('catEditCancel').onclick=()=>catModalShow(false);
 document.getElementById('catEditClose').onclick=()=>catModalShow(false);
 document.getElementById('catModal').onclick=(e)=>{ if(e.target.id==='catModal') catModalShow(false); };
 document.getElementById('catEditDelete').onclick=()=>{ if(catEdit) window.delCategory(catEdit); };
+(function(){ const ci=document.getElementById('catEditColor'), hx=document.getElementById('catEditHex');
+  const norm=v=>{ v=v.trim(); if(/^[0-9a-fA-F]{6}$/.test(v))v='#'+v; return /^#[0-9a-fA-F]{6}$/.test(v)?v.toUpperCase():null; };
+  ci.addEventListener('input',()=>hx.value=ci.value.toUpperCase());
+  hx.addEventListener('input',()=>{ const h=norm(hx.value); if(h)ci.value=h; });
+})();
 document.getElementById('catEditForm').addEventListener('submit', e=>{
   e.preventDefault(); if(!catEdit) return;
-  const ok=catRename(catEdit, document.getElementById('catEditName').value, document.getElementById('catEditColor').value, document.getElementById('catEditIcon').value);
+  const hx=document.getElementById('catEditHex').value.trim(), hxv=/^#?[0-9a-fA-F]{6}$/.test(hx)?(hx[0]==='#'?hx:'#'+hx).toUpperCase():document.getElementById('catEditColor').value;
+  const ok=catRename(catEdit, document.getElementById('catEditName').value, hxv, document.getElementById('catEditIcon').value);
   const m=document.getElementById('catEditMsg');
   if(ok){ catModalShow(false); } else { m.textContent='Name empty or already exists'; m.style.color='#dc2626'; }
 });
