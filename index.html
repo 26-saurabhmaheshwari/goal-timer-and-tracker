@@ -388,6 +388,7 @@
       <button data-v="planning">Time Planning</button>
       <button data-v="log">Log Data</button>
       <button data-v="audit">Audit</button>
+      <button data-v="pot">🫙 Pot</button>
       <button data-v="reports">Reports</button>
       <button data-v="tips">Life Tips</button>
       <button data-v="settings">Settings</button>
@@ -628,12 +629,19 @@
 </div><!-- /viewPlanning -->
 
 <div id="viewAudit" hidden>
-  <div class="card" style="max-width:680px">
+  <div class="card" style="max-width:none">
     <h2>Audit — recent entries</h2>
     <div class="hint">Every entry from the last 20 days and exactly how it affected your goals and planning. A rolling validation log.</div>
     <div id="auditTable" style="margin-top:12px"></div>
   </div>
 </div><!-- /viewAudit -->
+<div id="viewPot" hidden>
+  <div class="card" style="max-width:none">
+    <h2 style="text-align:center">Your year in a pot</h2>
+    <div class="hint" style="text-align:center">Capacity = your yearly hour target. Water = hours you've actually filled, coloured by category.</div>
+    <div id="potBox" style="margin-top:14px"></div>
+  </div>
+</div><!-- /viewPot -->
 
 <div id="viewReports" hidden>
   <div class="card">
@@ -2144,12 +2152,13 @@ function renderPlanning(){
     + tableP;
 }
 function setView(v){
-  if(!['overview','log','goals','planning','audit','reports','tips','settings'].includes(v)) v='overview';
+  if(!['overview','log','goals','planning','audit','pot','reports','tips','settings'].includes(v)) v='overview';
   document.getElementById('viewOverview').hidden = v!=='overview';
   document.getElementById('viewLog').hidden = v!=='log';
   document.getElementById('viewGoals').hidden = v!=='goals';
   document.getElementById('viewPlanning').hidden = v!=='planning';
   document.getElementById('viewAudit').hidden = v!=='audit';
+  document.getElementById('viewPot').hidden = v!=='pot';
   document.getElementById('viewReports').hidden = v!=='reports';
   document.getElementById('viewTips').hidden = v!=='tips';
   document.getElementById('viewSettings').hidden = v!=='settings';
@@ -2157,6 +2166,7 @@ function setView(v){
   const subs={overview:'your finite hours, on purpose', log:'log time, goals & screen use · saved on this device',
     goals:'targets vs what you actually did', planning:'daily habits vs goal-based time',
     audit:'recent entries & their exact effect',
+    pot:'your year as a pot — capacity vs filled',
     reports:'compare tracked hours across periods',
     tips:'long-form notes & wisdom',
     settings:'manage categories & preferences'};
@@ -2167,6 +2177,7 @@ function setView(v){
   if(v==='goals') renderGoals();
   if(v==='planning') renderPlanning();
   if(v==='audit') renderAudit();
+  if(v==='pot') renderPot();
   if(v==='reports') renderReports();
   if(v==='tips') renderTips();
   if(v==='settings') renderSettings();
@@ -2372,6 +2383,74 @@ document.getElementById('tipCancelBtn').onclick=tipCancelEdit;
 document.getElementById('tipPdfBtn').onclick=exportTipsPdf;
 document.querySelectorAll('#setSide button').forEach(b=>b.onclick=()=>setSettab(b.dataset.s));
 
+// ================= POT (year capacity vs filled, coloured by category) =================
+function renderPot(){
+  const box=document.getElementById('potBox'); if(!box) return;
+  const fmt=n=>Math.round(n).toLocaleString('en-US');
+  const yr=new Date().getFullYear();
+  const totalDays=Math.round((new Date(yr,11,31)-new Date(yr,0,1))/864e5)+1;
+  const yp=YBATT_DAILY*totalDays;
+  const agg={}; MONTHS.forEach(M=>{ for(const [c,v] of Object.entries(monthCats(M))) agg[c]=(agg[c]||0)+v; });
+  const dhOf=t=>t.src.reduce((a,c)=>a+(agg[c]||0),0)/60;
+  const tgtOf=t=>t.h!=null?t.h:(t.leftFixed!=null?dhOf(t)+t.leftFixed:yp*t.pct/100);
+  const fixedH=YTARGETS.reduce((a,t)=>a+(t.rest?0:tgtOf(t)),0);
+  const zones=YTARGETS.map(t=>{ const targetH=t.rest?Math.max(0,yp-fixedH):tgtOf(t); return {k:t.k,c:t.c,targetH,doneH:dhOf(t)}; });
+  const cap=yp, totDone=zones.reduce((a,z)=>a+z.doneH,0), fr=Math.max(0,Math.min(1,totDone/cap));
+  // ---------- ORB: layered multi-colour water, 10% grid, 5% side ticks ----------
+  const cx=150,cy=140,r=108, yAt=f=>(cy+r)-2*r*Math.max(0,Math.min(1,f));
+  const surfY=yAt(fr);
+  const water=fr>0?`<rect x="${cx-r}" y="${surfY.toFixed(1)}" width="${2*r}" height="${(cy+r-surfY+0.6).toFixed(1)}" fill="url(#orbWater)"/>`:'';
+  const wave=fr>0?`
+    <path fill="#2b7fff" opacity=".55"><animate attributeName="d" dur="3.6s" repeatCount="indefinite"
+      values="M${cx-r-24},${surfY.toFixed(1)} q40,-9 80,0 t80,0 t80,0 t80,0 V${cy+r} H${cx-r-24} Z;
+              M${cx-r-24},${surfY.toFixed(1)} q40,9 80,0 t80,0 t80,0 t80,0 V${cy+r} H${cx-r-24} Z;
+              M${cx-r-24},${surfY.toFixed(1)} q40,-9 80,0 t80,0 t80,0 t80,0 V${cy+r} H${cx-r-24} Z"/></path>`:'';
+  let grid=''; for(let p=5;p<100;p+=5){ const y=yAt(p/100), maj=p%10===0;
+    grid+=`<line x1="${cx-r}" y1="${y.toFixed(1)}" x2="${cx+r}" y2="${y.toFixed(1)}" stroke="${maj?'#5ec8ff':'rgba(255,255,255,.5)'}" stroke-width="${maj?1.2:0.8}" stroke-dasharray="${maj?'':'3 4'}" opacity="${maj?'.7':'1'}"/>`; }
+  let ticks=''; for(let p=5;p<100;p+=5){ const y=yAt(p/100), maj=p%10===0, len=maj?11:6;
+    ticks+=`<line x1="${cx-r-2}" y1="${y.toFixed(1)}" x2="${cx-r-2-len}" y2="${y.toFixed(1)}" stroke="#aab4c6" stroke-width="${maj?1.6:1}"/>`+
+           `<line x1="${cx+r+2}" y1="${y.toFixed(1)}" x2="${cx+r+2+len}" y2="${y.toFixed(1)}" stroke="#aab4c6" stroke-width="${maj?1.6:1}"/>`;
+    if(maj) ticks+=`<text x="${cx+r+2+len+3}" y="${(y+3).toFixed(1)}" font-size="9" fill="#9aa3b5">${p}</text>`; }
+  let ring='', ang=-90, rr=r+18, tot=zones.reduce((a,z)=>a+z.doneH,0)||1;
+  zones.filter(z=>z.doneH>0).forEach(z=>{ const sweep=z.doneH/tot*360, a0=ang*Math.PI/180, a1=(ang+sweep)*Math.PI/180, big=sweep>180?1:0;
+    const x0=cx+rr*Math.cos(a0), y0=cy+rr*Math.sin(a0), x1=cx+rr*Math.cos(a1), y1=cy+rr*Math.sin(a1);
+    ring+=`<path d="M${x0.toFixed(1)},${y0.toFixed(1)} A${rr},${rr} 0 ${big} 1 ${x1.toFixed(1)},${y1.toFixed(1)}" fill="none" stroke="${z.c}" stroke-width="7" stroke-linecap="round"/>`; ang+=sweep; });
+  const orb=`<svg viewBox="0 0 300 ${cy+r+34}" width="100%" style="max-width:300px;display:block;margin:0 auto">
+    <defs><clipPath id="orbClip"><circle cx="${cx}" cy="${cy}" r="${r}"/></clipPath>
+      <linearGradient id="orbGloss" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="rgba(255,255,255,.55)"/><stop offset=".5" stop-color="rgba(255,255,255,0)"/><stop offset="1" stop-color="rgba(0,0,0,.05)"/></linearGradient>
+      <linearGradient id="orbWater" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6fd0ff"/><stop offset="1" stop-color="#2b7fff"/></linearGradient></defs>
+    ${ring}
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="#eef4fb"/>
+    <g clip-path="url(#orbClip)">${water}${wave}${grid}<rect x="${cx-r}" y="${cy-r}" width="${2*r}" height="${2*r}" fill="url(#orbGloss)"/></g>
+    ${ticks}
+    <text x="${cx}" y="${cy-1}" text-anchor="middle" font-size="44" font-weight="800" fill="#0e2a52" style="paint-order:stroke;stroke:rgba(255,255,255,.7);stroke-width:5px">${Math.round(fr*100)}%</text>
+    <text x="${cx}" y="${cy+24}" text-anchor="middle" font-size="13" font-weight="700" fill="#2b557f" style="paint-order:stroke;stroke:rgba(255,255,255,.7);stroke-width:4px">${fmt(totDone)} / ${fmt(cap)}h</text>
+  </svg>`;
+  // ---------- DOT-GRID poster ----------
+  const cols=20,rows=15,N=cols*rows, per=cap/N;
+  const cells=[]; zones.forEach(z=>{ const n=Math.round(z.doneH/per); for(let i=0;i<n;i++) cells.push(z.c); });
+  const cw=11,gap=3, gW=cols*(cw+gap)-gap, gH=rows*(cw+gap)-gap; let gr='';
+  for(let i=0;i<N;i++){ const x=(i%cols)*(cw+gap), y=Math.floor(i/cols)*(cw+gap); gr+=`<rect x="${x}" y="${y}" width="${cw}" height="${cw}" rx="3" fill="${cells[i]||'#e4e9f1'}"/>`; }
+  const dot=`<svg viewBox="0 0 ${gW} ${gH}" width="100%" style="max-width:320px;display:block;margin:0 auto">${gr}</svg>`;
+  // ---------- legend ----------
+  const lrows=zones.slice().sort((a,b)=>b.doneH-a.doneH).map(z=>{ const pct=z.targetH>0?Math.round(z.doneH/z.targetH*100):0;
+    return `<tr style="border-bottom:1px solid var(--line)">
+      <td style="padding:7px 8px 7px 0;white-space:nowrap"><span style="display:inline-block;width:13px;height:13px;border-radius:4px;background:${z.c};vertical-align:-1px;margin-right:8px"></span>${z.k}</td>
+      <td style="padding:7px 10px;text-align:right;font-weight:700">${fmt(z.doneH)}h</td>
+      <td style="padding:7px 0 7px 10px;text-align:right;color:var(--muted)">${fmt(z.targetH)}h · ${pct}%</td></tr>`; }).join('');
+  const legend=`<table style="border-collapse:collapse;margin:0 auto;font-size:13px">
+    <thead><tr style="border-bottom:2px solid var(--line);color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.4px">
+      <th style="text-align:left;padding:0 8px 6px 0">Category</th><th style="text-align:right;padding:0 10px 6px">Done</th><th style="text-align:right;padding:0 0 6px 10px">Target</th></tr></thead>
+    <tbody>${lrows}</tbody></table>`;
+  box.innerHTML=`
+    <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:center;justify-content:center">
+      <div style="flex:1;min-width:240px">${dot}
+        <div style="margin:10px 0 0;font-size:12.5px;font-weight:700;text-align:center;color:var(--ink)">${Math.min(cells.length,N)} / ${N} squares filled · 1 square = ${per.toFixed(1)}h</div></div>
+      <div style="flex:0 1 auto">${legend}</div>
+      <div style="flex:1;min-width:230px">${orb}</div>
+    </div>
+    <div style="text-align:center;color:var(--muted);font-size:12.5px;margin:14px 0 4px">${yr} · ${fmt(cap)}h capacity (${YBATT_DAILY}h/day × ${totalDays}d) · <b>${fmt(Math.max(0,cap-totDone))}h</b> to fill</div>`;
+}
 // ================= AUDIT (rolling 20-day entry ledger) =================
 function renderAudit(){
   const el=document.getElementById('auditTable'); if(!el) return;
@@ -2380,19 +2459,40 @@ function renderAudit(){
     .filter(o=>!isNaN(o.ts)&&now-o.ts<=win).sort((a,b)=>b.ts-a.ts);
   if(!ents.length){ el.innerHTML='<div class="empty">No entries in the last 20 days.</div>'; return; }
   const fmtDt=ts=>{const d=new Date(ts);return `${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;};
-  el.innerHTML=ents.map(({e,ts})=>{
-    const typ=e.type==='goal'?'🎯 Goal':e.type==='habit'?'🔁 Habit':e.type==='screen'?'📱 Screen':'⏱ Timer';
-    let effect='';
-    if(e.type==='goal'){ const g=goals.find(o=>o.id===e.goalId);
-      if(g){ const left=Math.max(0,(+g.target||0)-(+g.cur||0)); effect=`+${r(e.amt)} ${g.unit||''} → now ${r(g.cur)}/${r(g.target)} (${r(left)} left) · −${fmtShort(e.mins)} off ${e.cat} remaining`; }
-      else effect=`+${r(e.amt)} · −${fmtShort(e.mins)} off ${e.cat} remaining`;
-    } else if(e.type==='habit'){ effect=`${r(e.cnt)}× = ${fmtShort(e.mins)} → ${e.cat} · per-period, no carryover`; }
-    else if(e.type==='screen'){ effect=`${fmtShort(e.mins)} screen`; }
-    else effect=`${fmtShort(e.mins)} → ${e.cat} done`;
-    return `<div class="trow" style="display:block;padding:10px 0;border-bottom:1px solid var(--line)">
-      <div style="display:flex;justify-content:space-between;gap:10px"><span style="font-weight:600">${typ} · ${e.task||'—'}</span><span style="color:var(--muted);font-size:12px;white-space:nowrap">${fmtDt(ts)} · ${plabel(e.ym+'-'+e.period)}</span></div>
-      <div style="color:var(--muted);font-size:13px;margin-top:3px">${effect}</div>
-    </div>`; }).join('');
+  // back-walk each goal's current cur to recover before/after state per entry (exact within the 20-day window)
+  const state={}, run={};
+  goals.forEach(g=>{ run[g.id]=+g.cur||0; });
+  ents.forEach(({e})=>{ if(e.type==='goal'&&e.goalId!=null&&run[e.goalId]!=null){
+    const after=run[e.goalId], before=after-(+e.amt||0);
+    state[e.id]={after,before}; run[e.goalId]=before;
+  }});
+  const cell=(t,style='')=>`<td style="padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top;${style}">${t}</td>`;
+  const rows=ents.map(({e,ts})=>{
+    const icon=e.type==='goal'?'🎯':e.type==='habit'?'🔁':e.type==='screen'?'📱':'⏱';
+    let name='—',prev='—',added='—',cur='—',prevReq='—',curReq='—';
+    if(e.type==='goal'){ const g=goals.find(o=>o.id===e.goalId), st=state[e.id]||{};
+      name=g?g.name:(e.task||'—'); const u=g?(g.unit||''):'', tg=g?r(g.target):'?', T=+(g?.target)||0, mp=g?goalMinPer(g):0;
+      prev=st.before!=null?`${r(st.before)}/${tg}`:'—';
+      cur=st.after!=null?`${r(st.after)}/${tg}`:`${r(g?g.cur:0)}/${tg}`;
+      added=`+${r(e.amt)} ${u}`.trim();
+      if(g&&st.before!=null) prevReq=mp>0?fmtShort(Math.max(0,T-st.before)*mp):'—';
+      if(g) curReq=mp>0?fmtShort(Math.max(0,T-(st.after!=null?st.after:(+g.cur||0)))*mp):'—';
+    } else if(e.type==='habit'){ name=e.task||'—'; added=`${r(e.cnt)}×`; prev=cur=prevReq=curReq='<span style="color:var(--muted)">per-period</span>'; }
+    else if(e.type==='screen'){ name=e.task||'Screen'; added='screen'; }
+    else { name=e.task||'—'; added=`→ ${e.cat||''}`.trim(); }
+    return `<tr>
+      ${cell(`<div style="font-weight:600">${icon} ${name}</div><div style="color:var(--muted);font-size:11px">${fmtDt(ts)}</div>`)}
+      ${cell(prev,'white-space:nowrap;color:var(--muted)')}
+      ${cell(added,'white-space:nowrap')}
+      ${cell(fmtShort(e.mins),'white-space:nowrap')}
+      ${cell(cur,'white-space:nowrap;font-weight:600')}
+      ${cell(prevReq,'white-space:nowrap;color:var(--muted)')}
+      ${cell(curReq,'white-space:nowrap')}
+    </tr>`; }).join('');
+  el.innerHTML=`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
+    <thead><tr style="text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;border-bottom:2px solid var(--line)">
+      <th style="padding:8px 10px">Goal / Hobby</th><th style="padding:8px 10px">Previous</th><th style="padding:8px 10px">Added</th><th style="padding:8px 10px">Time</th><th style="padding:8px 10px">Now</th><th style="padding:8px 10px">Req. before</th><th style="padding:8px 10px">Req. now</th>
+    </tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 // ================= ARCHIVE (keep raw log to last 3 months; roll older into summaries) =================
 function archiveOldEntries(){
