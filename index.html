@@ -2585,19 +2585,22 @@ function sjScene(g,gi){
   const frac=Math.min(1, cur/target);
   const W=1000, H=340, x0=178, x1=918, zoneW=x1-x0, slot=zoneW/N;
   const wallW=Math.max(2.4, Math.min(9, slot*0.6)), baseY=290, wallH=78;
+  const groundBot=336;                          // blue walls extend down through the dark path strip
+  const gTop=298, gH=groundBot-gTop;            // green cleared tiles live INSIDE the bottom strip only
   const Lof=i=>{ const t=N>1?i/(N-1):0; return 64-t*36; };   // i=0 (left, near Shiva) light · i=N-1 (right, start) dark
   let walls='';
   for(let i=0;i<N;i++){
     const cx=x0+i*slot+(slot-wallW)/2, L=Lof(i), isBroken=i>=(N-broken);
     if(isBroken){
-      const c=`hsl(214 20% ${Math.min(80,L+22)}%)`;
-      walls+=`<g opacity=".5"><rect x="${cx.toFixed(1)}" y="${(baseY-7).toFixed(1)}" width="${wallW.toFixed(1)}" height="7" rx="1" fill="${c}"/>`
-        +`<rect x="${(cx-wallW*0.35).toFixed(1)}" y="${(baseY-3).toFixed(1)}" width="${(wallW*0.7).toFixed(1)}" height="3" fill="${c}"/></g>`;
+      const face=`hsl(140 52% 44%)`, cap=`hsl(140 48% 58%)`, sh=`hsl(140 55% 30%)`;
+      walls+=`<g><rect x="${cx.toFixed(1)}" y="${gTop}" width="${wallW.toFixed(1)}" height="${gH}" rx="1.2" fill="${face}"/>`
+        +`<rect x="${cx.toFixed(1)}" y="${gTop}" width="${Math.max(1,wallW*0.32).toFixed(1)}" height="${gH}" fill="${cap}" opacity=".75"/>`
+        +`<rect x="${(cx+wallW*0.68).toFixed(1)}" y="${gTop}" width="${Math.max(0.8,wallW*0.3).toFixed(1)}" height="${gH}" fill="${sh}" opacity=".55"/></g>`;
     } else {
-      const top=baseY-wallH, face=`hsl(218 64% ${L}%)`, cap=`hsl(218 58% ${Math.min(84,L+13)}%)`, sh=`hsl(218 64% ${Math.max(12,L-12)}%)`;
-      walls+=`<g><rect x="${cx.toFixed(1)}" y="${top}" width="${wallW.toFixed(1)}" height="${wallH}" rx="1.2" fill="${face}"/>`
-        +`<rect x="${cx.toFixed(1)}" y="${top}" width="${Math.max(1,wallW*0.32).toFixed(1)}" height="${wallH}" fill="${cap}" opacity=".75"/>`
-        +`<rect x="${(cx+wallW*0.68).toFixed(1)}" y="${top}" width="${Math.max(0.8,wallW*0.3).toFixed(1)}" height="${wallH}" fill="${sh}" opacity=".55"/></g>`;
+      const top=baseY-wallH, hh=groundBot-top, face=`hsl(218 64% ${L}%)`, cap=`hsl(218 58% ${Math.min(84,L+13)}%)`, sh=`hsl(218 64% ${Math.max(12,L-12)}%)`;
+      walls+=`<g><rect x="${cx.toFixed(1)}" y="${top}" width="${wallW.toFixed(1)}" height="${hh}" rx="1.2" fill="${face}"/>`
+        +`<rect x="${cx.toFixed(1)}" y="${top}" width="${Math.max(1,wallW*0.32).toFixed(1)}" height="${hh}" fill="${cap}" opacity=".75"/>`
+        +`<rect x="${(cx+wallW*0.68).toFixed(1)}" y="${top}" width="${Math.max(0.8,wallW*0.3).toFixed(1)}" height="${hh}" fill="${sh}" opacity=".55"/></g>`;
     }
   }
   const ni=N-broken-1; let crack='';
@@ -2652,21 +2655,25 @@ function sjScene(g,gi){
     <circle cx="-6" cy="205" r="9" fill="#e9b27a"/>
     <path d="M-15,203 q3,-10 12,-8 q4,1 5,5 q-9,-4 -17,3 Z" fill="#3a2a1a"/>
   </g>`;
+  const unit=g.unit||'units';
+  const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const stat1=`${fmt(cur)} / ${fmt(target)} ${esc(unit)}  ·  ${broken} of ${N} walls cleared  ·  ${Math.round(frac*100)}% to Shiva`;
+  const stat2=`Each wall = ${fmt(per)} ${esc(unit)}. The darkest wall on the right is where you began; the path lightens as you near Shiva.`;
+  const overlay=`<g text-anchor="middle" style="font-family:system-ui,sans-serif">
+    <text x="${W/2}" y="30" fill="#fff" font-size="18" font-weight="700" style="paint-order:stroke;stroke:rgba(10,16,40,.55);stroke-width:3px">${stat1}</text>
+    <text x="${W/2}" y="50" fill="rgba(255,255,255,.82)" font-size="12.5" style="paint-order:stroke;stroke:rgba(10,16,40,.5);stroke-width:2.5px">${stat2}</text>
+  </g>`;
   const svg=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;border-radius:12px;overflow:hidden">
     ${defs}
     <rect width="${W}" height="${H}" fill="url(#sjSky${u})"/>
     <circle cx="858" cy="66" r="26" fill="#fdf2d0" opacity=".9"/>
     ${mtns}
     <rect x="0" y="288" width="${W}" height="${H-288}" fill="url(#sjPath${u})"/>
-    ${walls}${crack}${shiva}${person}
+    ${walls}${crack}${shiva}${person}${overlay}
   </svg>`;
-  const unit=g.unit||'units';
-  const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const by=g.by?` · by ${esc(g.by)}`:'';
   return `<div style="text-align:center;font-size:15px;font-weight:700;color:var(--ink);margin-bottom:8px">${esc(g.name)||'Life’s Big goal'}<span style="font-weight:500;color:var(--muted)">${by}</span></div>`
-    + svg
-    + `<div style="text-align:center;margin-top:12px;font-size:14px;color:var(--ink)"><b>${fmt(cur)}</b> / ${fmt(target)} ${esc(unit)} · <b>${broken}</b> of ${N} walls cleared · <b style="color:#3b6fd0">${Math.round(frac*100)}%</b> to Shiva</div>`
-    + `<div class="hint" style="text-align:center;margin-top:4px">Each wall = ${fmt(per)} ${esc(unit)}. The darkest wall on the right is where you began; the path lightens as you near Shiva.</div>`;
+    + svg;
 }
 // ================= AUDIT (rolling 40-day entry ledger, grouped by period) =================
 function renderAudit(){
