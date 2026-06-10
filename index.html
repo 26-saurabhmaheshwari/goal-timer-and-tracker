@@ -2573,16 +2573,25 @@ function renderShivaJourney(){
   const goals=(typeof loadGoals==='function')?loadGoals():[];
   const big=goals.filter(x=>((x.cat||'').trim().toLowerCase()===SJ_BIG_CAT.toLowerCase()) && x.sec!=='archived');
   if(!big.length){ box.innerHTML=`<div class="hint" style="text-align:center;padding:18px 0">No Life's Big goals yet. Create a goal under the “${SJ_BIG_CAT}” category and its journey to Shiva appears here.</div>`; return; }
-  box.innerHTML = big.map((g,gi)=>sjScene(g,gi)).join('<div style="height:26px"></div>');
+  const scenes=[];
+  // Sub-goal view (above): the ONS goal split into 100 equal parts — more walls clear sooner, progress feels closer; target is a Shivling.
+  const ons=big.find(x=>/ons/i.test(x.name||''));
+  if(ons){ const per=Math.max(1,(+ons.target||1)/100);
+    scenes.push(sjScene(ons,'L',{per, N:100, shrine:'shivling', shrineName:'Shivling', heading:`${ons.name} — split into 100 parts → Shivling`, perLabel:`1% of ${ons.name}`})); }
+  big.forEach((g,gi)=>scenes.push(sjScene(g,gi)));
+  box.innerHTML = scenes.join('<div style="height:26px"></div>');
 }
-function sjScene(g,gi){
+function sjScene(g,gi,opts){
+  opts=opts||{};
   const fmt=n=>Math.round(n).toLocaleString('en-IN');
-  const target=Math.max(1, +g.target||1);
+  const baseTarget=Math.max(1, +g.target||1);
+  const per=opts.per||sjStep(baseTarget);
+  const target=opts.N?per*opts.N:baseTarget;
   const cur=Math.max(0, Math.min(target, +g.cur||0));
-  const per=sjStep(target);
-  const N=Math.max(1, Math.round(target/per));
+  const N=Math.max(1, opts.N||Math.round(target/per));
   const broken=Math.min(N, Math.floor(cur/per));
   const frac=Math.min(1, cur/target);
+  const shrineName=opts.shrineName||'Shiva';
   const W=1000, H=340, x0=178, x1=918, zoneW=x1-x0, slot=zoneW/N;
   const wallW=Math.max(2.4, Math.min(9, slot*0.6)), baseY=290, wallH=78;
   const groundBot=336;                          // blue walls extend down through the dark path strip
@@ -2646,6 +2655,23 @@ function sjScene(g,gi){
     <g transform="translate(76,150)"><line x1="0" y1="-46" x2="0" y2="122" stroke="#cda14a" stroke-width="3.4"/>
       <path d="M-12,-42 Q-12,-60 0,-60 Q12,-60 12,-42 M0,-60 l0,-15 M-12,-46 l0,-11 M12,-46 l0,-11" stroke="#d8b25a" stroke-width="3" fill="none"/></g>
   </g>`;
+  const shivling=`<g transform="translate(86,0)">
+    <path d="M-72,290 L0,194 L72,290 Z" fill="url(#sjSnow${u})"/>
+    <path d="M-72,290 L0,194 L-10,290 Z" fill="#c2d2ee" opacity=".7"/>
+    <circle cx="0" cy="176" r="62" fill="url(#sjHalo${u})"/>
+    <ellipse cx="0" cy="266" rx="58" ry="17" fill="#3f73b8"/>
+    <ellipse cx="0" cy="261" rx="58" ry="13" fill="#5a8fd0"/>
+    <path d="M42,260 q34,1 48,11 q-16,7 -48,4 Z" fill="#4f86c6"/>
+    <ellipse cx="0" cy="255" rx="32" ry="9" fill="#6aa0dd"/>
+    <path d="M-23,255 Q-27,150 0,150 Q27,150 23,255 Z" fill="url(#sjSkin${u})"/>
+    <ellipse cx="0" cy="150" rx="23" ry="13" fill="#9fccf3"/>
+    <path d="M-15,198 Q0,203 15,198" stroke="#ffffff" stroke-width="3" fill="none" opacity=".9"/>
+    <path d="M-16,208 Q0,213 16,208" stroke="#e8c84a" stroke-width="3" fill="none" opacity=".95"/>
+    <path d="M-15,218 Q0,223 15,218" stroke="#ffffff" stroke-width="3" fill="none" opacity=".9"/>
+    <circle cx="0" cy="150" r="4.5" fill="#e8c84a"/>
+    <path d="M-30,150 q-14,-20 2,-30 q-3,16 8,22" stroke="#7fae5a" stroke-width="2.4" fill="none" opacity=".85"/>
+  </g>`;
+  const shrine=opts.shrine==='shivling'?shivling:shiva;
   const person=`<g transform="translate(${px.toFixed(1)},0)">
     <ellipse cx="-4" cy="291" rx="14" ry="4" fill="rgba(20,30,60,.2)"/>
     <path d="M2,262 l8,28" stroke="#b5651d" stroke-width="6" stroke-linecap="round" fill="none"/>
@@ -2657,8 +2683,9 @@ function sjScene(g,gi){
   </g>`;
   const unit=g.unit||'units';
   const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-  const stat1=`${fmt(cur)} / ${fmt(target)} ${esc(unit)}  ·  ${broken} of ${N} walls cleared  ·  ${Math.round(frac*100)}% to Shiva`;
-  const stat2=`Each wall = ${fmt(per)} ${esc(unit)}. The darkest wall on the right is where you began; the path lightens as you near Shiva.`;
+  const perLabel=opts.perLabel?esc(opts.perLabel):`${fmt(per)} ${esc(unit)}`;
+  const stat1=`${fmt(cur)} / ${fmt(target)} ${esc(unit)}  ·  ${broken} of ${N} walls cleared  ·  ${Math.round(frac*100)}% to ${shrineName}`;
+  const stat2=`Each wall = ${perLabel}. The darkest wall on the right is where you began; the path lightens as you near ${shrineName}.`;
   const overlay=`<g text-anchor="middle" style="font-family:system-ui,sans-serif">
     <text x="${W/2}" y="30" fill="#fff" font-size="18" font-weight="700" style="paint-order:stroke;stroke:rgba(10,16,40,.55);stroke-width:3px">${stat1}</text>
     <text x="${W/2}" y="50" fill="rgba(255,255,255,.82)" font-size="12.5" style="paint-order:stroke;stroke:rgba(10,16,40,.5);stroke-width:2.5px">${stat2}</text>
@@ -2669,10 +2696,11 @@ function sjScene(g,gi){
     <circle cx="858" cy="66" r="26" fill="#fdf2d0" opacity=".9"/>
     ${mtns}
     <rect x="0" y="288" width="${W}" height="${H-288}" fill="url(#sjPath${u})"/>
-    ${walls}${crack}${shiva}${person}${overlay}
+    ${walls}${crack}${shrine}${person}${overlay}
   </svg>`;
   const by=g.by?` · by ${esc(g.by)}`:'';
-  return `<div style="text-align:center;font-size:15px;font-weight:700;color:var(--ink);margin-bottom:8px">${esc(g.name)||'Life’s Big goal'}<span style="font-weight:500;color:var(--muted)">${by}</span></div>`
+  const head=opts.heading?esc(opts.heading):(esc(g.name)||'Life’s Big goal');
+  return `<div style="text-align:center;font-size:15px;font-weight:700;color:var(--ink);margin-bottom:8px">${head}<span style="font-weight:500;color:var(--muted)">${opts.heading?'':by}</span></div>`
     + svg;
 }
 // ================= AUDIT (rolling 40-day entry ledger, grouped by period) =================
