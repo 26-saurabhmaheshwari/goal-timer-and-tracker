@@ -2068,8 +2068,16 @@ function pdfSec(title){ const d=document.createElement('div'); d.className='pdf-
   if(title){ const h=document.createElement('div'); h.className='pdf-h'; h.textContent=title; d.appendChild(h); } return d; }
 function pdfSub(text){ const d=document.createElement('div'); d.className='pdf-sub'; d.textContent=text; return d; }
 function exportReportPdf(){
-  try{ renderKPIs(); renderYearDonut(); renderTotalTrend(); renderPlanning(); renderGoals(); renderPot('potBox'); }catch(_){}
   const rep=document.getElementById('pdfReport'); rep.innerHTML='';
+  // Source canvases live in [hidden] views (display:none → 0×0), so Chart.js would
+  // render blank. Un-hide them for the capture (all synchronous → no repaint/flash),
+  // force charts to their final frame (no animation), then re-hide in finally.
+  const views=['viewOverview','viewPlanning','viewGoals','viewPot'];
+  const wasHidden=views.map(id=>document.getElementById(id)).filter(el=>el&&el.hasAttribute('hidden'));
+  wasHidden.forEach(el=>el.removeAttribute('hidden'));
+  try{
+    renderKPIs(); renderYearDonut(); renderTotalTrend(); renderPlanning(); renderGoals(); renderPot('potBox');
+    [yearDonutChart,totalTrendChart].forEach(c=>{ try{ if(c){ c.options.animation=false; c.update('none'); } }catch(_){} });
   // 1) Planning — both tables
   const pSec=pdfSec('Planning'); const pc=pdfClone(document.getElementById('planning')); if(pc) pSec.appendChild(pc); rep.appendChild(pSec);
   // 2) Overview — KPIs + year donut/trend (drop the tips insights block)
@@ -2087,6 +2095,7 @@ function exportReportPdf(){
   const jar=pdfClone(document.getElementById('potBox')); if(jar) potSec.appendChild(jar);
   const shiv=sjShivlingScene(); if(shiv){ const sd=document.createElement('div'); sd.style.marginTop='14px'; sd.innerHTML=shiv; potSec.appendChild(sd); }
   rep.appendChild(potSec);
+  } finally { wasHidden.forEach(el=>el.setAttribute('hidden','')); }
   document.body.classList.add('pdf-print');
   const done=()=>{ document.body.classList.remove('pdf-print'); rep.innerHTML=''; window.removeEventListener('afterprint',done); };
   window.addEventListener('afterprint',done);
@@ -2861,6 +2870,7 @@ function showPotPopup(){ const p=document.getElementById('potPopup'); if(!p) ret
     <div id="potPopupBox" style="margin-top:14px"></div>
   </div>
 </div>
+</div><!-- /.wrap -->
 <div id="pdfReport"></div>
 </body>
 </html>
