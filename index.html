@@ -641,6 +641,11 @@
     <div class="hint" style="text-align:center">Capacity = your yearly hour target. Water = hours you've actually filled, coloured by category.</div>
     <div id="potBox" style="margin-top:14px"></div>
   </div>
+  <div class="card" style="max-width:none;margin-top:18px">
+    <h2 style="text-align:center">Journey to Shiva — Life's Big goals</h2>
+    <div class="hint" style="text-align:center">One scene per Life's Big goal. Break each wall to walk from where you stand toward Shiva, meditating in the Himalayas.</div>
+    <div id="shivaBox" style="margin-top:14px"></div>
+  </div>
 </div><!-- /viewPot -->
 <div id="viewFaq" hidden>
   <div class="card" style="max-width:760px;line-height:1.55">
@@ -2249,7 +2254,7 @@ function setView(v){
   if(v==='goals') renderGoals();
   if(v==='planning') renderPlanning();
   if(v==='audit') renderAudit();
-  if(v==='pot') renderPot();
+  if(v==='pot'){ renderPot(); try{ renderShivaJourney(); }catch(e){} }
   if(v==='reports') renderReports();
   if(v==='tips') renderTips();
   if(v==='settings') renderSettings();
@@ -2551,6 +2556,117 @@ function renderPot(boxId){
       <div style="flex:1;min-width:230px">${orb}</div>
     </div>
     <div style="text-align:center;color:var(--muted);font-size:12.5px;margin:14px 0 4px">${yr} · ${fmt(cap)}h capacity (planning year total: done + to-do) · <b>${fmt(Math.max(0,cap-totDone))}h</b> to fill</div>`;
+}
+// ---- Journey to Shiva: one wall-breaking scene per Life's Big goal ----
+// Walls scale to the goal's target (a "nice" step keeps the count sane). Person
+// starts at the right (dark walls) and walks left toward Shiva as each chunk is
+// completed and its wall falls to rubble. No goal is hardcoded — any goal filed
+// under the "Life's Big" category gets its own scene.
+const SJ_BIG_CAT="Life's Big";
+function sjStep(target){ // pick units-per-wall so wall count lands in a readable range
+  const steps=[1,2,5,10,20,25,50,100,200,250,500,1000,2000,2500,5000,10000,25000];
+  for(const s of steps){ if(target/s<=140) return s; }
+  return Math.ceil(target/140);
+}
+function renderShivaJourney(){
+  const box=document.getElementById('shivaBox'); if(!box) return;
+  const goals=(typeof loadGoals==='function')?loadGoals():[];
+  const big=goals.filter(x=>((x.cat||'').trim().toLowerCase()===SJ_BIG_CAT.toLowerCase()) && x.sec!=='archived');
+  if(!big.length){ box.innerHTML=`<div class="hint" style="text-align:center;padding:18px 0">No Life's Big goals yet. Create a goal under the “${SJ_BIG_CAT}” category and its journey to Shiva appears here.</div>`; return; }
+  box.innerHTML = big.map((g,gi)=>sjScene(g,gi)).join('<div style="height:26px"></div>');
+}
+function sjScene(g,gi){
+  const fmt=n=>Math.round(n).toLocaleString('en-IN');
+  const target=Math.max(1, +g.target||1);
+  const cur=Math.max(0, Math.min(target, +g.cur||0));
+  const per=sjStep(target);
+  const N=Math.max(1, Math.round(target/per));
+  const broken=Math.min(N, Math.floor(cur/per));
+  const frac=Math.min(1, cur/target);
+  const W=1000, H=340, x0=178, x1=918, zoneW=x1-x0, slot=zoneW/N;
+  const wallW=Math.max(2.4, Math.min(9, slot*0.6)), baseY=290, wallH=78;
+  const Lof=i=>{ const t=N>1?i/(N-1):0; return 64-t*36; };   // i=0 (left, near Shiva) light · i=N-1 (right, start) dark
+  let walls='';
+  for(let i=0;i<N;i++){
+    const cx=x0+i*slot+(slot-wallW)/2, L=Lof(i), isBroken=i>=(N-broken);
+    if(isBroken){
+      const c=`hsl(214 20% ${Math.min(80,L+22)}%)`;
+      walls+=`<g opacity=".5"><rect x="${cx.toFixed(1)}" y="${(baseY-7).toFixed(1)}" width="${wallW.toFixed(1)}" height="7" rx="1" fill="${c}"/>`
+        +`<rect x="${(cx-wallW*0.35).toFixed(1)}" y="${(baseY-3).toFixed(1)}" width="${(wallW*0.7).toFixed(1)}" height="3" fill="${c}"/></g>`;
+    } else {
+      const top=baseY-wallH, face=`hsl(218 64% ${L}%)`, cap=`hsl(218 58% ${Math.min(84,L+13)}%)`, sh=`hsl(218 64% ${Math.max(12,L-12)}%)`;
+      walls+=`<g><rect x="${cx.toFixed(1)}" y="${top}" width="${wallW.toFixed(1)}" height="${wallH}" rx="1.2" fill="${face}"/>`
+        +`<rect x="${cx.toFixed(1)}" y="${top}" width="${Math.max(1,wallW*0.32).toFixed(1)}" height="${wallH}" fill="${cap}" opacity=".75"/>`
+        +`<rect x="${(cx+wallW*0.68).toFixed(1)}" y="${top}" width="${Math.max(0.8,wallW*0.3).toFixed(1)}" height="${wallH}" fill="${sh}" opacity=".55"/></g>`;
+    }
+  }
+  const ni=N-broken-1; let crack='';
+  if(ni>=0){ const ncx=x0+ni*slot+(slot-wallW)/2+wallW/2;
+    crack=`<path d="M${ncx.toFixed(1)},${baseY-wallH} L${(ncx-3.5).toFixed(1)},${(baseY-wallH*0.55).toFixed(1)} L${(ncx+2.5).toFixed(1)},${(baseY-wallH*0.4).toFixed(1)} L${(ncx-2).toFixed(1)},${baseY}" stroke="#fff3b0" stroke-width="1.4" fill="none" opacity=".9"/>`; }
+  const px=Math.max(x0-2, Math.min(x1+6, x0+(N-broken)*slot+4));
+  const u='_'+gi; // unique gradient-id suffix so stacked scenes don't share defs
+  const defs=`<defs>
+    <linearGradient id="sjSky${u}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#141a40"/><stop offset=".55" stop-color="#3b4f8f"/><stop offset=".82" stop-color="#c98fae"/><stop offset="1" stop-color="#f3c08a"/></linearGradient>
+    <linearGradient id="sjSnow${u}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#aebfdd"/></linearGradient>
+    <radialGradient id="sjSkin${u}" cx=".4" cy=".35"><stop offset="0" stop-color="#9fccf3"/><stop offset="1" stop-color="#4878b8"/></radialGradient>
+    <radialGradient id="sjHalo${u}"><stop offset="0" stop-color="rgba(255,240,180,.95)"/><stop offset=".6" stop-color="rgba(255,224,150,.32)"/><stop offset="1" stop-color="rgba(255,224,150,0)"/></radialGradient>
+    <linearGradient id="sjPath${u}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3a4f6e"/><stop offset="1" stop-color="#1a2233"/></linearGradient>
+  </defs>`;
+  const mtns=`<g>
+    <path d="M110,290 L255,150 L390,290 Z" fill="url(#sjSnow${u})"/>
+    <path d="M300,290 L470,124 L645,290 Z" fill="url(#sjSnow${u})"/>
+    <path d="M560,290 L760,150 L945,290 Z" fill="url(#sjSnow${u})"/>
+    <path d="M470,124 L498,168 L452,162 Z" fill="#ffffff"/>
+    <path d="M255,150 L274,182 L238,178 Z" fill="#ffffff"/>
+    <path d="M760,150 L780,184 L742,180 Z" fill="#ffffff"/>
+  </g>`;
+  const shiva=`<g transform="translate(86,0)">
+    <path d="M-72,290 L0,194 L72,290 Z" fill="url(#sjSnow${u})"/>
+    <path d="M-72,290 L0,194 L-10,290 Z" fill="#c2d2ee" opacity=".7"/>
+    <circle cx="0" cy="150" r="60" fill="url(#sjHalo${u})"/>
+    <ellipse cx="0" cy="252" rx="54" ry="20" fill="#3f73b8"/>
+    <ellipse cx="0" cy="247" rx="54" ry="16" fill="#5a8fd0"/>
+    <ellipse cx="-41" cy="245" rx="14" ry="10" fill="#6aa0dd"/>
+    <ellipse cx="41" cy="245" rx="14" ry="10" fill="#6aa0dd"/>
+    <path d="M-25,251 Q-31,196 0,187 Q31,196 25,251 Z" fill="url(#sjSkin${u})"/>
+    <path d="M-22,210 Q-45,229 -41,245" stroke="#5a8fd0" stroke-width="11" fill="none" stroke-linecap="round"/>
+    <path d="M22,210 Q45,229 41,245" stroke="#5a8fd0" stroke-width="11" fill="none" stroke-linecap="round"/>
+    <rect x="-7" y="167" width="14" height="21" rx="6" fill="#5a8fd0"/>
+    <circle cx="0" cy="150" r="22" fill="url(#sjSkin${u})"/>
+    <path d="M-15,134 Q0,106 15,134 Q0,127 -15,134 Z" fill="#26568f"/>
+    <circle cx="0" cy="119" r="9" fill="#2c5f9c"/>
+    <path d="M9,107 A7,7 0 1 1 9,121 A9,9 0 1 0 9,107 Z" fill="#fdf0bf"/>
+    <path d="M0,143 l3,9 l-3,3 l-3,-3 Z" fill="#e8c84a"/>
+    <path d="M-10,150 q5,3 9,0" stroke="#173a63" stroke-width="1.6" fill="none"/>
+    <path d="M1,150 q5,3 9,0" stroke="#173a63" stroke-width="1.6" fill="none"/>
+    <path d="M-16,167 Q0,181 16,167" stroke="#7a4a1f" stroke-width="3" fill="none" stroke-dasharray="1.5 2.5"/>
+    <g transform="translate(76,150)"><line x1="0" y1="-46" x2="0" y2="122" stroke="#cda14a" stroke-width="3.4"/>
+      <path d="M-12,-42 Q-12,-60 0,-60 Q12,-60 12,-42 M0,-60 l0,-15 M-12,-46 l0,-11 M12,-46 l0,-11" stroke="#d8b25a" stroke-width="3" fill="none"/></g>
+  </g>`;
+  const person=`<g transform="translate(${px.toFixed(1)},0)">
+    <ellipse cx="-4" cy="291" rx="14" ry="4" fill="rgba(20,30,60,.2)"/>
+    <path d="M2,262 l8,28" stroke="#b5651d" stroke-width="6" stroke-linecap="round" fill="none"/>
+    <path d="M-2,262 l-10,27" stroke="#cf7320" stroke-width="6.5" stroke-linecap="round" fill="none"/>
+    <path d="M-9,224 Q-2,211 6,221 L9,261 L-7,263 Z" fill="#e8862e"/>
+    <path d="M-6,232 q-15,3 -21,15" stroke="#e8862e" stroke-width="5.5" stroke-linecap="round" fill="none"/>
+    <circle cx="-6" cy="205" r="9" fill="#e9b27a"/>
+    <path d="M-15,203 q3,-10 12,-8 q4,1 5,5 q-9,-4 -17,3 Z" fill="#3a2a1a"/>
+  </g>`;
+  const svg=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;border-radius:12px;overflow:hidden">
+    ${defs}
+    <rect width="${W}" height="${H}" fill="url(#sjSky${u})"/>
+    <circle cx="858" cy="66" r="26" fill="#fdf2d0" opacity=".9"/>
+    ${mtns}
+    <rect x="0" y="288" width="${W}" height="${H-288}" fill="url(#sjPath${u})"/>
+    ${walls}${crack}${shiva}${person}
+  </svg>`;
+  const unit=g.unit||'units';
+  const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const by=g.by?` · by ${esc(g.by)}`:'';
+  return `<div style="text-align:center;font-size:15px;font-weight:700;color:var(--ink);margin-bottom:8px">${esc(g.name)||'Life’s Big goal'}<span style="font-weight:500;color:var(--muted)">${by}</span></div>`
+    + svg
+    + `<div style="text-align:center;margin-top:12px;font-size:14px;color:var(--ink)"><b>${fmt(cur)}</b> / ${fmt(target)} ${esc(unit)} · <b>${broken}</b> of ${N} walls cleared · <b style="color:#3b6fd0">${Math.round(frac*100)}%</b> to Shiva</div>`
+    + `<div class="hint" style="text-align:center;margin-top:4px">Each wall = ${fmt(per)} ${esc(unit)}. The darkest wall on the right is where you began; the path lightens as you near Shiva.</div>`;
 }
 // ================= AUDIT (rolling 40-day entry ledger, grouped by period) =================
 function renderAudit(){
