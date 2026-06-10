@@ -2212,6 +2212,11 @@ function renderPlanning(){
   let rem=100-dp.reduce((a,b)=>a+b,0);
   catRows.map((r,i)=>({i,f:(sumT>0?r.target/sumT*100:0)-dp[i]})).sort((a,b)=>b.f-a.f).forEach((o,k)=>{if(k<rem)dp[o.i]++;});
   const pctDone=(t,d)=>t>0?Math.round(Math.min(d,t)/t*100):0;
+  // pace check: of the year's periods, how many have elapsed → expected % done by now.
+  // each period should add target/totPeriods, so by `passedP` periods you should be at `pacePct`.
+  const totPeriods=periodsLeft(new Date(yr,0,1),yr), passedP=Math.max(0,totPeriods-pLeft);
+  const pacePct=totPeriods>0?passedP/totPeriods*100:0;
+  const paceCol=(t,d)=>(pctDone(t,d)>=Math.round(pacePct))?'#34a853':'#e84343'; // green on/ahead · red behind
   // colour-code each row by % done in 25% buckets: <25 red · 25-50 amber · 50-75 yellow · 75+ green
   const doneBg=(t,d)=>{const p=t>0?d/t*100:0; return p<25?'rgba(232,67,67,.14)':p<50?'rgba(245,166,35,.15)':p<75?'rgba(245,210,40,.17)':'rgba(141,198,63,.17)';};
   const catBody=catRows.map((r,i)=>`<tr style="border-top:1px solid var(--line);background:${doneBg(r.target,r.done)}">
@@ -2219,14 +2224,14 @@ function renderPlanning(){
     ${num('<b>'+fmtH(r.target)+'h</b>','padding:8px 12px;white-space:nowrap;color:var(--ink)')}
     ${num(fmtH(r.done)+'h','padding:8px 12px;white-space:nowrap;color:var(--muted)')}
     ${num('<b>'+fmtH(Math.max(0,r.target-r.done))+'h</b>','padding:8px 12px;white-space:nowrap;color:var(--ink)')}
-    ${num(pctDone(r.target,r.done)+'%','padding:8px 12px;color:var(--muted)')}
+    ${num('<b>'+pctDone(r.target,r.done)+'%</b>','padding:8px 12px;color:'+paceCol(r.target,r.done))}
   </tr>`).join('');
   const catTot=`<tr style="border-top:2.5px solid var(--ink);background:rgba(127,127,127,.12)">
     <td style="padding:11px 12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;font-size:11px">Total <span style="font-weight:500">(100%)</span></td>
     ${num('<b>'+fmtH(sumT)+'h</b>','padding:11px 12px;white-space:nowrap')}
     ${num('<b>'+fmtH(sumD)+'h</b>','padding:11px 12px;white-space:nowrap')}
     ${num('<b>'+fmtH(Math.max(0,sumT-sumD))+'h</b>','padding:11px 12px;white-space:nowrap')}
-    ${num('<b>'+pctDone(sumT,sumD)+'%</b>','padding:11px 12px')}
+    ${num('<b>'+pctDone(sumT,sumD)+'%</b>','padding:11px 12px;color:'+paceCol(sumT,sumD))}
   </tr>`;
   const catHead=`<div style="display:flex;align-items:baseline;gap:9px;margin:4px 0 10px;flex-wrap:wrap"><h2 style="margin:0;font-size:18px">By category</h2><span class="hint" style="margin:0">planned = done + to&nbsp;do · share of total</span></div>`;
   const catTableP=`<div class="card" style="padding:0;overflow:hidden;flex:none;align-self:flex-start;width:max-content;max-width:100%">
@@ -2234,11 +2239,17 @@ function renderPlanning(){
       <thead><tr>${th('Category','left')}${th('Planned')}${th('Done')}${th('Left')}${th('% Done')}</tr></thead>
       <tbody>${catBody}${catTot}</tbody>
     </table></div>`;
+  const pill=(c,t)=>`<span style="display:inline-flex;align-items:center;gap:5px"><i style="width:9px;height:9px;border-radius:3px;background:${c};display:inline-block;flex:none"></i>${t}</span>`;
+  const catNote=`<div style="margin:11px 2px 0;max-width:400px;font-size:12px;color:var(--muted);line-height:1.5">
+    <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:9px;font-size:13px;color:var(--ink)">
+      <b>${passedP} of ${totPeriods}</b> periods done<span style="color:var(--muted)">·</span>${pLeft} left<span style="color:var(--muted)">·</span>on-pace = <b style="color:var(--ink)">${Math.round(pacePct)}%</b> done by now</div>
+    <div style="margin-bottom:7px"><b style="color:var(--ink);text-transform:uppercase;letter-spacing:.04em;font-size:10.5px">% Done</b> &nbsp;${pill('#34a853','on / ahead of pace')} &nbsp; ${pill('#e84343','behind pace')}</div>
+    <div><b style="color:var(--ink);text-transform:uppercase;letter-spacing:.04em;font-size:10.5px">Row tint</b> &nbsp;${pill('#e84343','&lt;25%')} ${pill('#F5A623','25–50%')} ${pill('#d4b400','50–75%')} ${pill('#6fae28','75%+')}</div></div>`;
   const planHead=`<h2 style="margin:4px 0 10px;font-size:18px">Planning breakdown (210 days planned of which ${pend} days left)</h2>`;
   document.getElementById('planning').innerHTML = strip + summary
     + `<div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:nowrap">`
     +   `<div style="flex:none">${planHead}${tableP}</div>`
-    +   `<div style="flex:none">${catHead}${catTableP}</div>`
+    +   `<div style="flex:none">${catHead}${catTableP}${catNote}</div>`
     + `</div>`;
 }
 function setView(v){
