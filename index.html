@@ -872,7 +872,7 @@ const YTARGETS = [
 ];
 // Shared capsule battery. yp = intentional pool hours; agg = minutes per category;
 // fixScale scales fixed-hour targets to the period (1 for year, days/365 for a month).
-function capsuleBattery(yp, agg, fixScale, lead){
+function capsuleBattery(yp, agg, fixScale, lead, sum){
   const fmt=n=>Math.round(n).toLocaleString('en-US');
   // target hours: % of pool, fixed h (scaled to period), or the leftover for the 'rest' zone
   const dhOf=t=>t.src.reduce((a,c)=>a+(agg[c]||0),0)/60;
@@ -914,8 +914,9 @@ function capsuleBattery(yp, agg, fixScale, lead){
   let rem=100-dp.reduce((a,b)=>a+b,0);
   zones.map((z,i)=>({i,f:z.pct-dp[i]})).sort((a,b)=>b.f-a.f).forEach((o,k)=>{if(k<rem)dp[o.i]++;});
   const meta=zones.map((z,i)=>`<span><i style="background:${z.c}">${dp[i]}%</i>${z.k} <b>${fmt(z.doneH)}/${fmt(z.targetH)}h</b> · ${fmt(Math.max(0,z.targetH-z.doneH))}h left</span>`).join('');
-  const leftH=zones.reduce((a,z)=>a+Math.max(0,z.targetH-z.doneH),0);
-  const doneTot=zones.reduce((a,z)=>a+Math.min(z.doneH,z.targetH),0);
+  // summary totals: use authoritative planning numbers when given, so the lead and this line agree
+  const doneTot=sum?sum.done:zones.reduce((a,z)=>a+Math.min(z.doneH,z.targetH),0);
+  const leftH=sum?sum.left:zones.reduce((a,z)=>a+Math.max(0,z.targetH-z.doneH),0);
   return `<div class="batt batt-pro">
       <div class="batt-body">
         <div class="batt-sq">${cells}</div>
@@ -931,7 +932,7 @@ function yearUsageHTML(o){
   const yp=P.yearH; // capacity = Planning year total (logged + to-do), not YBATT_DAILY×days
   const agg={};
   MONTHS.forEach(M=>{ for(const [c,v] of Object.entries(monthCats(M))) agg[c]=(agg[c]||0)+v; });
-  return capsuleBattery(yp, agg, 1, `Your ${o.yr} plan — ${fmt(yp)}h total · ${fmt(P.tot.done)}h done + ${fmt(P.totH)}h to do`);
+  return capsuleBattery(yp, agg, 1, `Your ${o.yr} plan — ${fmt(yp)}h total · ${fmt(P.tot.done)}h done + ${fmt(P.totH)}h to do`, {done:P.tot.done, left:P.totH});
 }
 
 // ---- Year donut (category split across all months) ----
