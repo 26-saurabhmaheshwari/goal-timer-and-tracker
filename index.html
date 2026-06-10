@@ -325,6 +325,18 @@
   #repGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));gap:16px}
   .repcard canvas{max-height:230px}
   @media print{ #repGrid{display:grid;grid-template-columns:1fr 1fr} .repcard{page-break-inside:avoid} }
+  #pdfReport{display:none}
+  #pdfReport .pdf-sec{margin-bottom:22px}
+  #pdfReport .pdf-h{font-size:17px;margin:0 0 10px;border-bottom:2px solid var(--line);padding-bottom:5px}
+  #pdfReport .pdf-sub{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:14px 0 6px}
+  #pdfReport .pdf-img{max-width:100%;height:auto;display:block}
+  #pdfReport canvas{display:none}
+  @media print{
+    body.pdf-print .wrap, body.pdf-print #potPopup{display:none!important}
+    body.pdf-print #pdfReport{display:block!important}
+    #pdfReport .pdf-sec{break-inside:auto}
+    #pdfReport .card{break-inside:avoid;page-break-inside:avoid}
+  }
 </style>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
@@ -2040,6 +2052,46 @@ function exportTipsPdf(){
   window.print();
   setTimeout(()=>{ body.innerHTML=saved; },300);
 }
+// ---- Reports → Export PDF: compose Planning, Overview, Goals, Pot into a hidden #pdfReport, then browser print-to-PDF ----
+function pdfClone(srcEl){            // deep-clone a rendered node, swapping each <canvas> for a static <img>
+  if(!srcEl) return null;
+  const clone=srcEl.cloneNode(true);
+  const oc=srcEl.querySelectorAll('canvas'), cc=clone.querySelectorAll('canvas');
+  oc.forEach((cv,i)=>{ const t=cc[i]; if(!t) return;
+    let url=''; try{ url=cv.toDataURL('image/png'); }catch(_){}
+    const img=document.createElement('img'); img.className='pdf-img'; if(url) img.src=url;
+    t.replaceWith(img); });
+  clone.querySelectorAll('.noprint').forEach(n=>n.remove());
+  return clone;                     // ids kept: originals precede #pdfReport in DOM, so getElementById + SVG url(#…) still resolve to them
+}
+function pdfSec(title){ const d=document.createElement('div'); d.className='pdf-sec';
+  if(title){ const h=document.createElement('div'); h.className='pdf-h'; h.textContent=title; d.appendChild(h); } return d; }
+function pdfSub(text){ const d=document.createElement('div'); d.className='pdf-sub'; d.textContent=text; return d; }
+function exportReportPdf(){
+  try{ renderKPIs(); renderYearDonut(); renderTotalTrend(); renderPlanning(); renderGoals(); renderPot('potBox'); }catch(_){}
+  const rep=document.getElementById('pdfReport'); rep.innerHTML='';
+  // 1) Planning — both tables
+  const pSec=pdfSec('Planning'); const pc=pdfClone(document.getElementById('planning')); if(pc) pSec.appendChild(pc); rep.appendChild(pSec);
+  // 2) Overview — KPIs + year donut/trend (drop the tips insights block)
+  const oSec=pdfSec('Overview');
+  const k=pdfClone(document.getElementById('kpis')); if(k) oSec.appendChild(k);
+  const y=pdfClone(document.getElementById('ovYear')); if(y){ y.querySelectorAll('.insights').forEach(n=>n.remove()); oSec.appendChild(y); }
+  rep.appendChild(oSec);
+  // 3) Goals — active + recurring (their headings live in parent cards, so re-label)
+  const gSec=pdfSec('Goals');
+  const a=pdfClone(document.getElementById('secActive')); if(a){ gSec.appendChild(pdfSub('Active goals')); gSec.appendChild(a); }
+  const r=pdfClone(document.getElementById('secRecurring')); if(r){ gSec.appendChild(pdfSub('🔁 Recurring goals')); gSec.appendChild(r); }
+  rep.appendChild(gSec);
+  // 4) The Pot — jar + the Shivling 1,000-block scene only (not the full Shiva journeys)
+  const potSec=pdfSec('The Pot');
+  const jar=pdfClone(document.getElementById('potBox')); if(jar) potSec.appendChild(jar);
+  const shiv=sjShivlingScene(); if(shiv){ const sd=document.createElement('div'); sd.style.marginTop='14px'; sd.innerHTML=shiv; potSec.appendChild(sd); }
+  rep.appendChild(potSec);
+  document.body.classList.add('pdf-print');
+  const done=()=>{ document.body.classList.remove('pdf-print'); rep.innerHTML=''; window.removeEventListener('afterprint',done); };
+  window.addEventListener('afterprint',done);
+  setTimeout(()=>window.print(),60);
+}
 function habitIcon(cat){ return iconFor(cat); }
 // per-period activities (period = 10 days: 1-10, 11-20, 21-end of month). hours per period.
 const PERIOD_ITEMS={}; // migrated to recurring goals (sec:'active', recurring:true)
@@ -2370,7 +2422,7 @@ function renderReports(){
   // bind
   document.querySelectorAll('#repControls [data-g]').forEach(b=>b.onclick=()=>{ repGran=b.dataset.g; renderReports(); });
   document.querySelectorAll('#repControls [data-k]').forEach(b=>b.onclick=()=>{ const k=b.dataset.k; repSel.has(k)?repSel.delete(k):repSel.add(k); renderReports(); });
-  document.getElementById('repPdfBtn').onclick=()=>window.print();
+  document.getElementById('repPdfBtn').onclick=exportReportPdf;
 }
 
 // --- Firebase sync glue ---
@@ -2574,12 +2626,19 @@ function renderShivaJourney(){
   const big=goals.filter(x=>((x.cat||'').trim().toLowerCase()===SJ_BIG_CAT.toLowerCase()) && x.sec!=='archived');
   if(!big.length){ box.innerHTML=`<div class="hint" style="text-align:center;padding:18px 0">No Life's Big goals yet. Create a goal under the “${SJ_BIG_CAT}” category and its journey to Shiva appears here.</div>`; return; }
   const scenes=[];
-  // Near-term milestone (above): the current rolling 1,000-mala block — 100 walls of 10 — so progress stays visible; target is a Shivling.
-  const ons=big.find(x=>/ons/i.test(x.name||''));
-  if(ons){ const c=Math.max(0,+ons.cur||0), block=Math.floor(c/1000)+1, cur=c%1000;
-    scenes.push(sjScene(ons,'L',{per:10, N:100, cur, shrine:'shivling', shrineName:'Shivling', heading:`${ons.name} — milestone ${block} (this 1,000) → Shivling`, perLabel:`10 ${ons.unit||'units'}`})); }
+  const shiv=sjShivlingScene(big);   // near-term rolling 1,000 block, above the full journeys
+  if(shiv) scenes.push(shiv);
   big.forEach((g,gi)=>scenes.push(sjScene(g,gi)));
   box.innerHTML = scenes.join('<div style="height:26px"></div>');
+}
+// Near-term milestone scene: the current rolling 1,000-mala block — 100 walls of 10 — so progress stays visible; target is a Shivling.
+function sjShivlingScene(big){
+  if(!big){ const goals=(typeof loadGoals==='function')?loadGoals():[];
+    big=goals.filter(x=>((x.cat||'').trim().toLowerCase()===SJ_BIG_CAT.toLowerCase()) && x.sec!=='archived'); }
+  const ons=big.find(x=>/ons/i.test(x.name||''));
+  if(!ons) return '';
+  const c=Math.max(0,+ons.cur||0), block=Math.floor(c/1000)+1, cur=c%1000;
+  return sjScene(ons,'L',{per:10, N:100, cur, shrine:'shivling', shrineName:'Shivling', heading:`${ons.name} — milestone ${block} (this 1,000) → Shivling`, perLabel:`10 ${ons.unit||'units'}`});
 }
 function sjScene(g,gi,opts){
   opts=opts||{};
@@ -2802,5 +2861,6 @@ function showPotPopup(){ const p=document.getElementById('potPopup'); if(!p) ret
     <div id="potPopupBox" style="margin-top:14px"></div>
   </div>
 </div>
+<div id="pdfReport"></div>
 </body>
 </html>
