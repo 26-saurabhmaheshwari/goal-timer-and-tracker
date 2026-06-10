@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
   FILE MAP - grep these exact tags to jump (line numbers drift, names don't)
-  HTML views:   /viewOverview  /viewLog  /viewGoals  /viewPlanning  /viewAudit  /viewReports  /viewTips  /viewSettings  (each closes with a div comment)
+  HTML views:   /viewOverview  /viewLog  /viewGoals  /viewPlanning  /viewAudit  /viewPot  /viewReports  /viewTips  /viewSettings  /viewFaq  (each closes with a div comment)
   JS sections:  "===== LOG VIEW"  "category management (Settings)"  "===== ONLINE / OFFLINE"
                 "===== LIFE BAR"  "===== GOALS"  "===== TIME PLANNING"  "===== AUDIT"  "===== ARCHIVE"
   Data/state:   LS_GOALS / SEED_GOALS . LS_HABITS / SEED_HABITS / loadHabits / groupHabits . HABIT_COL . LS_ICONS / SEED_ICONS / ICONS / iconFor (category icons, Settings-managed) . LS_TIPS / TIP_SECTIONS / loadTips / renderTips / tipMd
@@ -392,6 +392,7 @@
       <button data-v="reports">Reports</button>
       <button data-v="tips">Life Tips</button>
       <button data-v="settings">Settings</button>
+      <button data-v="faq">FAQ</button>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
       <div style="display:flex;align-items:center;gap:10px">
@@ -642,6 +643,44 @@
     <div id="potBox" style="margin-top:14px"></div>
   </div>
 </div><!-- /viewPot -->
+<div id="viewFaq" hidden>
+  <div class="card" style="max-width:760px;line-height:1.55">
+    <h2>How the numbers work</h2>
+    <div class="hint">Plain-English definition of every figure on Overview, Pot and Time Planning. All figures recompute live each time you open a page.</div>
+
+    <h3 style="margin:18px 0 6px">Source of truth</h3>
+    <p>Everything is derived from two raw inputs stored on this device (and synced via Firebase):</p>
+    <ul>
+      <li><b>Logged entries</b> — every time-log you record. This is the only source of <b>Done</b> hours.</li>
+      <li><b>Goals &amp; Habits config</b> — your targets and daily habits. This is the only source of <b>To&nbsp;do</b> hours.</li>
+    </ul>
+    <p>There is no separate stored "total". Overview, Pot and Time Planning all call one function (<code>planYearTotals()</code>), so their headline numbers are always identical — change a goal or log time and all three move together.</p>
+
+    <h3 style="margin:18px 0 6px">Done</h3>
+    <p>Sum of every logged entry this year, by category. Counts <b>all</b> logged time regardless of a goal's status — time on <i>backlog</i> or <i>dream</i> goals still adds to Done.</p>
+
+    <h3 style="margin:18px 0 6px">To do (a.k.a. "left")</h3>
+    <p>The forward commitment for the rest of the year:</p>
+    <ul>
+      <li><b>Active goals only</b> (backlog &amp; dream excluded). A normal goal's remaining = <code>(target − current) × minutes-per-unit</code>. A recurring goal = <code>per-period × periods left</code>.</li>
+      <li><b>Daily habits</b> = <code>sum(habit minutes/day) × days left</code> in the year.</li>
+    </ul>
+
+    <h3 style="margin:18px 0 6px">Total / Capacity</h3>
+    <p><code>Total = Done + To&nbsp;do</code>. This is the Pot's capacity and the Overview battery's total. It is <b>not</b> 3h/day × 365 — it reflects your actual plan.</p>
+
+    <h3 style="margin:18px 0 6px">Per period · Per month · Per day</h3>
+    <ul>
+      <li>A <b>period</b> = a third of a month: P1 = days 1–10, P2 = 11–20, P3 = 21–end (~3 periods/month).</li>
+      <li><b>Per period</b> = To&nbsp;do ÷ periods left in the year.</li>
+      <li><b>Per month</b> = To&nbsp;do ÷ months left (days left ÷ 30.44).</li>
+      <li><b>Per day required</b> = To&nbsp;do ÷ days left, shown split as <b>fixed</b> (your daily habits — a constant) + <b>goals</b> (the remainder from active goals).</li>
+    </ul>
+
+    <h3 style="margin:18px 0 6px">Consistency note</h3>
+    <p>Overview (year), Pot and Time Planning share the same source, so Total / Done / To&nbsp;do match exactly across them. The <b>monthly</b> battery on the Log view is a different metric — a 3h/day pool for that single month — and is not meant to equal the yearly figures.</p>
+  </div>
+</div><!-- /viewFaq -->
 
 <div id="viewReports" hidden>
   <div class="card">
@@ -872,21 +911,22 @@ const YTARGETS = [
 ];
 // Shared capsule battery. yp = intentional pool hours; agg = minutes per category;
 // fixScale scales fixed-hour targets to the period (1 for year, days/365 for a month).
-function capsuleBattery(yp, agg, fixScale, lead){
-  const fmt=n=>Math.round(n).toLocaleString('en-US');
-  // target hours: % of pool, fixed h (scaled to period), or the leftover for the 'rest' zone
+// Build the YTARGETS-based zones (top-down % of pool) — used by the monthly Log battery.
+function ytZones(yp, agg, fixScale){
   const dhOf=t=>t.src.reduce((a,c)=>a+(agg[c]||0),0)/60;
   // leftFixed = a fixed remaining (e.g. SRM 48h); its battery target = done + leftFixed
   const tgtOf=t=>t.h!=null?t.h*fixScale:(t.leftFixed!=null?dhOf(t)+t.leftFixed*fixScale:yp*t.pct/100);
   const fixedH=YTARGETS.reduce((a,t)=>a+(t.rest?0:tgtOf(t)),0);
-  const zones=YTARGETS.map(t=>{
+  return YTARGETS.map(t=>{
     const targetH=t.rest?Math.max(0,yp-fixedH):tgtOf(t);
-    return {
-      k:t.k, c:t.c, targetH,
-      doneH: dhOf(t),
-      pct: yp>0?targetH/yp*100:0,
-    };
+    return { k:t.k, c:t.c, targetH, doneH: dhOf(t), pct: yp>0?targetH/yp*100:0 };
   });
+}
+// Shared capsule battery renderer. zones = [{k,c,doneH,targetH,pct}]; lead = headline string.
+function capsuleBattery(zones, lead){
+  const fmt=n=>Math.round(n).toLocaleString('en-US');
+  const totT=zones.reduce((a,z)=>a+z.targetH,0);
+  zones=zones.map(z=>({...z, pct: z.pct!=null?z.pct:(totT>0?z.targetH/totT*100:0)}));
   const shade=(hex,amt)=>{hex=hex.replace('#','');const n=parseInt(hex,16);let r=n>>16,g=(n>>8)&255,b=n&255;const t=amt<0?0:255,p=Math.abs(amt);r=Math.round(r+(t-r)*p);g=Math.round(g+(t-g)*p);b=Math.round(b+(t-b)*p);return `rgb(${r},${g},${b})`;};
   // allocate cells per zone proportional to its target %, summing to N
   const N=90;
@@ -927,9 +967,9 @@ function yearUsageHTML(o){
   const fmt=n=>Math.round(n).toLocaleString('en-US');
   const P=planYearTotals();
   const yp=P.yearH; // capacity = Planning year total (logged + to-do), not YBATT_DAILY×days
-  const agg={};
-  MONTHS.forEach(M=>{ for(const [c,v] of Object.entries(monthCats(M))) agg[c]=(agg[c]||0)+v; });
-  return capsuleBattery(yp, agg, 1, `Your ${o.yr} plan — ${fmt(yp)}h total = ${fmt(P.tot.done)}h done + ${fmt(P.totH)}h to do`);
+  // zones from the SAME planning rows as the lead, so cells + legend reconcile with done/to-do/total
+  const zones=P.rowsData.filter(r=>r.target>0).map(r=>({k:r.k,c:r.color,doneH:r.done,targetH:r.target}));
+  return capsuleBattery(zones, `Your ${o.yr} plan — ${fmt(yp)}h total = ${fmt(P.tot.done)}h done + ${fmt(P.totH)}h to do`);
 }
 
 // ---- Year donut (category split across all months) ----
@@ -1066,7 +1106,7 @@ function renderUsage(i){
   const yp=YBATT_DAILY*days;                 // 3h/day intentional pool for the month
   const agg=monthCats(M);                     // minutes per category this month
   document.getElementById('usageHint').textContent = `${M.m} — your ${yp}h of intent (${YBATT_DAILY}h × ${days} days)`;
-  document.getElementById('usage').innerHTML = capsuleBattery(yp, agg, days/365, `${M.m} — ${yp}h of intent · ${YBATT_DAILY}h/day × ${days} days`);
+  document.getElementById('usage').innerHTML = capsuleBattery(ytZones(yp, agg, days/365), `${M.m} — ${yp}h of intent · ${YBATT_DAILY}h/day × ${days} days`);
 }
 
 // ---- Tabs ----
@@ -2065,7 +2105,12 @@ function planYearTotals(){
     return {k,color,target,done:doneH,allocated,tasks};
   };
   const usedCats=new Set(YTARGETS.flatMap(t=>t.src));
-  const extraCats=[...new Set(goals.filter(g=>g.sec==='active' && !usedCats.has(g.cat)).map(g=>g.cat))];
+  // every active-goal AND habit category that isn't already a YTARGETS row → its own row,
+  // so rowsData is the COMPLETE source: sum(allocated)==totH and the legend always reconciles with the lead.
+  const extraCats=[...new Set([
+    ...goals.filter(g=>g.sec==='active').map(g=>g.cat),
+    ...habitItems.map(i=>i.cat),
+  ].filter(c=>!usedCats.has(c)))];
   const rowsData=[
     ...YTARGETS.map(t=>mkRow(t.k, t.src, HABIT_COL[t.k]||'#8a93a3', t.rest?Math.max(0,yp-fixedH):(t.h!=null?t.h:yp*t.pct/100), t.leftFixed)),
     ...extraCats.map(cat=>mkRow(cat, [cat], (typeof COLORS!=='undefined'&&COLORS[cat])||'#8a93a3', null)),
@@ -2161,7 +2206,7 @@ function renderPlanning(){
     + tableP;
 }
 function setView(v){
-  if(!['overview','log','goals','planning','audit','pot','reports','tips','settings'].includes(v)) v='overview';
+  if(!['overview','log','goals','planning','audit','pot','reports','tips','settings','faq'].includes(v)) v='overview';
   document.getElementById('viewOverview').hidden = v!=='overview';
   document.getElementById('viewLog').hidden = v!=='log';
   document.getElementById('viewGoals').hidden = v!=='goals';
@@ -2171,6 +2216,7 @@ function setView(v){
   document.getElementById('viewReports').hidden = v!=='reports';
   document.getElementById('viewTips').hidden = v!=='tips';
   document.getElementById('viewSettings').hidden = v!=='settings';
+  document.getElementById('viewFaq').hidden = v!=='faq';
   document.getElementById('lifeBar').hidden = v!=='overview';
   const subs={overview:'your finite hours, on purpose', log:'log time, goals & screen use · saved on this device',
     goals:'targets vs what you actually did', planning:'daily habits vs goal-based time',
@@ -2178,7 +2224,8 @@ function setView(v){
     pot:'your year as a pot — capacity vs filled',
     reports:'compare tracked hours across periods',
     tips:'long-form notes & wisdom',
-    settings:'manage categories & preferences'};
+    settings:'manage categories & preferences',
+    faq:'how every number is calculated'};
   document.getElementById('sub').textContent = subs[v];
   document.querySelectorAll('#viewNav button').forEach(b=>b.classList.toggle('active', b.dataset.v===v));
   if(v==='overview'){ renderSuggestions(); setOv(ovTab); }
