@@ -2214,7 +2214,7 @@ function renderPlanning(){
   const pctDone=(t,d)=>t>0?Math.round(Math.min(d,t)/t*100):0;
   // pace check: of the year's periods, how many have elapsed → expected % done by now.
   // each period should add target/totPeriods, so by `passedP` periods you should be at `pacePct`.
-  const totPeriods=periodsLeft(new Date(yr,0,1),yr), passedP=Math.max(0,totPeriods-pLeft);
+  const totPeriods=21, passedP=Math.max(0,totPeriods-pLeft); // 21 = planned periods we set (210-day window), not the full 36-period year
   const pacePct=totPeriods>0?passedP/totPeriods*100:0;
   const paceCol=(t,d)=>(pctDone(t,d)>=Math.round(pacePct))?'#34a853':'#e84343'; // green on/ahead · red behind
   // colour-code each row by % done in 25% buckets: <25 red · 25-50 amber · 50-75 yellow · 75+ green
