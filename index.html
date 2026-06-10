@@ -678,7 +678,7 @@
     </ul>
 
     <h3 style="margin:18px 0 6px">Consistency note</h3>
-    <p>Overview (year), Pot and Time Planning share the same source, so Total / Done / To&nbsp;do match exactly across them. The <b>monthly</b> battery on the Log view is a different metric — a 3h/day pool for that single month — and is not meant to equal the yearly figures.</p>
+    <p>Overview (year), Pot and Time Planning share the same source (Time Planning), so Total / Done / To&nbsp;do match exactly across them. The monthly view shows only the category donut + breakdown for each month — actual logged time, no targets.</p>
   </div>
 </div><!-- /viewFaq -->
 
@@ -896,11 +896,9 @@ function renderKPIs(){
     yr, yearPool, totalDays, aheadPool, aheadDays, elapsedDays, passedPool:elapsedPool, untracked, used:usedH, wasted:wasteKnown?wastedH:null
   });
 }
-// Year KPI — battery of a 3h/day intentional pool (1095h = 3h/day × 365),
-// split into target zones. Targets are either a % of the pool, a fixed hour count (h),
-// or the leftover after the others (rest). Each zone fills with coloured cells to its
-// actual progress vs its own target; the rest of the zone stays white (still to do).
-const YBATT_DAILY = 3;
+// Category targets. Each zone fills with coloured cells to its progress vs its own
+// target; the rest stays white (still to do). Targets/capacity now come from
+// planYearTotals() (done + allocated per category) — see rowsData.
 const YTARGETS = [
   {k:'Spiritual', src:['Spiritual'], h:319,     c:'#4C6EF5'},
   {k:"Life's Big",src:["Life's Big"],h:123,     c:'#E84393'},
@@ -909,20 +907,8 @@ const YTARGETS = [
   {k:'Career & Finance', src:['Career'], h:62, c:'#5A49B8'},
   {k:'Hobby',     src:['Hobby'],     rest:true, c:'#8B2FE0'},
 ];
-// Shared capsule battery. yp = intentional pool hours; agg = minutes per category;
-// fixScale scales fixed-hour targets to the period (1 for year, days/365 for a month).
-// Build the YTARGETS-based zones (top-down % of pool) — used by the monthly Log battery.
-function ytZones(yp, agg, fixScale){
-  const dhOf=t=>t.src.reduce((a,c)=>a+(agg[c]||0),0)/60;
-  // leftFixed = a fixed remaining (e.g. SRM 48h); its battery target = done + leftFixed
-  const tgtOf=t=>t.h!=null?t.h*fixScale:(t.leftFixed!=null?dhOf(t)+t.leftFixed*fixScale:yp*t.pct/100);
-  const fixedH=YTARGETS.reduce((a,t)=>a+(t.rest?0:tgtOf(t)),0);
-  return YTARGETS.map(t=>{
-    const targetH=t.rest?Math.max(0,yp-fixedH):tgtOf(t);
-    return { k:t.k, c:t.c, targetH, doneH: dhOf(t), pct: yp>0?targetH/yp*100:0 };
-  });
-}
 // Shared capsule battery renderer. zones = [{k,c,doneH,targetH,pct}]; lead = headline string.
+// Used by the Overview year battery (yearUsageHTML), built from planYearTotals().rowsData.
 function capsuleBattery(zones, lead){
   const fmt=n=>Math.round(n).toLocaleString('en-US');
   const totT=zones.reduce((a,z)=>a+z.targetH,0);
@@ -1026,7 +1012,6 @@ function renderDonut(i){
       <span>${M.m}</span>
       <button onclick="ovMonthGo(1)" ${current>=MONTHS.length-1?'disabled':''} aria-label="Next month">›</button>
     </div>`;
-  const usageHint = `<div class="hint" id="usageHint" style="margin:0 0 12px;font-weight:700;color:#cbd2de"></div>`;
   if(isCurrent){
     const periods=['P1','P2','P3'];
     const cells=periods.map((p,idx)=>{
@@ -1038,9 +1023,8 @@ function renderDonut(i){
         <table class="ms-table mini"><tbody>${tot?legendRows(cats):'<tr><td class="muted">no entries yet</td></tr>'}</tbody></table>
       </div>`;
     }).join('');
-    wrap.innerHTML = `${nav}${usageHint}
+    wrap.innerHTML = `${nav}
       <div class="card">
-        <div class="usagebox" id="usage"></div>
         <h2 style="margin:16px 0 2px">${M.m} — by period <span class="tagnow">current</span></h2>
         <div class="hint" style="margin-bottom:10px">Three 10-day blocks side by side — compare where each stretch of the month went. Merges into one chart once the month ends.</div>
         <div class="pgrid">${cells}</div>
@@ -1048,7 +1032,7 @@ function renderDonut(i){
     periods.forEach((p,idx)=>{ const cats=entryCats(ym,p); if(total(cats)) donutCharts.push(new Chart(document.getElementById('pdonut'+idx), donutCfg(cats))); });
   } else {
     const cats=M.cats, tot=total(cats);
-    wrap.innerHTML = `${nav}${usageHint}
+    wrap.innerHTML = `${nav}
       <div class="card monthsplit">
         <div class="ms-left">
           <h2 style="margin-bottom:10px">${M.m} breakdown</h2>
@@ -1056,13 +1040,11 @@ function renderDonut(i){
             <div class="center"><div class="big">${Math.floor(tot/60)}<span>h</span> ${tot%60}<span>m</span></div></div></div>
         </div>
         <div class="ms-right">
-          <div class="usagebox" id="usage"></div>
           <table class="ms-table"><tbody>${legendRows(cats)}</tbody></table>
         </div>
       </div>`;
     donutCharts.push(new Chart(document.getElementById('donut'), donutCfg(cats)));
   }
-  renderUsage(i);
 }
 window.ovMonthGo=function(d){ current=Math.max(0,Math.min(MONTHS.length-1,current+d)); renderDonut(current); };
 
@@ -1100,13 +1082,6 @@ function usageHTML(pool, used, wasted, label, past){
       <span><i style="background:${freeBg};border:1px solid ${freeBd}"></i>${freeLbl} ${free.toFixed(0)}h · ${p(free)}%</span>
       <span>${label}</span>
     </div>`;
-}
-function renderUsage(i){
-  const M=MONTHS[i], ym=ymOf(M.m), days=daysIn(ym);
-  const yp=YBATT_DAILY*days;                 // 3h/day intentional pool for the month
-  const agg=monthCats(M);                     // minutes per category this month
-  document.getElementById('usageHint').textContent = `${M.m} — your ${yp}h of intent (${YBATT_DAILY}h × ${days} days)`;
-  document.getElementById('usage').innerHTML = capsuleBattery(ytZones(yp, agg, days/365), `${M.m} — ${yp}h of intent · ${YBATT_DAILY}h/day × ${days} days`);
 }
 
 // ---- Tabs ----
@@ -2074,8 +2049,6 @@ function planYearTotals(){
   const fixed=habitItems.reduce((a,i)=>a+i.m,0);
   const yr=(new Date()).getFullYear();
   const totalDays=((yr%4===0&&yr%100!==0)||yr%400===0)?366:365;
-  const yp=YBATT_DAILY*totalDays;
-  const fixedH=YTARGETS.reduce((a,t)=>a+(t.rest?0:(t.h!=null?t.h:(t.leftFixed!=null?t.leftFixed:yp*t.pct/100))),0);
   const agg={}; MONTHS.forEach(M=>{ for(const [c,v] of Object.entries(monthCats(M))) agg[c]=(agg[c]||0)+v; });
   const now=new Date(), end=new Date(yr,11,31,23,59,59);
   const pend=Math.max(0, Math.ceil((end-now)/86400000));
@@ -2112,7 +2085,7 @@ function planYearTotals(){
     ...habitItems.map(i=>i.cat),
   ].filter(c=>!usedCats.has(c)))];
   const rowsData=[
-    ...YTARGETS.map(t=>mkRow(t.k, t.src, HABIT_COL[t.k]||'#8a93a3', t.rest?Math.max(0,yp-fixedH):(t.h!=null?t.h:yp*t.pct/100), t.leftFixed)),
+    ...YTARGETS.map(t=>mkRow(t.k, t.src, HABIT_COL[t.k]||'#8a93a3', null, t.leftFixed)),
     ...extraCats.map(cat=>mkRow(cat, [cat], (typeof COLORS!=='undefined'&&COLORS[cat])||'#8a93a3', null)),
   ];
   const tot={target:0,done:0,allocated:0};
@@ -2124,13 +2097,12 @@ function planYearTotals(){
   rowsData.forEach(r=>r.tasks.forEach(t=>goalRows.push({cat:r.k,color:r.color,h:t.h||0,label:t.label,note:t.note})));
   const totH=[...habitRows,...goalRows].reduce((a,t)=>a+(t.h||0),0);
   const yearH=tot.done+totH; // planning year total (logged + to-do) — the capacity Pot/Overview use
-  return {HABITS,habitItems,fixed,yr,totalDays,yp,fixedH,agg,now,end,pend,pLeft,mLeft,goals,rowsData,tot,habitRows,goalRows,totH,yearH};
+  return {HABITS,habitItems,fixed,yr,totalDays,agg,now,end,pend,pLeft,mLeft,goals,rowsData,tot,habitRows,goalRows,totH,yearH};
 }
 function renderPlanning(){
-  const {HABITS,habitItems,fixed,yr,totalDays,yp,fixedH,agg,now,end,pend,pLeft,mLeft,goals,rowsData,tot,habitRows,goalRows,totH,yearH}=planYearTotals();
+  const {HABITS,habitItems,fixed,yr,totalDays,agg,now,end,pend,pLeft,mLeft,goals,rowsData,tot,habitRows,goalRows,totH,yearH}=planYearTotals();
   const cIcon=c=>iconFor(c);
   const fmtM=m=>{const h=Math.floor(m/60),mm=Math.round(m%60);return h?(mm?`${h}h ${mm}m`:`${h}h`):`${mm}m`;};
-  const POOL=YBATT_DAILY*60;
   const cards=habitItems.map(i=>`<div class="card" style="border-top:3px solid ${i.c};padding:13px 15px">
       <div style="font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:${i.c};font-weight:700;margin-bottom:6px">${cIcon(i.cat)} ${i.cat}</div>
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
@@ -2449,16 +2421,12 @@ document.querySelectorAll('#setSide button').forEach(b=>b.onclick=()=>setSettab(
 function renderPot(boxId){
   const box=document.getElementById(boxId||'potBox'); if(!box) return;
   const fmt=n=>Math.round(n).toLocaleString('en-US');
-  const yr=new Date().getFullYear();
-  const totalDays=Math.round((new Date(yr,11,31)-new Date(yr,0,1))/864e5)+1;
-  const yp=YBATT_DAILY*totalDays;
-  const agg={}; MONTHS.forEach(M=>{ for(const [c,v] of Object.entries(monthCats(M))) agg[c]=(agg[c]||0)+v; });
-  const dhOf=t=>t.src.reduce((a,c)=>a+(agg[c]||0),0)/60;
-  const tgtOf=t=>t.h!=null?t.h:(t.leftFixed!=null?dhOf(t)+t.leftFixed:yp*t.pct/100);
-  const fixedH=YTARGETS.reduce((a,t)=>a+(t.rest?0:tgtOf(t)),0);
-  const zones=YTARGETS.map(t=>{ const targetH=t.rest?Math.max(0,yp-fixedH):tgtOf(t); return {k:t.k,c:t.c,targetH,doneH:dhOf(t)}; });
+  const P=planYearTotals();
+  const yr=P.yr;
+  // zones from the SAME planning rows as Overview → legend targets/% reconcile across portals
+  const zones=P.rowsData.filter(r=>r.target>0).map(r=>({k:r.k,c:r.color,targetH:r.target,doneH:r.done}));
   // capacity = Planning year total (logged + to-do), NOT YBATT_DAILY×days
-  const cap=planYearTotals().yearH, totDone=zones.reduce((a,z)=>a+z.doneH,0), fr=Math.max(0,Math.min(1,totDone/cap));
+  const cap=P.yearH, totDone=zones.reduce((a,z)=>a+z.doneH,0), fr=Math.max(0,Math.min(1,totDone/cap));
   // ---------- ORB: layered multi-colour water, 10% grid, 5% side ticks ----------
   const cx=150,cy=140,r=108, yAt=f=>(cy+r)-2*r*Math.max(0,Math.min(1,f));
   const surfY=yAt(fr);
