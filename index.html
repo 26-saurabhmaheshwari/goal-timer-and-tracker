@@ -382,7 +382,7 @@
 <div class="wrap">
   <header>
     <div>
-      <h1>Make It Count</h1>
+      <h1>Make It Count <span id="hdYr" style="font-weight:500;color:var(--muted)"></span></h1>
       <div class="sub" id="sub">your finite hours, on purpose</div>
     </div>
     <div class="tabs" id="viewNav">
@@ -873,6 +873,8 @@ function huePalette(n){ return Array.from({length:n},(_,i)=>{
 
 // ---- KPIs ----
 function renderKPIs(){
+  document.getElementById('kpis').innerHTML = ''; // Overview year battery removed
+  return;
   // Year-level 8h/day discretionary budget — honest elapsed-vs-future split.
   // Elapsed time is split Used / Wasted / Untracked; future days are "still ahead".
   const onl=loadOnline();
@@ -2180,7 +2182,7 @@ function renderPlanning(){
   const bar=segs.map(s=>`<div title="${s.k} · ${fmtM(s.m)}" style="flex:${s.m};background:${s.c}"></div>`).join('');
   const legend=segs.map(s=>`<span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;font-size:12px;color:var(--muted)"><i style="width:10px;height:10px;border-radius:3px;background:${s.c};display:inline-block"></i>${cIcon(s.k)} ${s.k} ${fmtM(s.m)} · <b style="color:var(--ink)">${dayMin>0?(s.m/dayMin*100).toFixed(0):0}%</b></span>`).join('');
   const summary=`<div class="card" style="margin-bottom:16px">
-    <h2>Total allocation across ${pLeft} periods — to finish 2026</h2>
+    <h2>Planned allocation across ${pLeft} periods — to finish ${yr}</h2>
     <div style="display:flex;height:26px;border-radius:8px;overflow:hidden;gap:2px;margin:12px 0 10px">${bar}</div>
     <div>${legend}</div>
   </div>`;
@@ -2203,9 +2205,41 @@ function renderPlanning(){
       <thead><tr>${th('Task','left')}${th(`Per period<div style="text-transform:none;letter-spacing:0;font-weight:500;font-size:10px;margin-top:2px;color:var(--muted)">${pLeft} left</div>`)}${th(`Per month<div style="text-transform:none;letter-spacing:0;font-weight:500;font-size:10px;margin-top:2px;color:var(--muted)">${mLeft.toFixed(1)} left</div>`)}${th(`To do<div style="text-transform:none;letter-spacing:0;font-weight:500;font-size:10px;margin-top:2px;color:var(--muted)">${pend}d left</div>`)}</tr></thead>
       <tbody>${groupsP}${totRowP}</tbody>
     </table></div>`;
+  // ---- per-category year table (same rowsData as the Overview battery legend) ----
+  const catRows=rowsData.filter(r=>r.target>0).sort((a,b)=>(b.target>0?b.done/b.target:0)-(a.target>0?a.done/a.target:0));
+  const sumT=catRows.reduce((a,r)=>a+r.target,0), sumD=catRows.reduce((a,r)=>a+r.done,0);
+  const dp=catRows.map(r=>Math.floor(sumT>0?r.target/sumT*100:0)); // integer %s summing to 100
+  let rem=100-dp.reduce((a,b)=>a+b,0);
+  catRows.map((r,i)=>({i,f:(sumT>0?r.target/sumT*100:0)-dp[i]})).sort((a,b)=>b.f-a.f).forEach((o,k)=>{if(k<rem)dp[o.i]++;});
+  const pctDone=(t,d)=>t>0?Math.round(Math.min(d,t)/t*100):0;
+  // colour-code each row by % done in 25% buckets: <25 red · 25-50 amber · 50-75 yellow · 75+ green
+  const doneBg=(t,d)=>{const p=t>0?d/t*100:0; return p<25?'rgba(232,67,67,.14)':p<50?'rgba(245,166,35,.15)':p<75?'rgba(245,210,40,.17)':'rgba(141,198,63,.17)';};
+  const catBody=catRows.map((r,i)=>`<tr style="border-top:1px solid var(--line);background:${doneBg(r.target,r.done)}">
+    <td style="padding:8px 12px"><span style="display:inline-flex;align-items:center;gap:7px"><i style="width:10px;height:10px;border-radius:3px;background:${r.color};display:inline-block;flex:none"></i>${cIcon(r.k)} ${r.k} <span style="color:var(--muted)">(${dp[i]}%)</span></span></td>
+    ${num('<b>'+fmtH(r.target)+'h</b>','padding:8px 12px;white-space:nowrap;color:var(--ink)')}
+    ${num(fmtH(r.done)+'h','padding:8px 12px;white-space:nowrap;color:var(--muted)')}
+    ${num('<b>'+fmtH(Math.max(0,r.target-r.done))+'h</b>','padding:8px 12px;white-space:nowrap;color:var(--ink)')}
+    ${num(pctDone(r.target,r.done)+'%','padding:8px 12px;color:var(--muted)')}
+  </tr>`).join('');
+  const catTot=`<tr style="border-top:2.5px solid var(--ink);background:rgba(127,127,127,.12)">
+    <td style="padding:11px 12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;font-size:11px">Total <span style="font-weight:500">(100%)</span></td>
+    ${num('<b>'+fmtH(sumT)+'h</b>','padding:11px 12px;white-space:nowrap')}
+    ${num('<b>'+fmtH(sumD)+'h</b>','padding:11px 12px;white-space:nowrap')}
+    ${num('<b>'+fmtH(Math.max(0,sumT-sumD))+'h</b>','padding:11px 12px;white-space:nowrap')}
+    ${num('<b>'+pctDone(sumT,sumD)+'%</b>','padding:11px 12px')}
+  </tr>`;
+  const catHead=`<div style="display:flex;align-items:baseline;gap:9px;margin:4px 0 10px;flex-wrap:wrap"><h2 style="margin:0;font-size:18px">By category</h2><span class="hint" style="margin:0">planned = done + to&nbsp;do · share of total</span></div>`;
+  const catTableP=`<div class="card" style="padding:0;overflow:hidden;flex:none;align-self:flex-start;width:max-content;max-width:100%">
+    <table class="ptbl" style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead><tr>${th('Category','left')}${th('Planned')}${th('Done')}${th('Left')}${th('% Done')}</tr></thead>
+      <tbody>${catBody}${catTot}</tbody>
+    </table></div>`;
+  const planHead=`<h2 style="margin:4px 0 10px;font-size:18px">Planning breakdown (210 days planned of which ${pend} days left)</h2>`;
   document.getElementById('planning').innerHTML = strip + summary
-    + `<h2 style="margin:4px 0 10px">Goals & remaining — ${yr} · rest of year (${pend} days)</h2>`
-    + tableP;
+    + `<div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:nowrap">`
+    +   `<div style="flex:none">${planHead}${tableP}</div>`
+    +   `<div style="flex:none">${catHead}${catTableP}</div>`
+    + `</div>`;
 }
 function setView(v){
   if(!['overview','log','goals','planning','audit','pot','reports','tips','settings','faq'].includes(v)) v='overview';
@@ -2229,6 +2263,7 @@ function setView(v){
     settings:'manage categories & preferences',
     faq:'how every number is calculated'};
   document.getElementById('sub').textContent = subs[v];
+  document.getElementById('hdYr').textContent = '('+CUR_YM.slice(0,4)+')';
   document.querySelectorAll('#viewNav button').forEach(b=>b.classList.toggle('active', b.dataset.v===v));
   if(v==='overview'){ renderSuggestions(); setOv(ovTab); }
   if(v==='log') renderLog();
