@@ -234,7 +234,10 @@
   .gs-down b{color:#b91c1c}
   .gs-left b{color:#b45309}
   .gcards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-  .gcard{display:flex;flex-direction:column;gap:11px;padding:15px;border-radius:18px;position:relative;transition:.15s;text-align:left;background:color-mix(in srgb,var(--gcol,#8a93a3) 13%,#fff);border:2px solid color-mix(in srgb,var(--gcol,#8a93a3) 55%,#fff)}
+  .gcard{display:flex;flex-direction:column;gap:11px;padding:15px;border-radius:18px;position:relative;transition:.15s;text-align:left;background:color-mix(in srgb,var(--gcol,#8a93a3) 13%,#fff);border:2px solid color-mix(in srgb,var(--gcol,#8a93a3) 55%,#fff);cursor:grab}
+  .gcard:active{cursor:grabbing}
+  .gcard.dragging{opacity:.4;outline:2px dashed var(--gcol,#8a93a3);outline-offset:2px}
+  .gcard .gcard-acts button{cursor:pointer}
   .gcard:hover{box-shadow:0 8px 22px rgba(20,30,60,.14);transform:translateY(-3px)}
   .gcard-top{display:flex;align-items:center;gap:13px}
   .gring{position:relative;width:62px;height:62px;flex:0 0 auto}
@@ -1728,6 +1731,11 @@ function goalRecurUpdate(){
 }
 function goalFormReset(){ goalEdit=null; document.getElementById('goalForm').reset(); document.getElementById('gUnitLab').textContent='unit'; document.getElementById('goalFormTitle').textContent='Add a goal'; document.getElementById('gDelete').style.display='none'; goalRecurUpdate(); goalFormShow(false); }
 function initGoals(){
+  const gv=document.getElementById('viewGoals');
+  gv.addEventListener('dragstart',goalDragStart);
+  gv.addEventListener('dragend',goalDragEnd);
+  gv.addEventListener('dragover',goalDragOver);
+  gv.addEventListener('drop',goalDrop);
   document.getElementById('gCat').innerHTML = ALLCATS.map(c=>`<option>${c}</option>`).join('');
   document.getElementById('goalCreateBtn').onclick=()=>{ goalEdit=null; document.getElementById('goalForm').reset(); document.getElementById('gUnitLab').textContent='unit'; document.getElementById('goalFormTitle').textContent='Add a goal'; document.getElementById('gDelete').style.display='none'; document.getElementById('goalMsg').textContent=''; goalRecurUpdate(); goalFormShow(true); };
   document.getElementById('gCancel').onclick=()=>{ goalFormReset(); document.getElementById('goalMsg').textContent=''; };
@@ -1821,7 +1829,7 @@ function goalCard(x){
     mp>0 ? `<div class="gd-row"><span>Left</span><b>≈ ${totM>doneM?fmtShort(totM-doneM)+' to go':'done 🎉'}</b></div>` : '',
     hint ? `<div class="gd-row"><span>Pace</span><b>${hint}</b></div>` : ''
   ].filter(Boolean).join('');
-  return `<div class="gcard${overdue?' gcard-overdue':''}" style="--gcol:${col}">
+  return `<div class="gcard${overdue?' gcard-overdue':''}" draggable="true" data-id="${x.id}" style="--gcol:${col}">
     <div class="gcard-acts">
       ${x.target>0?`<button title="Add progress" onclick="goalAdd('${x.id}')">+</button>`:''}
       <button title="Edit" onclick="goalEditStart('${x.id}')">✎</button>
@@ -1847,9 +1855,31 @@ function goalCard(x){
     <div class="gcard-foot"><span class="gcat" title="${x.cat}">${iconFor(x.cat)}</span><span class="gwhen">${when}</span></div>
   </div>`;
 }
+// ---- drag-drop reordering of goal cards (within a section) ----
+let goalDragId=null;
+function goalAfterEl(cont,y){ // card the dragged item should sit before, by vertical midpoint
+  return [...cont.querySelectorAll('.gcard:not(.dragging)')].reduce((best,c)=>{
+    const box=c.getBoundingClientRect(), off=y-box.top-box.height/2;
+    return off<0&&off>best.off?{off,el:c}:best;
+  },{off:-Infinity,el:null}).el;
+}
+function goalDragStart(e){ const c=e.target.closest('.gcard'); if(!c) return; goalDragId=c.dataset.id; e.dataTransfer.effectAllowed='move'; setTimeout(()=>c.classList.add('dragging'),0); }
+function goalDragEnd(){ goalDragId=null; document.querySelectorAll('.gcard.dragging').forEach(c=>c.classList.remove('dragging')); }
+function goalDragOver(e){ if(!goalDragId) return; const cont=e.target.closest('.gcards'); if(!cont) return;
+  const dragging=cont.querySelector('.gcard.dragging'); if(!dragging) return; // only live-reorder within the origin section
+  e.preventDefault(); const after=goalAfterEl(cont,e.clientY);
+  if(after==null) cont.appendChild(dragging); else cont.insertBefore(dragging,after);
+}
+function goalDrop(e){ const dragging=document.querySelector('.gcard.dragging'); const cont=dragging&&dragging.parentElement;
+  if(!cont||!cont.classList.contains('gcards')) return; e.preventDefault();
+  const ids=[...cont.querySelectorAll('.gcard')].map(c=>c.dataset.id);
+  const g=loadGoals(); ids.forEach((id,i)=>{ const x=g.find(o=>o.id===id); if(x) x.ord=i; }); saveGoals(g); renderGoals();
+}
 function renderSec(filterFn, el, attention){
   const rows=loadGoals().filter(filterFn);
-  if(attention) rows.sort((a,b)=>{ // attention first: lagging, then nearest deadline
+  if(rows.some(r=>typeof r.ord==='number')) // user has dragged → manual order wins
+    rows.sort((a,b)=>(a.ord==null?1e9:a.ord)-(b.ord==null?1e9:b.ord));
+  else if(attention) rows.sort((a,b)=>{ // attention first: lagging, then nearest deadline
     const r=paceRank(paceLabel(a))-paceRank(paceLabel(b)); if(r) return r;
     const da=daysLeft(a.by), db=daysLeft(b.by);
     return (da==null?1e9:da)-(db==null?1e9:db);
