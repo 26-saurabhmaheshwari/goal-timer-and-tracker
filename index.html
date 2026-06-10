@@ -436,10 +436,6 @@
       </div>
     </div>
     <div class="insights">
-      <h2>Suggestions — grow the 3 under-served areas toward the ideal mix</h2>
-      <div class="ibox" id="suggest"></div>
-    </div>
-    <div class="insights">
       <h2>Tips to make the time count</h2>
       <div class="ibox" id="tips"></div>
     </div>
@@ -810,7 +806,7 @@
 
 <script>
 // ---- DATA (minutes) ----
-const SEED_COLORS = {Spiritual:'#4C6EF5',Youth:'#8DC63F',Family:'#F5A623',Mental:'#EF5350',Hobby:'#8B2FE0',Career:'#B9BFC7'};
+const SEED_COLORS = {Spiritual:'#4C6EF5',Youth:'#8DC63F','SRM Study':'#F5A623',Mental:'#EF5350',Hobby:'#8B2FE0','Career & Finance':'#B9BFC7'};
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function curYM(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
 const SEED_MONTHS = [
@@ -832,17 +828,17 @@ function loadMonths(){ let arr; try{ const v=JSON.parse(localStorage.getItem(LS_
 let MONTHS = loadMonths();
 // effective category totals: current month is sourced live from Log entries (cats stay empty)
 function monthCats(M){ return ymOf(M.m)===CUR_YM ? entryCats(ymOf(M.m)) : (M.cats||{}); }
-const SEED_ALLCATS = ['Spiritual','Youth','Family','Career','Hobby'];
+const SEED_ALLCATS = ['Spiritual','Youth','SRM Study','Career & Finance','Hobby'];
 const SEED_TASK_CAT = {
   'ONS':'Spiritual','TDS-SK-Mala':'Spiritual','Bala-AH3':'Spiritual','Vishnu Sahasranam':'Spiritual',
   'GauPradakshina':'Spiritual','NM-DK':'Spiritual','NMaho':'Spiritual','Sundarkand':'Spiritual',
   'Walk':'Youth','Rejuvenate':'Youth','Nurture':'Youth','Nails-10Min':'Youth',
-  'SRM-Play':'Family','SRM-20':'Family',
-  'OppurtunityPrep':'Career','Study':'Career',
+  'SRM-Play':'SRM Study','SRM-20':'SRM Study',
+  'OppurtunityPrep':'Career & Finance','Study':'Career & Finance',
   'Book Reading':'Hobby','Gardening':'Hobby','Pranav':'Hobby'
 };
 const LS_COLORS='ptd_colors_v1', LS_ALLCATS='ptd_allcats_v1', LS_TASKCAT='ptd_taskcat_v1', LS_ICONS='ptd_icons_v1';
-const SEED_ICONS = {Spiritual:'🕉️',Youth:'💪',Family:'👨‍👩‍👧',Career:'💼',Hobby:'🎨',Mental:'🧠'};
+const SEED_ICONS = {Spiritual:'🕉️',Youth:'💪','SRM Study':'👨‍👩‍👧','Career & Finance':'💼',Hobby:'🎨',Mental:'🧠'};
 function loadObj(k,seed){ try{ const v=JSON.parse(localStorage.getItem(k)); return (v&&typeof v==='object'&&Object.keys(v).length)?v:seed; }catch(e){ return seed; } }
 function loadArr(k,seed){ try{ const v=JSON.parse(localStorage.getItem(k)); return (Array.isArray(v)&&v.length)?v:seed; }catch(e){ return seed; } }
 let COLORS  = {...SEED_COLORS, ...loadObj(LS_COLORS, {})};
@@ -908,8 +904,8 @@ const YTARGETS = [
   {k:'Spiritual', src:['Spiritual'], h:319,     c:'#4C6EF5'},
   {k:"Life's Big",src:["Life's Big"],h:123,     c:'#E84393'},
   {k:'Youth',     src:['Youth'],     pct:40,    c:'#8DC63F'},
-  {k:'SRM Study', src:['Family'],    h:51, leftFixed:45, c:'#F5A623'},
-  {k:'Career & Finance', src:['Career'], h:62, c:'#5A49B8'},
+  {k:'SRM Study', src:['SRM Study'],    h:51, leftFixed:45, c:'#F5A623'},
+  {k:'Career & Finance', src:['Career & Finance'], h:62, c:'#5A49B8'},
   {k:'Hobby',     src:['Hobby'],     rest:true, c:'#8B2FE0'},
 ];
 // Shared capsule battery renderer. zones = [{k,c,doneH,targetH,pct}]; lead = headline string.
@@ -1172,36 +1168,8 @@ function renderInsights(){
     li.map((x,i)=>`<div class="icard" style="border-left-color:${accents[i%accents.length]}">${x}</div>`).join('');
 }
 
-// ---- Suggestions vs ideal mix ----
-function renderSuggestions(){
-  const act = {Spiritual:0,Youth:0,Career:0,Rest:0};
-  const bucket=(c,v)=>{ if(c==='Spiritual')act.Spiritual+=v; else if(c==='Youth')act.Youth+=v; else if(c==='Career')act.Career+=v; else act.Rest+=v; };
-  MONTHS.forEach(x=>{for(const[c,v]of Object.entries(x.cats)) bucket(c,v);});
-  // fold in live logged entries so suggestions update as you log
-  loadEntries().forEach(e=>bucket(e.cat, e.mins));
-  const nMonths = MONTHS.length + new Set(loadEntries().map(e=>e.ym)).size;
-  const grand = act.Spiritual+act.Youth+act.Career+act.Rest;
-  const target = {Youth:40,Career:10,Rest:10};
-  const accent = {Youth:'#8DC63F',Career:'#B9BFC7',Rest:'#F5A623'};
-  const avgMonthTot = grand/Math.max(1,nMonths)/60; // current avg hrs/month
-  const how = {
-    Youth:`Add one extra session or longer stretch — aim ~${(avgMonthTot*0.40/4.3).toFixed(1)}h/week.`,
-    Career:`Biggest gap. Block ~${(avgMonthTot*0.10/4.3).toFixed(1)}h/week for skills, learning or side-work.`,
-    Rest:`Schedule family/health/hobby like an appointment so it doesn't get crowded out.`
-  };
-  const cards = Object.keys(target).map(c=>{
-    const a = Math.round(act[c]/grand*100), t = target[c];
-    const idealH = (avgMonthTot*t/100).toFixed(1);
-    return `<div class="icard" style="border-left-color:${accent[c]}">
-      <b>${c}: ${a}% → ${t}%</b> (~${idealH}h/mo)<br>${how[c]}</div>`;
-  });
-  cards.push(`<div class="icard" style="border-left-color:#4C6EF5">
-    <b>Spiritual stays your anchor</b><br>No need to cut it — as the three above grow, its share naturally settles toward ~40%.</div>`);
-  document.getElementById('suggest').innerHTML = cards.join('');
-}
-
-// ---- General time tips ----
-function renderTips(){
+// ---- General time tips (overview mini-tips box) ----
+function renderMiniTips(){
   const tips = [
     [`The 6-minute rule`,`Bored or stuck? Set a 6-min timer and just start — momentum beats motivation, and you'll usually keep going.`,'#EF5350'],
     [`Batch similar tasks`,`Group messages, errands and admin into one block. Context-switching is where hours quietly leak away.`,'#4C6EF5'],
@@ -1700,7 +1668,7 @@ const SEED_GOALS=[
   {id:'g5',name:'Gau Pradakshina', cat:'Spiritual',cur:52,  target:12500,unit:'Parikramas',start:'2026-01-01',by:'2026-12-31',sec:'active'},
   {id:'g6',name:'Walk-51',         cat:'Youth',    cur:230, target:3060, unit:'Minutes',   start:'2026-01-01',by:'2026-12-31',sec:'active'},
   {id:'g7',name:'Rejuvenate-51',   cat:'Youth',    cur:15,  target:3060, unit:'Minutes',   start:'2026-01-01',by:'2026-12-31',sec:'active'},
-  {id:'g8',name:'Study-51',        cat:'Career',   cur:30,  target:3060, unit:'Minutes',   start:'2026-01-01',by:'2026-12-31',sec:'active'},
+  {id:'g8',name:'Study-51',        cat:'Career & Finance',cur:30,target:3060,unit:'Minutes',start:'2026-01-01',by:'2026-12-31',sec:'active'},
 ];
 // pace colour: blue=ahead, green=on track, orange=lagging, red=behind
 function expFrac(x){ if(!x.by) return null; const end=new Date(x.by+'T00:00:00'); const start=new Date(((x.start)||((end.getFullYear())+'-01-01'))+'T00:00:00'); const now=new Date(); if(now<=start) return 0; if(now>=end) return 1; return (now-start)/(end-start); }
@@ -2276,7 +2244,7 @@ function setView(v){
   document.getElementById('sub').textContent = subs[v];
   document.getElementById('hdYr').textContent = '('+CUR_YM.slice(0,4)+')';
   document.querySelectorAll('#viewNav button').forEach(b=>b.classList.toggle('active', b.dataset.v===v));
-  if(v==='overview'){ renderSuggestions(); setOv(ovTab); }
+  if(v==='overview'){ setOv(ovTab); }
   if(v==='log') renderLog();
   if(v==='goals') renderGoals();
   if(v==='planning') renderPlanning();
@@ -2401,7 +2369,7 @@ function renderReports(){
 }
 
 // --- Firebase sync glue ---
-function fbBlob(){ return {version:1, months:MONTHS, colors:COLORS, icons:ICONS, allcats:ALLCATS, taskcat:TASK_CAT, entries:loadEntries(), rollup:loadRollup(), online:loadOnline(), goals:loadGoals(), habits:loadHabits(), tips:loadTips(), dob:loadDob(), lockMig:localStorage.getItem('ptd_lockmig_v1')==='1'}; }
+function fbBlob(){ return {version:1, months:MONTHS, colors:COLORS, icons:ICONS, allcats:ALLCATS, taskcat:TASK_CAT, entries:loadEntries(), rollup:loadRollup(), online:loadOnline(), goals:loadGoals(), habits:loadHabits(), tips:loadTips(), dob:loadDob(), lockMig:localStorage.getItem('ptd_lockmig_v1')==='1', catMig:localStorage.getItem('ptd_catmig_v1')==='1'}; }
 function fbSyncPush(){ window.fbPushRaw && window.fbPushRaw(fbBlob()); }
 window.fbToggle = function(){ if(window.__fbIn){ window.fbSignOut(); } else { window.fbSignIn(); } };
 document.addEventListener('fb-auth', e=>{
@@ -2426,6 +2394,32 @@ document.addEventListener('fb-data', e=>{
     localStorage.setItem('ptd_lockmig_v1','1');
     if(stamped){ saveEntries(all); changed=true; } else { fbSyncPush(); }
   }
+  // one-time category rename: fold logged 'Family'/'Career' into their display
+  // names 'SRM Study'/'Career & Finance' so goals/habits/entries share one canonical
+  // category each (kills the duplicate By-category rows). Synced via d.catMig → runs once.
+  if(!d.catMig){
+    const REN={'Family':'SRM Study','Career':'Career & Finance'};
+    const rn=c=>REN[c]||c;
+    const renKeys=o=>{ if(!o||typeof o!=='object') return o; const out={}; Object.entries(o).forEach(([k,v])=>{ out[rn(k)]=v; }); return out; };
+    let did=false;
+    const ent=loadEntries(); ent.forEach(e=>{ if(REN[e.cat]){ e.cat=rn(e.cat); did=true; } });
+    const gls=loadGoals(); gls.forEach(g=>{ if(REN[g.cat]){ g.cat=rn(g.cat); did=true; } });
+    const hbs=loadHabits(); hbs.forEach(h=>{ if(REN[h.cat]){ h.cat=rn(h.cat); did=true; } });
+    const tc=loadObj(LS_TASKCAT,SEED_TASK_CAT); Object.keys(tc).forEach(k=>{ if(REN[tc[k]]){ tc[k]=rn(tc[k]); did=true; } });
+    const ac=loadArr(LS_ALLCATS,SEED_ALLCATS).map(rn).filter((c,i,a)=>a.indexOf(c)===i);
+    const col=renKeys(loadObj(LS_COLORS,{})), ico=renKeys(loadObj(LS_ICONS,{}));
+    const months=loadMonths(); months.forEach(M=>{ if(M.cats){ M.cats=renKeys(M.cats); } });
+    const roll=loadRollup(); Object.values(roll).forEach(r=>{ if(r&&r.c){ r.c=renKeys(r.c); } });
+    localStorage.setItem('ptd_catmig_v1','1');
+    localStorage.setItem(LS_ALLCATS,JSON.stringify(ac));
+    localStorage.setItem(LS_TASKCAT,JSON.stringify(tc));
+    localStorage.setItem(LS_COLORS,JSON.stringify(col));
+    localStorage.setItem(LS_ICONS,JSON.stringify(ico));
+    localStorage.setItem(LS_MONTHS,JSON.stringify(months.filter(x=>ymOf(x.m)!==CUR_YM)));
+    saveRollup(roll);
+    saveHabits(hbs); saveGoals(gls); saveEntries(ent); // last save pushes the migrated blob (incl. catMig)
+    changed=true;
+  }
   // one reload max per page load — prevents a flicker loop if remote/local never byte-match
   if(changed && !sessionStorage.getItem('fb_synced')){
     sessionStorage.setItem('fb_synced','1');
@@ -2435,7 +2429,7 @@ document.addEventListener('fb-data', e=>{
 document.addEventListener('fb-empty', ()=>fbSyncPush());
 
 // init
-renderLifeBar(); renderKPIs(); renderTabs(); renderTotalTrend(); renderSuggestions(); renderTips();
+renderLifeBar(); renderKPIs(); renderTabs(); renderTotalTrend(); renderMiniTips(); renderTips();
 setOv('year');
 initLogForm(); initGoals();
 document.getElementById('catForm').addEventListener('submit', e=>{
