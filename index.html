@@ -2574,10 +2574,10 @@ function renderShivaJourney(){
   const big=goals.filter(x=>((x.cat||'').trim().toLowerCase()===SJ_BIG_CAT.toLowerCase()) && x.sec!=='archived');
   if(!big.length){ box.innerHTML=`<div class="hint" style="text-align:center;padding:18px 0">No Life's Big goals yet. Create a goal under the “${SJ_BIG_CAT}” category and its journey to Shiva appears here.</div>`; return; }
   const scenes=[];
-  // Near-term milestone (above): the current rolling 1,000-mala block — 10 walls of 100 — so progress stays visible; target is a Shivling.
+  // Near-term milestone (above): the current rolling 1,000-mala block — 100 walls of 10 — so progress stays visible; target is a Shivling.
   const ons=big.find(x=>/ons/i.test(x.name||''));
   if(ons){ const c=Math.max(0,+ons.cur||0), block=Math.floor(c/1000)+1, cur=c%1000;
-    scenes.push(sjScene(ons,'L',{per:100, N:10, cur, shrine:'shivling', shrineName:'Shivling', heading:`${ons.name} — milestone ${block} (this 1,000) → Shivling`, perLabel:`100 ${ons.unit||'units'}`})); }
+    scenes.push(sjScene(ons,'L',{per:10, N:100, cur, shrine:'shivling', shrineName:'Shivling', heading:`${ons.name} — milestone ${block} (this 1,000) → Shivling`, perLabel:`10 ${ons.unit||'units'}`})); }
   big.forEach((g,gi)=>scenes.push(sjScene(g,gi)));
   box.innerHTML = scenes.join('<div style="height:26px"></div>');
 }
@@ -2623,6 +2623,9 @@ function sjScene(g,gi,opts){
     <radialGradient id="sjSkin${u}" cx=".4" cy=".35"><stop offset="0" stop-color="#9fccf3"/><stop offset="1" stop-color="#4878b8"/></radialGradient>
     <radialGradient id="sjHalo${u}"><stop offset="0" stop-color="rgba(255,240,180,.95)"/><stop offset=".6" stop-color="rgba(255,224,150,.32)"/><stop offset="1" stop-color="rgba(255,224,150,0)"/></radialGradient>
     <linearGradient id="sjPath${u}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3a4f6e"/><stop offset="1" stop-color="#1a2233"/></linearGradient>
+    <radialGradient id="sjFire${u}" cx=".5" cy=".55" r=".6"><stop offset="0" stop-color="rgba(255,176,48,.95)"/><stop offset=".45" stop-color="rgba(220,92,20,.6)"/><stop offset="1" stop-color="rgba(120,30,0,0)"/></radialGradient>
+    <radialGradient id="sjStone${u}" cx=".38" cy=".28" r=".85"><stop offset="0" stop-color="#74747a"/><stop offset=".4" stop-color="#36363a"/><stop offset="1" stop-color="#0b0b0d"/></radialGradient>
+    <linearGradient id="sjBrass${u}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d6ad52"/><stop offset=".5" stop-color="#7a5a22"/><stop offset="1" stop-color="#241808"/></linearGradient>
   </defs>`;
   const mtns=`<g>
     <path d="M110,290 L255,150 L390,290 Z" fill="url(#sjSnow${u})"/>
@@ -2656,20 +2659,20 @@ function sjScene(g,gi,opts){
       <path d="M-12,-42 Q-12,-60 0,-60 Q12,-60 12,-42 M0,-60 l0,-15 M-12,-46 l0,-11 M12,-46 l0,-11" stroke="#d8b25a" stroke-width="3" fill="none"/></g>
   </g>`;
   const shivling=`<g transform="translate(86,0)">
-    <path d="M-72,290 L0,194 L72,290 Z" fill="url(#sjSnow${u})"/>
-    <path d="M-72,290 L0,194 L-10,290 Z" fill="#c2d2ee" opacity=".7"/>
-    <circle cx="0" cy="176" r="62" fill="url(#sjHalo${u})"/>
-    <ellipse cx="0" cy="266" rx="58" ry="17" fill="#3f73b8"/>
-    <ellipse cx="0" cy="261" rx="58" ry="13" fill="#5a8fd0"/>
-    <path d="M42,260 q34,1 48,11 q-16,7 -48,4 Z" fill="#4f86c6"/>
-    <ellipse cx="0" cy="255" rx="32" ry="9" fill="#6aa0dd"/>
-    <path d="M-23,255 Q-27,150 0,150 Q27,150 23,255 Z" fill="url(#sjSkin${u})"/>
-    <ellipse cx="0" cy="150" rx="23" ry="13" fill="#9fccf3"/>
-    <path d="M-15,198 Q0,203 15,198" stroke="#ffffff" stroke-width="3" fill="none" opacity=".9"/>
-    <path d="M-16,208 Q0,213 16,208" stroke="#e8c84a" stroke-width="3" fill="none" opacity=".95"/>
-    <path d="M-15,218 Q0,223 15,218" stroke="#ffffff" stroke-width="3" fill="none" opacity=".9"/>
-    <circle cx="0" cy="150" r="4.5" fill="#e8c84a"/>
-    <path d="M-30,150 q-14,-20 2,-30 q-3,16 8,22" stroke="#7fae5a" stroke-width="2.4" fill="none" opacity=".85"/>
+    <ellipse cx="0" cy="205" rx="118" ry="108" fill="url(#sjFire${u})"/>
+    <path d="M-72,290 L0,214 L72,290 Z" fill="url(#sjSnow${u})" opacity=".55"/>
+    <ellipse cx="0" cy="272" rx="66" ry="18" fill="#000" opacity=".5"/>
+    <path d="M40,254 q42,0 58,13 q-19,11 -58,6 Z" fill="url(#sjBrass${u})"/>
+    <ellipse cx="0" cy="258" rx="62" ry="16" fill="url(#sjBrass${u})"/>
+    <ellipse cx="0" cy="254" rx="52" ry="12" fill="#1c160c"/>
+    <ellipse cx="0" cy="252" rx="40" ry="9" fill="#050505"/>
+    <path d="M-27,254 Q-31,150 0,150 Q31,150 27,254 Z" fill="url(#sjStone${u})"/>
+    <ellipse cx="0" cy="150" rx="27" ry="15" fill="#2b2b2f"/>
+    <ellipse cx="-1" cy="147" rx="20" ry="10" fill="#52525a"/>
+    <path d="M-14,166 Q-21,202 -12,240" stroke="rgba(255,255,255,.26)" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <path d="M-18,197 Q0,202 18,197" stroke="#ff8a1e" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+    <path d="M-19,209 Q0,214 19,209" stroke="#ffb347" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+    <path d="M-18,221 Q0,226 18,221" stroke="#ff8a1e" stroke-width="4.5" fill="none" stroke-linecap="round"/>
   </g>`;
   const shrine=opts.shrine==='shivling'?shivling:shiva;
   const person=`<g transform="translate(${px.toFixed(1)},0)">
