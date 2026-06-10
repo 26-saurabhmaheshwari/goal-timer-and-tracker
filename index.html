@@ -631,7 +631,7 @@
 <div id="viewAudit" hidden>
   <div class="card" style="max-width:none">
     <h2>Audit — recent entries</h2>
-    <div class="hint">Every entry from the last 20 days and exactly how it affected your goals and planning. A rolling validation log.</div>
+    <div class="hint">Every entry from the last 40 days, grouped by period, and exactly how it affected your goals and planning. A rolling validation log.</div>
     <div id="auditTable" style="margin-top:12px"></div>
   </div>
 </div><!-- /viewAudit -->
@@ -927,10 +927,11 @@ function capsuleBattery(yp, agg, fixScale, lead){
 }
 function yearUsageHTML(o){
   const fmt=n=>Math.round(n).toLocaleString('en-US');
-  const yp=YBATT_DAILY*o.totalDays;
+  const P=planYearTotals();
+  const yp=P.yearH; // capacity = Planning year total (logged + to-do), not YBATT_DAILY×days
   const agg={};
   MONTHS.forEach(M=>{ for(const [c,v] of Object.entries(monthCats(M))) agg[c]=(agg[c]||0)+v; });
-  return capsuleBattery(yp, agg, 1, `Your ${o.yr} — ${fmt(yp)}h of intent · ${YBATT_DAILY}h/day × ${o.totalDays} days`);
+  return capsuleBattery(yp, agg, 1, `Your ${o.yr} plan — ${fmt(yp)}h total · ${fmt(P.tot.done)}h done + ${fmt(P.totH)}h to do`);
 }
 
 // ---- Year donut (category split across all months) ----
@@ -2026,21 +2027,13 @@ function habitIcon(cat){ return iconFor(cat); }
 const PERIOD_ITEMS={}; // migrated to recurring goals (sec:'active', recurring:true)
 // count 10-day periods still ahead in the year (current period included)
 function periodsLeft(now,yr){let n=0;for(let mo=now.getMonth();mo<12;mo++){const dim=new Date(yr,mo+1,0).getDate();[[1,10],[11,20],[21,dim]].forEach(([s,e])=>{if(mo>now.getMonth()||e>=now.getDate())n++;});}return n;}
-function renderPlanning(){
+// Shared planning math — single source for Planning table, Pot capacity, Overview battery.
+// Returns done (logged h), totH (to-do h over rest of year), yearH = done + totH, plus row data.
+function planYearTotals(){
+  const fmtH=n=>Math.round(n).toLocaleString('en-US');
   const HABITS=groupHabits(loadHabits());
-  const cIcon=c=>iconFor(c);
-  const fmtM=m=>{const h=Math.floor(m/60),mm=Math.round(m%60);return h?(mm?`${h}h ${mm}m`:`${h}h`):`${mm}m`;};
-  const POOL=YBATT_DAILY*60;
   const habitItems=HABITS.flatMap(g=>g.items.map(i=>({n:i.n,m:i.m,cat:g.cat,c:HABIT_COL[g.cat]||'#8a93a3'})));
   const fixed=habitItems.reduce((a,i)=>a+i.m,0);
-  const cards=habitItems.map(i=>`<div class="card" style="border-top:3px solid ${i.c};padding:13px 15px">
-      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:${i.c};font-weight:700;margin-bottom:6px">${cIcon(i.cat)} ${i.cat}</div>
-      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
-        <span style="font-weight:600">${i.n}</span><b style="color:${i.c};white-space:nowrap">${i.m}m</b>
-      </div></div>`).join('');
-  // ---- per-category reconciliation: target vs (habits over remaining days + goals' hours-left) ----
-  const fmtH=n=>Math.round(n).toLocaleString('en-US');
-  const fmtHM=h=>{const m=Math.round(h*60);if(m<=0)return '0';const H=Math.floor(m/60),M=m%60;return H?(M?`${H}h ${M}m`:`${H}h`):`${M}m`;};
   const yr=(new Date()).getFullYear();
   const totalDays=((yr%4===0&&yr%100!==0)||yr%400===0)?366:365;
   const yp=YBATT_DAILY*totalDays;
@@ -2051,7 +2044,7 @@ function renderPlanning(){
   const pLeft=periodsLeft(now,yr);
   const mLeft=Math.max(1,pend/30.44);
   const goals=loadGoals();
-  // build one reconciliation card for a category. targetH=null → no yearly battery target
+  // build one reconciliation row for a category. targetH=null → no yearly battery target
   // (e.g. "Life's Big"); we still show its active goals' hours-left + planned total.
   const mkRow=(k, srcArr, color, targetH, leftFixed)=>{
     const doneH=srcArr.reduce((a,c)=>a+(agg[c]||0),0)/60;
@@ -2081,14 +2074,29 @@ function renderPlanning(){
   ];
   const tot={target:0,done:0,allocated:0};
   rowsData.forEach(r=>{tot.target+=r.target;tot.done+=r.done;tot.allocated+=r.allocated;});
-  const th=(t,al)=>`<th style="text-align:${al||'right'};padding:10px 14px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;border-bottom:2px solid var(--line);white-space:nowrap">${t}</th>`;
-  const num=(v,extra)=>`<td style="text-align:right;padding:10px 14px;${extra||''}">${v}</td>`;
   // daily habits as one group (each row keeps its own category field)
   const habitRows=HABITS.flatMap(g=>g.items.map(i=>({cat:g.cat,color:HABIT_COL[g.cat]||'#8a93a3',h:i.m*pend/60,label:`${i.n} · ${i.m}m/day`})));
   // goals + period work grouped by category
   const goalRows=[];
   rowsData.forEach(r=>r.tasks.forEach(t=>goalRows.push({cat:r.k,color:r.color,h:t.h||0,label:t.label,note:t.note})));
   const totH=[...habitRows,...goalRows].reduce((a,t)=>a+(t.h||0),0);
+  const yearH=tot.done+totH; // planning year total (logged + to-do) — the capacity Pot/Overview use
+  return {HABITS,habitItems,fixed,yr,totalDays,yp,fixedH,agg,now,end,pend,pLeft,mLeft,goals,rowsData,tot,habitRows,goalRows,totH,yearH};
+}
+function renderPlanning(){
+  const {HABITS,habitItems,fixed,yr,totalDays,yp,fixedH,agg,now,end,pend,pLeft,mLeft,goals,rowsData,tot,habitRows,goalRows,totH,yearH}=planYearTotals();
+  const cIcon=c=>iconFor(c);
+  const fmtM=m=>{const h=Math.floor(m/60),mm=Math.round(m%60);return h?(mm?`${h}h ${mm}m`:`${h}h`):`${mm}m`;};
+  const POOL=YBATT_DAILY*60;
+  const cards=habitItems.map(i=>`<div class="card" style="border-top:3px solid ${i.c};padding:13px 15px">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:${i.c};font-weight:700;margin-bottom:6px">${cIcon(i.cat)} ${i.cat}</div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+        <span style="font-weight:600">${i.n}</span><b style="color:${i.c};white-space:nowrap">${i.m}m</b>
+      </div></div>`).join('');
+  const fmtH=n=>Math.round(n).toLocaleString('en-US');
+  const fmtHM=h=>{const m=Math.round(h*60);if(m<=0)return '0';const H=Math.floor(m/60),M=m%60;return H?(M?`${H}h ${M}m`:`${H}h`):`${M}m`;};
+  const th=(t,al)=>`<th style="text-align:${al||'right'};padding:10px 14px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;border-bottom:2px solid var(--line);white-space:nowrap">${t}</th>`;
+  const num=(v,extra)=>`<td style="text-align:right;padding:10px 14px;${extra||''}">${v}</td>`;
   const catCell=(t,show)=>`<td style="padding:9px 14px">${show?`<span style="display:inline-flex;align-items:center;gap:8px"><i style="width:11px;height:11px;border-radius:3px;background:${t.color};display:inline-block;flex:none"></i><span style="color:var(--muted)">${t.cat}</span></span>`:''}</td>`;
   // single table row: icon+task | per period | per month | to do
   const rowP=(t,show,topB)=>`<tr style="border-top:${topB} solid var(--line)">
@@ -2119,7 +2127,6 @@ function renderPlanning(){
     ${num('<b>'+fmtHM(totH/mLeft)+'</b>','padding:12px;white-space:nowrap;font-size:16px;color:var(--ink)')}
     ${num('<b>'+fmtH(totH)+'h</b>','padding:12px;white-space:nowrap;font-size:16px;color:var(--ink)')}
   </tr>`;
-  const yearH=tot.done+totH;
   // battery built from the same table data so it always matches
   const catDay={};
   [...habitRows,...goalRows].forEach(r=>{catDay[r.cat]=(catDay[r.cat]||0)+(r.h||0);});
@@ -2394,8 +2401,8 @@ document.getElementById('tipPdfBtn').onclick=exportTipsPdf;
 document.querySelectorAll('#setSide button').forEach(b=>b.onclick=()=>setSettab(b.dataset.s));
 
 // ================= POT (year capacity vs filled, coloured by category) =================
-function renderPot(){
-  const box=document.getElementById('potBox'); if(!box) return;
+function renderPot(boxId){
+  const box=document.getElementById(boxId||'potBox'); if(!box) return;
   const fmt=n=>Math.round(n).toLocaleString('en-US');
   const yr=new Date().getFullYear();
   const totalDays=Math.round((new Date(yr,11,31)-new Date(yr,0,1))/864e5)+1;
@@ -2405,7 +2412,8 @@ function renderPot(){
   const tgtOf=t=>t.h!=null?t.h:(t.leftFixed!=null?dhOf(t)+t.leftFixed:yp*t.pct/100);
   const fixedH=YTARGETS.reduce((a,t)=>a+(t.rest?0:tgtOf(t)),0);
   const zones=YTARGETS.map(t=>{ const targetH=t.rest?Math.max(0,yp-fixedH):tgtOf(t); return {k:t.k,c:t.c,targetH,doneH:dhOf(t)}; });
-  const cap=yp, totDone=zones.reduce((a,z)=>a+z.doneH,0), fr=Math.max(0,Math.min(1,totDone/cap));
+  // capacity = Planning year total (logged + to-do), NOT YBATT_DAILY×days
+  const cap=planYearTotals().yearH, totDone=zones.reduce((a,z)=>a+z.doneH,0), fr=Math.max(0,Math.min(1,totDone/cap));
   // ---------- ORB: layered multi-colour water, 10% grid, 5% side ticks ----------
   const cx=150,cy=140,r=108, yAt=f=>(cy+r)-2*r*Math.max(0,Math.min(1,f));
   const surfY=yAt(fr);
@@ -2459,15 +2467,16 @@ function renderPot(){
       <div style="flex:0 1 auto">${legend}</div>
       <div style="flex:1;min-width:230px">${orb}</div>
     </div>
-    <div style="text-align:center;color:var(--muted);font-size:12.5px;margin:14px 0 4px">${yr} · ${fmt(cap)}h capacity (${YBATT_DAILY}h/day × ${totalDays}d) · <b>${fmt(Math.max(0,cap-totDone))}h</b> to fill</div>`;
+    <div style="text-align:center;color:var(--muted);font-size:12.5px;margin:14px 0 4px">${yr} · ${fmt(cap)}h capacity (planning year total: done + to-do) · <b>${fmt(Math.max(0,cap-totDone))}h</b> to fill</div>`;
 }
-// ================= AUDIT (rolling 20-day entry ledger) =================
+// ================= AUDIT (rolling 40-day entry ledger, grouped by period) =================
 function renderAudit(){
   const el=document.getElementById('auditTable'); if(!el) return;
-  const now=Date.now(), win=20*86400000, goals=loadGoals(), r=n=>Math.round(n).toLocaleString('en-US');
+  const now=Date.now(), win=40*86400000, goals=loadGoals(), r=n=>Math.round(n).toLocaleString('en-US');
   const ents=loadEntries().map(e=>({e,ts:parseInt(String(e.id).slice(0,13),10)}))
     .filter(o=>!isNaN(o.ts)&&now-o.ts<=win).sort((a,b)=>b.ts-a.ts);
-  if(!ents.length){ el.innerHTML='<div class="empty">No entries in the last 20 days.</div>'; return; }
+  if(!ents.length){ el.innerHTML='<div class="empty">No entries in the last 40 days.</div>'; return; }
+  const perLabel=ts=>{const d=new Date(ts),p=periodOfDay(d.getDate()),rng=p==='P1'?'1–10':p==='P2'?'11–20':'21–end';return `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()} · ${p} (${rng})`;};
   const fmtDt=ts=>{const d=new Date(ts);return `${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;};
   // back-walk each goal's current cur to recover before/after state per entry (exact within the 20-day window)
   const state={}, run={};
@@ -2477,7 +2486,11 @@ function renderAudit(){
     state[e.id]={after,before}; run[e.goalId]=before;
   }});
   const cell=(t,style='')=>`<td style="padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top;${style}">${t}</td>`;
+  let prevPer=null;
   const rows=ents.map(({e,ts})=>{
+    let hdr='';
+    const per=perLabel(ts);
+    if(per!==prevPer){ prevPer=per; hdr=`<tr><td colspan="7" style="padding:10px 10px 6px;background:rgba(127,127,127,.08);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border-bottom:2px solid var(--line)">${per}</td></tr>`; }
     const icon=e.type==='goal'?'🎯':e.type==='habit'?'🔁':e.type==='screen'?'📱':'⏱';
     let name='—',prev='—',added='—',cur='—',prevReq='—',curReq='—';
     if(e.type==='goal'){ const g=goals.find(o=>o.id===e.goalId), st=state[e.id]||{};
@@ -2490,7 +2503,7 @@ function renderAudit(){
     } else if(e.type==='habit'){ name=e.task||'—'; added=`${r(e.cnt)}×`; prev=cur=prevReq=curReq='<span style="color:var(--muted)">per-period</span>'; }
     else if(e.type==='screen'){ name=e.task||'Screen'; added='screen'; }
     else { name=e.task||'—'; added=`→ ${e.cat||''}`.trim(); }
-    return `<tr>
+    return `${hdr}<tr>
       ${cell(`<div style="font-weight:600">${icon} ${name}</div><div style="color:var(--muted);font-size:11px">${fmtDt(ts)}</div>`)}
       ${cell(prev,'white-space:nowrap;color:var(--muted)')}
       ${cell(added,'white-space:nowrap')}
@@ -2533,6 +2546,24 @@ function archiveOldEntries(){
 }
 try{ archiveOldEntries(); }catch(e){}
 (function(){ try{ const sv=localStorage.getItem(LS_VIEW); if(sv&&sv!=='overview') setView(sv); }catch(e){} })();
+// ---- daily Pot popup (shown once per day on first open) ----
+function closePotPopup(){ const p=document.getElementById('potPopup'); if(p) p.hidden=true; }
+function showPotPopup(){ const p=document.getElementById('potPopup'); if(!p) return; try{ renderPot('potPopupBox'); }catch(e){ return; } p.hidden=false; }
+(function(){ try{
+  const c=document.getElementById('potPopupClose'); if(c) c.onclick=closePotPopup;
+  const ov=document.getElementById('potPopup'); if(ov) ov.addEventListener('click',e=>{ if(e.target===ov) closePotPopup(); });
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape') closePotPopup(); });
+  const today=new Date().toISOString().slice(0,10);
+  if(localStorage.getItem('potPopupShown')!==today){ localStorage.setItem('potPopupShown',today); setTimeout(showPotPopup,350); }
+}catch(e){} })();
 </script>
+<div id="potPopup" hidden style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:32px 14px">
+  <div class="card" style="max-width:920px;width:100%;position:relative;margin:auto">
+    <button id="potPopupClose" aria-label="Close" title="Close" style="position:absolute;top:8px;right:10px;width:28px;height:28px;border-radius:50%;border:1px solid var(--line);background:var(--card,#fff);font-size:17px;line-height:1;cursor:pointer;color:var(--muted);display:flex;align-items:center;justify-content:center">✕</button>
+    <h2 style="text-align:center;margin:2px 0 2px">Your year in a pot</h2>
+    <div class="hint" style="text-align:center">Capacity = your yearly hour target. Water = hours you've actually filled, coloured by category.</div>
+    <div id="potPopupBox" style="margin-top:14px"></div>
+  </div>
+</div>
 </body>
 </html>
