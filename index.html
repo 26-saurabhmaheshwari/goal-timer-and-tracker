@@ -2574,10 +2574,10 @@ function renderShivaJourney(){
   const big=goals.filter(x=>((x.cat||'').trim().toLowerCase()===SJ_BIG_CAT.toLowerCase()) && x.sec!=='archived');
   if(!big.length){ box.innerHTML=`<div class="hint" style="text-align:center;padding:18px 0">No Life's Big goals yet. Create a goal under the “${SJ_BIG_CAT}” category and its journey to Shiva appears here.</div>`; return; }
   const scenes=[];
-  // Sub-goal view (above): the ONS goal split into 100 equal parts — more walls clear sooner, progress feels closer; target is a Shivling.
+  // Near-term milestone (above): the current rolling 1,000-mala block — 10 walls of 100 — so progress stays visible; target is a Shivling.
   const ons=big.find(x=>/ons/i.test(x.name||''));
-  if(ons){ const per=Math.max(1,(+ons.target||1)/100);
-    scenes.push(sjScene(ons,'L',{per, N:100, shrine:'shivling', shrineName:'Shivling', heading:`${ons.name} — split into 100 parts → Shivling`, perLabel:`1% of ${ons.name}`})); }
+  if(ons){ const c=Math.max(0,+ons.cur||0), block=Math.floor(c/1000)+1, cur=c%1000;
+    scenes.push(sjScene(ons,'L',{per:100, N:10, cur, shrine:'shivling', shrineName:'Shivling', heading:`${ons.name} — milestone ${block} (this 1,000) → Shivling`, perLabel:`100 ${ons.unit||'units'}`})); }
   big.forEach((g,gi)=>scenes.push(sjScene(g,gi)));
   box.innerHTML = scenes.join('<div style="height:26px"></div>');
 }
@@ -2587,7 +2587,7 @@ function sjScene(g,gi,opts){
   const baseTarget=Math.max(1, +g.target||1);
   const per=opts.per||sjStep(baseTarget);
   const target=opts.N?per*opts.N:baseTarget;
-  const cur=Math.max(0, Math.min(target, +g.cur||0));
+  const cur=Math.max(0, Math.min(target, opts.cur!=null?+opts.cur:(+g.cur||0)));
   const N=Math.max(1, opts.N||Math.round(target/per));
   const broken=Math.min(N, Math.floor(cur/per));
   const frac=Math.min(1, cur/target);
