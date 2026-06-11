@@ -480,8 +480,10 @@
         <div class="tgroup" data-type="project">
           <div class="frow">
             <label>Habit <select id="fHabit"></select></label>
-            <label>Time <span class="time2"><input id="fHrs" type="number" min="0" placeholder="h"> <input id="fMin" type="number" min="0" max="59" placeholder="m"></span></label>
+            <label>Times done <input id="fHabitTimes" type="number" min="0" step="1" placeholder="e.g. 1"></label>
+            <label>Extra mins <input id="fHabitExtra" type="number" min="0" placeholder="0"></label>
           </div>
+          <div class="hint" id="fHabitHint" style="margin:-4px 0 0"></div>
         </div>
 
         <div class="tgroup" data-type="goal" hidden>
@@ -1120,7 +1122,7 @@ function renderTotalTrend(){
   totalTrendChart = new Chart(document.getElementById('totalTrend'),{
     type:'bar',
     data:{labels:MONTHS.map(x=>x.m.split(' ')[0]),
-      datasets:[{data:MONTHS.map(x=>hrs(total(x.cats))),
+      datasets:[{data:MONTHS.map(x=>hrs(total(monthCats(x)))),
         backgroundColor:huePalette(MONTHS.length),
         borderRadius:8,maxBarThickness:46}]},
     options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.raw} h`}}},
@@ -1130,9 +1132,10 @@ function renderTotalTrend(){
 
 // ---- Stacked bar by category ----
 function renderStack(){
+  const MC=MONTHS.map(monthCats);
   const ds = ALLCATS.map(cat=>({
     label:cat, backgroundColor:COLORS[cat],
-    data:MONTHS.map(x=>hrs(x.cats[cat]||0)), borderRadius:4, maxBarThickness:46
+    data:MC.map(c=>hrs(c[cat]||0)), borderRadius:4, maxBarThickness:46
   }));
   new Chart(document.getElementById('stack'),{
     type:'bar',
@@ -1145,9 +1148,10 @@ function renderStack(){
 
 // ---- Per-category lines ----
 function renderLines(){
+  const MC=MONTHS.map(monthCats);
   const ds = ALLCATS.map(cat=>({
     label:cat, borderColor:COLORS[cat], backgroundColor:COLORS[cat],
-    data:MONTHS.map(x=>x.cats[cat]!=null?hrs(x.cats[cat]):null),
+    data:MC.map(c=>c[cat]!=null?hrs(c[cat]):null),
     spanGaps:true, tension:.35, borderWidth:2.5, pointRadius:3, pointHoverRadius:5
   }));
   new Chart(document.getElementById('lines'),{
@@ -1233,6 +1237,9 @@ function initLogForm(){
   document.querySelectorAll('#typeTabs button').forEach(b=>b.onclick=()=>setLogType(b.dataset.t));
   document.getElementById('fGoal').addEventListener('change', syncGoalFields);
   document.getElementById('fGoalAmt').addEventListener('input', syncGoalFields);
+  document.getElementById('fHabit').addEventListener('change', habitLogHint);
+  document.getElementById('fHabitTimes').addEventListener('input', habitLogHint);
+  document.getElementById('fHabitExtra').addEventListener('input', habitLogHint);
   document.getElementById('fDevice').addEventListener('change', ()=>{
     document.getElementById('fScrWasteRow').hidden = document.getElementById('fDevice').value!=='laptop'; });
   document.getElementById('onRedirect').innerHTML = ALLCATS.map(c=>`<option ${c==='Career'?'selected':''}>${c}</option>`).join('');
@@ -1279,19 +1286,29 @@ function onLogSubmit(e){
   else if(logType==='screen') submitScreen(ym,period);
 }
 function submitProject(ym,period){
-  const hrs=+document.getElementById('fHrs').value||0, min=+document.getElementById('fMin').value||0;
-  const mins=hrs*60+min;
   const sel=document.getElementById('fHabit'), opt=sel.options[sel.selectedIndex];
   const task=sel.value.trim();
   const cat=opt?opt.dataset.cat:'';
-  if(!task||mins<=0){ flash('Pick a habit and a time > 0', true); return; }
+  const perDay=+(opt&&opt.dataset.min)||0;
+  const times=Math.max(0,+document.getElementById('fHabitTimes').value||0);
+  const extra=Math.max(0,+document.getElementById('fHabitExtra').value||0);
+  const mins=Math.round(times*perDay+extra); // times done × required min/day + any extra mins
+  if(!task||mins<=0){ flash('Pick a habit and enter times done or extra mins', true); return; }
   const all=loadEntries();
-  all.push({id:eid(), ym, period, type:'project', task, cat, mins});
+  all.push({id:eid(), ym, period, type:'project', task, cat, mins, times, extra});
   saveEntries(all);
   logSel = `${ym}-${period}`;
-  document.getElementById('fHrs').value=''; document.getElementById('fMin').value='';
+  document.getElementById('fHabitTimes').value=''; document.getElementById('fHabitExtra').value=''; habitLogHint();
   flash(`Added “${task}” (${fmtShort(mins)})`);
   renderLog();
+}
+function habitLogHint(){
+  const sel=document.getElementById('fHabit'); if(!sel) return;
+  const opt=sel.options[sel.selectedIndex];
+  const perDay=+(opt&&opt.dataset.min)||0;
+  const t=+document.getElementById('fHabitTimes').value||0, e=+document.getElementById('fHabitExtra').value||0;
+  const el=document.getElementById('fHabitHint'); if(!el) return;
+  el.textContent = (t||e)? `${t} × ${perDay}m${e?` + ${e}m extra`:''} = ${fmtShort(Math.round(t*perDay+e))}` : `${perDay}m required per day`;
 }
 function submitGoal(ym,period){
   const g=loadGoals(), x=g.find(o=>o.id===document.getElementById('fGoal').value);
@@ -1338,8 +1355,9 @@ function refreshHabitOptions(){
   const el=document.getElementById('fHabit'); if(!el) return;
   const cur=el.value, h=loadHabits();
   el.innerHTML = h.length
-    ? h.map(it=>`<option value="${it.n.replace(/"/g,'&quot;')}" data-cat="${(it.cat||'').replace(/"/g,'&quot;')}"${it.n===cur?' selected':''}>${habitIcon(it.cat)} ${it.n} · ${it.m}m</option>`).join('')
+    ? h.map(it=>`<option value="${it.n.replace(/"/g,'&quot;')}" data-cat="${(it.cat||'').replace(/"/g,'&quot;')}" data-min="${+it.m||0}"${it.n===cur?' selected':''}>${habitIcon(it.cat)} ${it.n} · ${it.m}m</option>`).join('')
     : '<option value="">No habits — add some in Settings</option>';
+  if(typeof habitLogHint==='function') habitLogHint();
 }
 // ---- category management (Settings) ----
 function persistCats(){ localStorage.setItem(LS_ALLCATS, JSON.stringify(ALLCATS)); localStorage.setItem(LS_COLORS, JSON.stringify(COLORS)); localStorage.setItem(LS_ICONS, JSON.stringify(ICONS)); fbSyncPush(); }
@@ -1494,7 +1512,7 @@ function renderLog(){
   const rows = all.filter(e=>pkey(e)===logSel);
   document.getElementById('entryCount').textContent = all.length? `· ${all.length} total` : '';
   document.getElementById('entryTable').innerHTML = rows.length
-    ? rows.map(e=>`<div class="trow"><span class="tt">${e.task}</span>
+    ? rows.map(e=>`<div class="trow"><span class="tt">${e.task}${e.times?` <span style="color:var(--muted);font-size:12px">×${e.times}${e.extra?` +${e.extra}m`:''}</span>`:''}</span>
         <span class="tc" style="background:${colorFor(e.cat)}">${e.cat}</span>
         <span class="tm">${fmtShort(e.mins)}</span>
         <button class="del" onclick="deleteEntry('${e.id}')">✕</button></div>`).join('')
