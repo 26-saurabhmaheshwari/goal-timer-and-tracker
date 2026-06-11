@@ -2255,16 +2255,16 @@ function renderPlanning(){
   const doneBg=(t,d)=>{const p=t>0?d/t*100:0; return p<25?'rgba(232,67,67,.14)':p<50?'rgba(245,166,35,.15)':p<75?'rgba(245,210,40,.17)':'rgba(141,198,63,.17)';};
   const catBody=catRows.map((r,i)=>`<tr style="border-top:1px solid var(--line);background:${doneBg(r.target,r.done)}">
     <td style="padding:8px 12px"><span style="display:inline-flex;align-items:center;gap:7px"><i style="width:10px;height:10px;border-radius:3px;background:${r.color};display:inline-block;flex:none"></i>${cIcon(r.k)} ${r.k} <span style="color:var(--muted)">(${dp[i]}%)</span></span></td>
-    ${num('<b>'+fmtH(r.target)+'h</b>','padding:8px 12px;white-space:nowrap;color:var(--ink)')}
-    ${num(fmtH(r.done)+'h','padding:8px 12px;white-space:nowrap;color:var(--muted)')}
-    ${num('<b>'+fmtH(Math.max(0,r.target-r.done))+'h</b>','padding:8px 12px;white-space:nowrap;color:var(--ink)')}
+    ${num('<b>'+fmtHM(r.target)+'</b>','padding:8px 12px;white-space:nowrap;color:var(--ink)')}
+    ${num(fmtHM(r.done),'padding:8px 12px;white-space:nowrap;color:var(--muted)')}
+    ${num('<b>'+fmtHM(Math.max(0,r.target-r.done))+'</b>','padding:8px 12px;white-space:nowrap;color:var(--ink)')}
     ${num('<b>'+pctDone(r.target,r.done)+'%</b>','padding:8px 12px;color:'+paceCol(r.target,r.done))}
   </tr>`).join('');
   const catTot=`<tr style="border-top:2.5px solid var(--ink);background:rgba(127,127,127,.12)">
     <td style="padding:11px 12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;font-size:11px">Total <span style="font-weight:500">(100%)</span></td>
-    ${num('<b>'+fmtH(sumT)+'h</b>','padding:11px 12px;white-space:nowrap')}
-    ${num('<b>'+fmtH(sumD)+'h</b>','padding:11px 12px;white-space:nowrap')}
-    ${num('<b>'+fmtH(Math.max(0,sumT-sumD))+'h</b>','padding:11px 12px;white-space:nowrap')}
+    ${num('<b>'+fmtHM(sumT)+'</b>','padding:11px 12px;white-space:nowrap')}
+    ${num('<b>'+fmtHM(sumD)+'</b>','padding:11px 12px;white-space:nowrap')}
+    ${num('<b>'+fmtHM(Math.max(0,sumT-sumD))+'</b>','padding:11px 12px;white-space:nowrap')}
     ${num('<b>'+pctDone(sumT,sumD)+'%</b>','padding:11px 12px;color:'+paceCol(sumT,sumD))}
   </tr>`;
   const catHead=`<div style="display:flex;align-items:baseline;gap:9px;margin:4px 0 10px;flex-wrap:wrap"><h2 style="margin:0;font-size:18px">By category</h2><span class="hint" style="margin:0">planned = done + to&nbsp;do · share of total</span></div>`;
