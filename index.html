@@ -2184,7 +2184,7 @@ function renderPlanning(){
       <td style="padding:6px 12px;color:var(--ink);font-weight:500"><span style="display:inline-flex;align-items:center;gap:7px" title="${t.cat}">${cIcon(t.cat)} ${t.label}</span></td>
       ${num(t.h?fmtHM(t.h/pLeft):`<span style="color:#9aa3b2">${t.note||''}</span>`,'padding:6px 12px;white-space:nowrap;font-weight:600;color:var(--ink)')}
       ${num(t.h?fmtHM(t.h/mLeft):'','padding:6px 12px;white-space:nowrap;color:var(--muted);font-weight:400;font-size:12px')}
-      ${num(t.h?fmtH(t.h)+'h':'','padding:6px 12px;white-space:nowrap;font-weight:600;color:var(--ink)')}
+      ${num(t.h?fmtHM(t.h):'','padding:6px 12px;white-space:nowrap;font-weight:600;color:var(--ink)')}
     </tr>`;
   const section=(label,rows,rowFn,cols)=>{
     if(!rows.length) return '';
@@ -2196,7 +2196,7 @@ function renderPlanning(){
       <td style="padding:9px 12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:11px;color:var(--muted)">Subtotal</td>
       ${num('<b>'+fmtHM(s/pLeft)+'</b>','padding:9px 12px;white-space:nowrap;font-size:14.5px;color:var(--ink)')}
       ${num('<b>'+fmtHM(s/mLeft)+'</b>','padding:9px 12px;white-space:nowrap;font-size:14.5px;color:var(--ink)')}
-      ${num('<b>'+fmtH(s)+'h</b>','padding:9px 12px;white-space:nowrap;font-size:14.5px;color:var(--ink)')}
+      ${num('<b>'+fmtHM(s)+'</b>','padding:9px 12px;white-space:nowrap;font-size:14.5px;color:var(--ink)')}
     </tr>`;
     return hdr+body+sub;
   };
@@ -2206,7 +2206,7 @@ function renderPlanning(){
     <td style="padding:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;font-size:12px"><b>Total</b></td>
     ${num('<b>'+fmtHM(totH/pLeft)+'</b>','padding:12px;white-space:nowrap;font-size:16px;color:var(--ink)')}
     ${num('<b>'+fmtHM(totH/mLeft)+'</b>','padding:12px;white-space:nowrap;font-size:16px;color:var(--ink)')}
-    ${num('<b>'+fmtH(totH)+'h</b>','padding:12px;white-space:nowrap;font-size:16px;color:var(--ink)')}
+    ${num('<b>'+fmtHM(totH)+'</b>','padding:12px;white-space:nowrap;font-size:16px;color:var(--ink)')}
   </tr>`;
   // battery built from the same table data so it always matches
   const catDay={};
@@ -2229,7 +2229,7 @@ function renderPlanning(){
     <span style="display:inline-flex;align-items:center;gap:5px;background:rgba(127,127,127,.1);padding:5px 13px;border-radius:20px;font-size:13px;font-weight:600;color:var(--ink)">${pend}<span style="color:var(--muted);font-weight:400">days left</span></span>
   </div>
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px">
-    ${stat('Total to do',fmtH(totH)+'h','planning window')}
+    ${stat('Total to do',fmtHM(totH),'planning window')}
     ${stat('Per month',fmtHM(totH/mLeft),`${mLeft.toFixed(1)} months left`)}
     ${stat('Per period required',fmtHM(totH/pLeft),`${pLeft} periods left`)}
     ${stat('Per day required',fmtHM(totH/pend),`fixed ${fmtM(fixed)} · goals ${fmtM(Math.max(0,totH/pend*60-fixed))}`)}
