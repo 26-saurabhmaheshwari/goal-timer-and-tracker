@@ -751,11 +751,28 @@
 <div id="viewSettings" hidden>
   <div class="tipswrap">
     <div class="tipside" id="setSide">
-      <button data-s="cats" class="active">Categories</button>
+      <button data-s="personal" class="active">Personal</button>
+      <button data-s="cats">Categories</button>
       <button data-s="habits">Habits</button>
     </div>
     <div class="tipmain">
-  <div class="card" id="setCats">
+  <div class="card" id="setPersonal">
+    <h2>Personal details</h2>
+    <div class="hint">Used for the life-progress bar on the Overview. Stored locally and synced to your account.</div>
+    <form id="personalForm" class="form" style="margin-top:14px">
+      <div class="frow">
+        <label>Name <input id="setName" type="text" placeholder="Your name"></label>
+        <label>Date of birth <input id="setDob" type="date"></label>
+        <label>Life target (yrs) <input id="setTarget" type="number" min="1" max="150" step="1" style="width:110px"></label>
+      </div>
+      <div class="gform-foot">
+        <button type="submit" class="btn">Save</button>
+        <span id="personalMsg" class="fmsg"></span>
+      </div>
+    </form>
+  </div>
+
+  <div class="card" id="setCats" hidden>
     <h2>Categories</h2>
     <div class="hint">Manage the categories used across the timer and goals. Deleting one won't change past entries.</div>
     <div id="catList" class="catlist"></div>
@@ -997,7 +1014,7 @@ function renderYearDonut(){
   const entries=Object.entries(agg).sort((a,b)=>b[1]-a[1]);
   const labels=entries.map(e=>e[0]), data=entries.map(e=>e[1]);
   const cols=labels.map(l=>COLORS[l]); const tot=data.reduce((a,b)=>a+b,0);
-  document.getElementById('yearCenterVal').innerHTML=`${Math.floor(tot/60)}<span>h</span>`;
+  document.getElementById('yearCenterVal').innerHTML=`${Math.floor(tot/60)}<span>h</span> ${tot%60}<span>m</span>`;
   document.getElementById('yearLegend').innerHTML=entries.map(([n,v])=>
     `<tr><td><span class="dot" style="background:${COLORS[n]}"></span>${n}</td>
      <td style="text-align:right;font-weight:600">${fmtShort(v)}</td>
@@ -1389,12 +1406,14 @@ function renderSettings(){
   renderHabitsSettings();
   setSettab(setSel);
 }
-let setSel='cats';
+let setSel='personal';
 function setSettab(s){
   setSel=s;
+  document.getElementById('setPersonal').hidden = s!=='personal';
   document.getElementById('setCats').hidden = s!=='cats';
   document.getElementById('setHabits').hidden = s!=='habits';
   document.querySelectorAll('#setSide button').forEach(b=>b.classList.toggle('active', b.dataset.s===s));
+  if(s==='personal') renderPersonalSettings();
 }
 function habitCatOpts(c){ return ALLCATS.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"${x===c?' selected':''}>${x}</option>`).join(''); }
 function renderHabitsSettings(){
@@ -1635,8 +1654,10 @@ function onlinePeriodBreakdown(d){
 }
 
 // ================= LIFE BAR =================
-const LS_DOB='ptd_dob_v1', LIFE_TARGET=80;
+const LS_DOB='ptd_dob_v1', LS_NAME='ptd_name_v1', LS_TARGET='ptd_target_v1';
+let LIFE_TARGET = Math.min(150, Math.max(1, +localStorage.getItem(LS_TARGET) || 80));
 function loadDob(){ return localStorage.getItem(LS_DOB) || '1990-01-26'; }
+function loadName(){ return localStorage.getItem(LS_NAME) || ''; }
 function lifeColor(t){ // green -> yellow(.55) -> red, same stops as the old bar
   const g=[55,179,107], y=[245,196,81], r=[239,107,90];
   const [c1,c2,tt] = t<=.55 ? [g,y,t/.55] : [y,r,(t-.55)/.45];
@@ -1664,7 +1685,7 @@ function renderLifeBar(){
     :pct<80?'The clock is louder now — guard your hours.'
     :'Time is precious. Make every moment count.';
   el.innerHTML=`<div class="ltop">
-      <span>Life · target ${LIFE_TARGET} yrs</span>
+      <span>${loadName()?loadName()+' · ':''}Life · target ${LIFE_TARGET} yrs</span>
       <b>${yrs.toFixed(1)} yrs lived · ${Math.round(pct)}%</b>
       <span class="lmsg">${msgs}</span>
     </div>
@@ -1696,13 +1717,25 @@ function lifeNote(birthdays,leftDays){
   ];
   return N[Math.floor(Date.now()/86400000)%N.length];
 }
-window.editDob=function(){
-  const cur=loadDob();
-  const v=prompt('Your birth date (YYYY-MM-DD):', cur);
-  if(v==null) return;
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(v) || isNaN(new Date(v).getTime())){ alert('Use format YYYY-MM-DD'); return; }
-  localStorage.setItem(LS_DOB, v); renderLifeBar(); fbSyncPush();
-};
+function renderPersonalSettings(){
+  const n=document.getElementById('setName'), d=document.getElementById('setDob'), t=document.getElementById('setTarget');
+  if(!n) return;
+  n.value=loadName(); d.value=loadDob(); t.value=LIFE_TARGET;
+}
+function savePersonal(e){
+  e.preventDefault();
+  const name=document.getElementById('setName').value.trim();
+  const dob=document.getElementById('setDob').value;
+  const target=Math.min(150, Math.max(1, Math.round(+document.getElementById('setTarget').value||0)));
+  const msg=document.getElementById('personalMsg');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(dob) || isNaN(new Date(dob).getTime())){ msg.textContent='Enter a valid date of birth.'; msg.style.color='#ef4444'; return; }
+  if(!target){ msg.textContent='Enter a valid life target.'; msg.style.color='#ef4444'; return; }
+  localStorage.setItem(LS_NAME, name); localStorage.setItem(LS_DOB, dob); localStorage.setItem(LS_TARGET, String(target));
+  LIFE_TARGET=target;
+  renderLifeBar(); fbSyncPush();
+  msg.textContent='Saved ✓'; msg.style.color='#34a853';
+  setTimeout(()=>{ msg.textContent=''; }, 2000);
+}
 
 // ================= GOALS (named, with units + deadline) =================
 const LS_GOALS='ptd_goals2_v1', LS_VIEW='ptd_view_v1';
@@ -2508,7 +2541,7 @@ function renderReports(){
 }
 
 // --- Firebase sync glue ---
-function fbBlob(){ return {version:1, months:MONTHS, colors:COLORS, icons:ICONS, allcats:ALLCATS, taskcat:TASK_CAT, entries:loadEntries(), rollup:loadRollup(), online:loadOnline(), goals:loadGoals(), habits:loadHabits(), tips:loadTips(), dob:loadDob(), lockMig:localStorage.getItem('ptd_lockmig_v1')==='1', catMig:localStorage.getItem('ptd_catmig_v1')==='1'}; }
+function fbBlob(){ return {version:1, months:MONTHS, colors:COLORS, icons:ICONS, allcats:ALLCATS, taskcat:TASK_CAT, entries:loadEntries(), rollup:loadRollup(), online:loadOnline(), goals:loadGoals(), habits:loadHabits(), tips:loadTips(), dob:loadDob(), name:loadName(), target:LIFE_TARGET, lockMig:localStorage.getItem('ptd_lockmig_v1')==='1', catMig:localStorage.getItem('ptd_catmig_v1')==='1'}; }
 function fbSyncPush(){ window.fbPushRaw && window.fbPushRaw(fbBlob()); }
 window.fbToggle = function(){ if(window.__fbIn){ window.fbSignOut(); } else { window.fbSignIn(); } };
 document.addEventListener('fb-auth', e=>{
@@ -2523,6 +2556,8 @@ document.addEventListener('fb-data', e=>{
   set(LS_MONTHS,d.months); set(LS_COLORS,d.colors); set(LS_ICONS,d.icons); set(LS_ALLCATS,d.allcats); set(LS_TASKCAT,d.taskcat);
   set(LS_KEY,d.entries); set(LS_ROLLUP,d.rollup); set(LS_ONLINE,d.online); set(LS_GOALS,d.goals); set(LS_HABITS,d.habits); set(LS_TIPS,d.tips);
   if(typeof d.dob==='string' && d.dob && localStorage.getItem(LS_DOB)!==d.dob){ localStorage.setItem(LS_DOB,d.dob); changed=true; }
+  if(typeof d.name==='string' && localStorage.getItem(LS_NAME)!==d.name){ localStorage.setItem(LS_NAME,d.name); changed=true; }
+  if(d.target && +d.target!==LIFE_TARGET){ LIFE_TARGET=Math.min(150,Math.max(1,+d.target)); localStorage.setItem(LS_TARGET,String(LIFE_TARGET)); changed=true; }
   // one-time backfill: lock goal-linked entries that already exist, so a later
   // minutes-per-unit change never retroactively rewrites them. Flag is synced
   // (d.lockMig) so this runs exactly once across all devices. New entries logged
@@ -2625,6 +2660,7 @@ document.getElementById('tipSaveBtn').onclick=tipSaveEdit;
 document.getElementById('tipCancelBtn').onclick=tipCancelEdit;
 document.getElementById('tipPdfBtn').onclick=exportTipsPdf;
 document.querySelectorAll('#setSide button').forEach(b=>b.onclick=()=>setSettab(b.dataset.s));
+document.getElementById('personalForm').addEventListener('submit', savePersonal);
 
 // ================= POT (year capacity vs filled, coloured by category) =================
 function renderPot(boxId){
