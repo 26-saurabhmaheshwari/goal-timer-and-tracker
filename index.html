@@ -2450,9 +2450,19 @@ function renderReports(){
   // ---- cumulative progress table: total tracked time per bucket, with before / added / running total ----
   (function(){
     const tEl=document.getElementById('repProgress'); if(!tEl) return;
-    const samp=[], rawYms=new Set();
-    es.forEach(e=>{ if(!e.ym) return; samp.push({ym:e.ym, period:e.period, mins:+e.mins||0}); rawYms.add(e.ym); });
-    Object.entries(roll).forEach(([ym,r])=>{ if(rawYms.has(ym)) return; const mins=Object.values(r.c||{}).reduce((a,b)=>a+(+b||0),0); if(mins>0) samp.push({ym, period:null, mins}); });
+    // Source from MONTHS/monthCats — the SAME data the overview donut sums — so totals reconcile
+    // (seeded/archived months count too, not just raw Log entries). Period detail kept where entries exist.
+    const samp=[];
+    MONTHS.forEach(M=>{
+      const ym=ymOf(M.m), mt=total(monthCats(M)); if(mt<=0) return;
+      const ps=es.filter(e=>e.ym===ym && e.period);
+      if(ps.length){
+        const byp={}; ps.forEach(e=>byp[e.period]=(byp[e.period]||0)+(+e.mins||0));
+        Object.entries(byp).forEach(([p,mins])=>samp.push({ym, period:p, mins}));
+        const acc=Object.values(byp).reduce((a,b)=>a+b,0);
+        if(mt-acc>0.5) samp.push({ym, period:null, mins:mt-acc});
+      } else samp.push({ym, period:null, mins:mt});
+    });
     const byB={};
     samp.forEach(x=>{ const b=repBkt(x,repGran); if(b){ if(!byB[b.key]) byB[b.key]={label:b.label,mins:0}; byB[b.key].mins+=x.mins; } });
     const ks=Object.keys(byB).sort();
