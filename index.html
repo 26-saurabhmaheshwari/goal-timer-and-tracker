@@ -322,6 +322,16 @@
   .repchip:hover{border-color:#c3ccda}
   .repchip.active{background:var(--ink);color:#fff;border-color:var(--ink)}
   .repgrp{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:700;margin:10px 0 6px}
+  .repsel{border:1px solid var(--line);background:#fff;color:var(--ink);padding:6px 10px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer}
+  .repdrop{position:relative;display:inline-block}
+  .repdrop>summary{list-style:none;border:1px solid var(--line);background:#fff;color:var(--ink);padding:6px 12px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;user-select:none}
+  .repdrop>summary::-webkit-details-marker{display:none}
+  .repdrop>summary::after{content:'▾';margin-left:8px;color:var(--muted)}
+  .repdrop[open]>summary::after{content:'▴'}
+  .repdrop-panel{position:absolute;z-index:20;margin-top:6px;min-width:240px;max-height:320px;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 28px rgba(20,30,60,.16);padding:8px 12px}
+  .repopt{display:flex;align-items:center;gap:8px;padding:5px 4px;font-size:13px;cursor:pointer;border-radius:7px}
+  .repopt:hover{background:rgba(127,127,127,.07)}
+  .repopt input{cursor:pointer}
   #repGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));gap:16px}
   .repcard canvas{max-height:230px}
   @media print{ #repGrid{display:grid;grid-template-columns:1fr 1fr} .repcard{page-break-inside:avoid} }
@@ -2353,7 +2363,7 @@ function setOv(o){
 }
 
 // ===== REPORTS =====
-let repCharts=[], repGran='month', repSel=null;
+let repCharts=[], repGran='month', repSel=null, repDropOpen=false;
 const REP_GRANS=[['period','Period'],['month','Month'],['quarter','Quarter'],['half','Half-year'],['year','Year']];
 function repBkt(e,g){
   if(!e.ym) return null;
@@ -2405,18 +2415,20 @@ function renderReports(){
   const subs=repSubjects();
   if(repSel===null) repSel=new Set(['goalsAll','habitsAll']);
   // controls
-  const granBtns=REP_GRANS.map(([k,l])=>`<button data-g="${k}" class="${k===repGran?'active':''}">${l}</button>`).join('');
+  const granSel=`<select id="repGranSel" class="repsel">${REP_GRANS.map(([k,l])=>`<option value="${k}" ${k===repGran?'selected':''}>${l}</option>`).join('')}</select>`;
   const order=['Overall','Categories','Goals','Habits'];
-  const chips=order.map(grp=>{
+  const opts=order.map(grp=>{
     const items=subs.filter(s=>s.grp===grp); if(!items.length) return '';
     return `<div class="repgrp">${grp}</div>`+items.map(s=>
-      `<button class="repchip ${repSel.has(s.key)?'active':''}" data-k="${s.key}">${s.cat?iconFor(s.cat)+' ':''}${s.title}</button>`).join('');
+      `<label class="repopt"><input type="checkbox" data-k="${s.key}" ${repSel.has(s.key)?'checked':''}>${s.cat?iconFor(s.cat)+' ':''}${s.title}</label>`).join('');
   }).join('');
+  const subjDrop=`<details class="repdrop" ${repDropOpen?'open':''}><summary>Subjects · ${repSel.size} selected</summary><div class="repdrop-panel">${opts}</div></details>`;
   const periodNote = repGran==='period' && Object.keys(loadRollup()).length
-    ? `<div class="hint" style="margin-bottom:10px">Period view shows only the last ~3 months — older data is kept as monthly totals (no period detail).</div>` : '';
+    ? `<div class="hint" style="margin-top:10px">Period view shows only the last ~3 months — older data is kept as monthly totals (no period detail).</div>` : '';
   document.getElementById('repControls').innerHTML =
-    `<div style="margin-bottom:10px"><span style="font-size:12px;color:var(--muted);font-weight:700;margin-right:8px">Group by</span>`
-    +`<span class="tabs" style="display:inline-flex;vertical-align:middle">${granBtns}</span></div>${periodNote}${chips}`;
+    `<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">`
+    +`<label style="font-size:12px;color:var(--muted);font-weight:700;display:inline-flex;align-items:center;gap:8px">Group by ${granSel}</label>`
+    +`${subjDrop}</div>${periodNote}`;
   // data — raw entries (recent) merged with archived monthly rollup (older)
   const es=loadEntries(), roll=loadRollup();
   const chosen=subs.filter(s=>repSel.has(s.key));
@@ -2489,8 +2501,9 @@ function renderReports(){
         </tr></thead><tbody>${body}</tbody></table></div>`;
   })();
   // bind
-  document.querySelectorAll('#repControls [data-g]').forEach(b=>b.onclick=()=>{ repGran=b.dataset.g; renderReports(); });
-  document.querySelectorAll('#repControls [data-k]').forEach(b=>b.onclick=()=>{ const k=b.dataset.k; repSel.has(k)?repSel.delete(k):repSel.add(k); renderReports(); });
+  document.getElementById('repGranSel').onchange=e=>{ repGran=e.target.value; renderReports(); };
+  const dd=document.querySelector('#repControls .repdrop'); if(dd) dd.addEventListener('toggle',()=>{ repDropOpen=dd.open; });
+  document.querySelectorAll('#repControls input[data-k]').forEach(cb=>cb.onchange=()=>{ const k=cb.dataset.k; cb.checked?repSel.add(k):repSel.delete(k); repDropOpen=true; renderReports(); });
   document.getElementById('repPdfBtn').onclick=exportReportPdf;
 }
 
