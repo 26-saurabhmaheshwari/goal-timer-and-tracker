@@ -712,6 +712,7 @@
     <div id="repControls" class="noprint" style="margin-top:14px"></div>
   </div>
   <div id="repGrid" style="margin-top:16px"></div>
+  <div id="repProgress" style="margin-top:16px"></div>
 </div><!-- /viewReports -->
 
 <div id="viewTips" hidden>
@@ -992,7 +993,7 @@ function renderYearDonut(){
      <td style="text-align:right;font-weight:600">${fmtShort(v)}</td>
      <td style="text-align:right;color:var(--muted)">${Math.round(v/tot*100)}%</td></tr>`).join('');
   const cfg={type:'doughnut',
-    data:{labels,datasets:[{data,backgroundColor:cols,borderWidth:3,borderColor:'#fff',hoverOffset:6}]},
+    data:{labels,datasets:[{data,backgroundColor:cols,borderWidth:1,borderColor:'#fff',borderAlign:'inner',hoverOffset:6}]},
     options:{cutout:'68%',plugins:{legend:{display:false},
       tooltip:{callbacks:{label:c=>` ${c.label}: ${fmtShort(c.raw)} (${Math.round(c.raw/tot*100)}%)`}}}}};
   if(yearDonutChart){yearDonutChart.data=cfg.data;yearDonutChart.update();}
@@ -2446,6 +2447,37 @@ function renderReports(){
                   y:{beginAtZero:true,grid:{color:'#eef1f6'},ticks:{callback:v=>v+'h'}}}}}));
     });
   }
+  // ---- cumulative progress table: total tracked time per bucket, with before / added / running total ----
+  (function(){
+    const tEl=document.getElementById('repProgress'); if(!tEl) return;
+    const samp=[], rawYms=new Set();
+    es.forEach(e=>{ if(!e.ym) return; samp.push({ym:e.ym, period:e.period, mins:+e.mins||0}); rawYms.add(e.ym); });
+    Object.entries(roll).forEach(([ym,r])=>{ if(rawYms.has(ym)) return; const mins=Object.values(r.c||{}).reduce((a,b)=>a+(+b||0),0); if(mins>0) samp.push({ym, period:null, mins}); });
+    const byB={};
+    samp.forEach(x=>{ const b=repBkt(x,repGran); if(b){ if(!byB[b.key]) byB[b.key]={label:b.label,mins:0}; byB[b.key].mins+=x.mins; } });
+    const ks=Object.keys(byB).sort();
+    if(!ks.length){ tEl.innerHTML=''; return; }
+    const hm=h=>{const m=Math.round(h*60);if(m<=0)return '0';const H=Math.floor(m/60),M=m%60;return H?(M?`${H}h ${M}m`:`${H}h`):`${M}m`;};
+    let cum=0;
+    const body=ks.map(k=>{
+      const h=byB[k].mins/60, before=cum; cum+=h;
+      return `<tr style="border-top:1px solid var(--line)">
+        <td style="padding:7px 12px">${byB[k].label}</td>
+        <td style="padding:7px 12px;text-align:right;color:var(--muted)">${hm(before)}</td>
+        <td style="padding:7px 12px;text-align:right;font-weight:600;color:#34a853">+${hm(h)}</td>
+        <td style="padding:7px 12px;text-align:right;font-weight:700">${hm(cum)}</td></tr>`;
+    }).join('');
+    const granLbl=(REP_GRANS.find(x=>x[0]===repGran)||['','Period'])[1];
+    tEl.innerHTML=`<div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:12px 14px;font-weight:700">Cumulative progress — total tracked time<span class="hint" style="display:block;font-weight:400;margin-top:2px">how the running total grew each ${granLbl.toLowerCase()}</span></div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="background:rgba(127,127,127,.07);text-transform:uppercase;font-size:11px;letter-spacing:.04em;color:var(--muted)">
+          <th style="padding:8px 12px;text-align:left">${granLbl}</th>
+          <th style="padding:8px 12px;text-align:right">Before</th>
+          <th style="padding:8px 12px;text-align:right">Added</th>
+          <th style="padding:8px 12px;text-align:right">Running total</th>
+        </tr></thead><tbody>${body}</tbody></table></div>`;
+  })();
   // bind
   document.querySelectorAll('#repControls [data-g]').forEach(b=>b.onclick=()=>{ repGran=b.dataset.g; renderReports(); });
   document.querySelectorAll('#repControls [data-k]').forEach(b=>b.onclick=()=>{ const k=b.dataset.k; repSel.has(k)?repSel.delete(k):repSel.add(k); renderReports(); });
