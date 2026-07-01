@@ -253,6 +253,16 @@
   .gd-row{display:flex;justify-content:space-between;gap:10px;font-size:11.5px;line-height:1.3}
   .gd-row span{color:var(--muted);font-weight:600}
   .gd-row b{color:#1b2440;font-weight:700;text-align:right}
+  .glog{font-size:11.5px}
+  .glog summary{cursor:pointer;color:var(--muted);font-weight:600;list-style:none;user-select:none;padding:2px 0}
+  .glog summary::-webkit-details-marker{display:none}
+  .glog summary:hover{color:#2d6cdf}
+  .glog-body{margin-top:4px;max-height:150px;overflow:auto;display:flex;flex-direction:column;gap:3px}
+  .glog-row{display:flex;justify-content:space-between;gap:8px;line-height:1.3;padding:2px 6px;background:rgba(255,255,255,.55);border-radius:6px}
+  .glog-when{color:var(--muted);font-weight:600}
+  .glog-amt{color:#16a34a;font-weight:700}
+  .glog-tot{color:#1b2440;font-weight:700;text-align:right}
+  .gcard-done{opacity:.72}
   .gcard-foot{display:flex;justify-content:space-between;align-items:center;border-top:1px solid rgba(20,30,60,.09);padding-top:8px;margin-top:auto}
   .gcat{font-size:15px;line-height:1}
   .gcard-overdue{animation:gpulse 1.8s ease-in-out infinite}
@@ -646,6 +656,7 @@
   <div class="card gsec"><h2>🔁 Recurring goals</h2><div class="hint">Per-period commitments that accumulate over the year — caught up like goals, not lapsed like habits.</div><div id="secRecurring"></div></div>
   <div class="card gsec"><h2>Backlog goals</h2><div class="hint">Things to start later.</div><div id="secBacklog"></div></div>
   <div class="card gsec"><h2>Dreams</h2><div class="hint">Big aspirations — no deadline pressure.</div><div id="secDream"></div></div>
+  <div class="card gsec"><h2>✅ Completed</h2><div class="hint">Marked done. Logged time is kept; reopen any time to keep going.</div><div id="secCompleted"></div></div>
 </div><!-- /viewGoals -->
 
 <div id="viewPlanning" hidden>
@@ -865,16 +876,21 @@ const SEED_MONTHS = [
 ];
 const LS_MONTHS = 'ptd_months_v1';
 const CUR_YM = curYM();
-// ensure the real calendar month is present as the latest entry (dynamic, never persisted)
+// ensure the real calendar month + any month with raw Log entries are present (dynamic, never persisted)
 function withCurrentMonth(arr){
-  if(arr.some(x=>ymOf(x.m)===CUR_YM)) return arr;
-  const [y,m]=CUR_YM.split('-');
-  return arr.concat([{m:`${MONTH_NAMES[+m-1]} ${y}`, cats:{}}]);
+  const out=arr.slice();
+  const have=new Set(out.map(x=>ymOf(x.m)));
+  if(!have.has(CUR_YM)){ const [y,m]=CUR_YM.split('-'); out.push({m:`${MONTH_NAMES[+m-1]} ${y}`, cats:{}}); have.add(CUR_YM); }
+  // recent past months (kept as raw entries, not yet rolled up) get a tab so they show in Monthly + totals
+  try{ loadEntries().forEach(e=>{ if(e.ym && !have.has(e.ym)){ out.push({m:ymLabel(e.ym), cats:{}}); have.add(e.ym); } }); }catch(_){}
+  out.sort((a,b)=>ymOf(a.m)<ymOf(b.m)?-1:1);
+  return out;
 }
 function loadMonths(){ let arr; try{ const v=JSON.parse(localStorage.getItem(LS_MONTHS)); arr=(Array.isArray(v)&&v.length)?v:SEED_MONTHS; }catch(e){ arr=SEED_MONTHS; } return withCurrentMonth(arr); }
 let MONTHS = loadMonths();
-// effective category totals: current month is sourced live from Log entries (cats stay empty)
-function monthCats(M){ return ymOf(M.m)===CUR_YM ? entryCats(ymOf(M.m)) : (M.cats||{}); }
+// effective category totals: any month with raw Log entries is sourced live from them (cats stay empty);
+// archived months (entries rolled up + purged) fall back to their static cats snapshot.
+function monthCats(M){ const ym=ymOf(M.m); const ec=entryCats(ym); return (ym===CUR_YM || Object.keys(ec).length) ? ec : (M.cats||{}); }
 const SEED_ALLCATS = ['Spiritual','Youth','SRM Study','Career & Finance','Hobby'];
 const SEED_TASK_CAT = {
   'ONS':'Spiritual','TDS-SK-Mala':'Spiritual','Bala-AH3':'Spiritual','Vishnu Sahasranam':'Spiritual',
@@ -1079,7 +1095,7 @@ function renderDonut(i){
       </div>`;
     periods.forEach((p,idx)=>{ const cats=entryCats(ym,p); if(total(cats)) donutCharts.push(new Chart(document.getElementById('pdonut'+idx), donutCfg(cats))); });
   } else {
-    const cats=M.cats, tot=total(cats);
+    const cats=monthCats(M), tot=total(cats);
     wrap.innerHTML = `${nav}
       <div class="card monthsplit">
         <div class="ms-left">
@@ -1548,11 +1564,12 @@ function renderLog(){
         <button class="del" onclick="deleteEntry('${e.id}')">✕</button></div>`).join('')
     : `<div class="empty">No entries yet${all.length?' for this period':''}. Add one on the left.</div>`;
 
-  // donut for selected period
-  const agg={}; rows.forEach(e=>agg[e.cat]=(agg[e.cat]||0)+e.mins);
+  // donut for the whole selected month (all periods), not just the selected period
+  const donutYm = logSel ? logSel.replace(/-P\d$/,'') : null;
+  const agg={}; all.filter(e=>e.ym===donutYm).forEach(e=>agg[e.cat]=(agg[e.cat]||0)+e.mins);
   const ent=Object.entries(agg).sort((a,b)=>b[1]-a[1]);
   const tot=ent.reduce((a,[,v])=>a+v,0);
-  document.getElementById('logDonutTitle').textContent = logSel? plabel(logSel)+' breakdown' : 'No data yet';
+  document.getElementById('logDonutTitle').textContent = donutYm? ymLabel(donutYm)+' breakdown' : 'No data yet';
   document.getElementById('logCenterVal').innerHTML = tot? `${Math.floor(tot/60)}<span>h</span> ${tot%60}<span>m</span>` : '<span>—</span>';
   document.getElementById('logLegend').innerHTML = ent.map(([n,v])=>
     `<div class="lrow"><span class="dot" style="background:${colorFor(n)}"></span><span class="nm">${n}</span>
@@ -1809,7 +1826,10 @@ function initGoals(){
     const amt=Math.floor(+document.getElementById('aAmt').value||0); if(amt<=0) return;
     const d=document.getElementById('aDate').value||''; if(!d) return;
     const ym=d.slice(0,7), period=periodOfDay(+d.slice(8,10));
-    x.cur=(+x.cur||0)+amt; saveGoals(g);
+    x.cur=(+x.cur||0)+amt;
+    // permanent per-goal history: amount added, which period, resulting total (never purged; gone only when goal deleted)
+    (x.logs=Array.isArray(x.logs)?x.logs:[]).push({d, ym, period, amt, total:x.cur});
+    saveGoals(g);
     const mins=goalMins(x,amt);
     if(mins>0){ const all=loadEntries(); all.push({id:eid(), ym, period, type:'goal', goalId:x.id, amt, task:x.name, cat:x.cat, mins}); saveEntries(all); logSel=`${ym}-${period}`; }
     addFormShow(false); renderGoals(); if(document.getElementById('entryTable')) renderLog();
@@ -1841,6 +1861,7 @@ function initGoals(){
   });
 }
 function paceLabel(x){
+  if(x.done) return 'Done';
   if(x.target<=0) return x.sec==='dream'?'Dream':x.sec==='backlog'?'Later':'—';
   const af=x.cur/x.target; if(af>=1) return 'Done';
   const ef=expFrac(x); if(ef==null) return 'On track';
@@ -1860,10 +1881,10 @@ function paceColor(label){
 function goalCard(x){
   const raw = x.target>0 ? Math.round(x.cur/x.target*100) : 0;
   const pct = Math.min(100, raw);
-  const started = x.target>0 && x.cur>0;
+  const started = x.done || (x.target>0 && x.cur>0);
   const pace = paceLabel(x);
   const col = started ? paceColor(pace) : '#8a93a3';
-  const badge = started ? pace : 'Not started';
+  const badge = x.done ? 'Done' : (started ? pace : 'Not started');
   const r=34, c=2*Math.PI*r, off=c*(1-pct/100);
   const m = monthsUntil(x.by);
   const dl = daysLeft(x.by);
@@ -1878,9 +1899,18 @@ function goalCard(x){
     mp>0 ? `<div class="gd-row"><span>Left</span><b>≈ ${totM>doneM?fmtShort(totM-doneM)+' to go':'done 🎉'}</b></div>` : '',
     hint ? `<div class="gd-row"><span>Pace</span><b>${hint}</b></div>` : ''
   ].filter(Boolean).join('');
-  return `<div class="gcard${overdue?' gcard-overdue':''}" draggable="true" data-id="${x.id}" style="--gcol:${col}">
+  const logs = Array.isArray(x.logs) ? x.logs : [];
+  const logHtml = logs.length ? `<details class="glog">
+      <summary>📜 Log (${logs.length})</summary>
+      <div class="glog-body">${logs.slice().reverse().map(l=>{
+        const when = (l.ym?l.ym.slice(5)+'/'+l.ym.slice(2,4):'')+(l.period?' '+l.period:'');
+        return `<div class="glog-row"><span class="glog-when">${when}</span><span class="glog-amt">+${l.amt}</span><span class="glog-tot">→ ${l.total}${x.unit?' '+x.unit:''}</span></div>`;
+      }).join('')}</div>
+    </details>` : '';
+  return `<div class="gcard${overdue?' gcard-overdue':''}${x.done?' gcard-done':''}" draggable="true" data-id="${x.id}" style="--gcol:${col}">
     <div class="gcard-acts">
-      ${x.target>0?`<button title="Add progress" onclick="goalAdd('${x.id}')">+</button>`:''}
+      ${x.target>0&&!x.done?`<button title="Add progress" onclick="goalAdd('${x.id}')">+</button>`:''}
+      <button title="${x.done?'Reopen goal':'Mark complete'}" onclick="goalToggleDone('${x.id}')">${x.done?'↩':'✓'}</button>
       <button title="Edit" onclick="goalEditStart('${x.id}')">✎</button>
     </div>
     <div class="gcard-top">
@@ -1901,6 +1931,7 @@ function goalCard(x){
       </div>
     </div>
     ${det?`<div class="gcard-det">${det}</div>`:''}
+    ${logHtml}
     <div class="gcard-foot"><span class="gcat" title="${x.cat}">${iconFor(x.cat)}</span><span class="gwhen">${when}</span></div>
   </div>`;
 }
@@ -1939,7 +1970,7 @@ function renderSec(filterFn, el, attention){
     : '<div class="empty">Nothing here yet. Add one above.</div>';
 }
 function renderGoalStats(){
-  const a=loadGoals().filter(g=>g.sec==='active'&&g.target>0);
+  const a=loadGoals().filter(g=>!g.done&&g.sec==='active'&&g.target>0);
   const ahead=a.filter(g=>['Done','Ahead'].includes(paceLabel(g))).length;
   const onTrack=a.filter(g=>paceLabel(g)==='On track').length;
   const lagging=a.filter(g=>['Lagging','Behind'].includes(paceLabel(g))).length;
@@ -1965,10 +1996,11 @@ function renderGoalStats(){
     </div>`;
 }
 function renderGoals(){ renderGoalStats();
-  renderSec(g=>g.sec==='active'&&!g.recurring,'secActive',true);
-  renderSec(g=>g.sec==='active'&&g.recurring,'secRecurring',true);
-  renderSec(g=>g.sec==='backlog','secBacklog',false);
-  renderSec(g=>g.sec==='dream','secDream',false);
+  renderSec(g=>!g.done&&g.sec==='active'&&!g.recurring,'secActive',true);
+  renderSec(g=>!g.done&&g.sec==='active'&&g.recurring,'secRecurring',true);
+  renderSec(g=>!g.done&&g.sec==='backlog','secBacklog',false);
+  renderSec(g=>!g.done&&g.sec==='dream','secDream',false);
+  renderSec(g=>!!g.done,'secCompleted',false);
   if(document.getElementById('fGoal')) refreshGoalOptions(); }
 function goalMinPer(x){ if(x.minPerUnit!=null && x.minPerUnit!=='') return +x.minPerUnit||0; const u=(x.unit||'').toLowerCase(); if(/min/.test(u)) return 1; if(/hour|hr/.test(u)) return 60; return 0; }
 function goalMins(x,amt){ return Math.round(goalMinPer(x)*amt); }
@@ -2019,6 +2051,8 @@ window.goalEditStart=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x
   document.getElementById('gSec').value=x.sec; document.getElementById('goalFormTitle').textContent='Edit goal';
   document.getElementById('gRecurring').checked=!!x.recurring; document.getElementById('gPerPeriod').value=(x.perPeriod==null?'':x.perPeriod); goalRecurUpdate();
   document.getElementById('gDelete').style.display=''; };
+window.goalToggleDone=function(id){ const g=loadGoals(); const x=g.find(o=>o.id===id); if(!x) return;
+  x.done=!x.done; saveGoals(g); renderGoals(); if(document.getElementById('entryTable')) renderLog(); };
 window.goalDel=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x||!confirm(`Delete "${x.name}"? This also removes its tracked time entries.`)) return;
   saveGoals(loadGoals().filter(o=>o.id!==id));
   const ents=loadEntries(), kept=ents.filter(e=>!(e.type==='goal'&&e.goalId===id)); if(kept.length!==ents.length) saveEntries(kept);
@@ -2603,6 +2637,7 @@ document.addEventListener('fb-data', e=>{
 document.addEventListener('fb-empty', ()=>fbSyncPush());
 
 // init
+MONTHS = loadMonths(); current = MONTHS.length-1; // recompute now that entries (LS_KEY) are in scope — surfaces recent past months (e.g. June)
 renderLifeBar(); renderKPIs(); renderTabs(); renderTotalTrend(); renderMiniTips(); renderTips();
 setOv('year');
 initLogForm(); initGoals();
