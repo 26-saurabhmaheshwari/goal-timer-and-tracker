@@ -258,6 +258,8 @@
   .glog-body{margin-top:6px;max-height:52vh;overflow:auto;display:flex;flex-direction:column;gap:4px}
   .glog-row{display:flex;justify-content:space-between;gap:10px;line-height:1.35;padding:5px 10px;background:rgba(20,30,60,.04);border-radius:8px;font-size:13px}
   .glog-when{color:var(--muted);font-weight:600}
+  .glog-mid{white-space:nowrap}
+  .glog-prev{color:var(--muted);font-weight:600}
   .glog-amt{color:#16a34a;font-weight:700}
   .glog-tot{color:#1b2440;font-weight:700;text-align:right}
   .gcard-done{opacity:.72}
@@ -2066,7 +2068,8 @@ window.goalLogShow=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x) 
   document.getElementById('glTitle').textContent=`📜 ${x.name} — log (${logs.length})`;
   document.getElementById('glBody').innerHTML = logs.length ? logs.slice().reverse().map(l=>{
     const when=(l.ym?l.ym.slice(5)+'/'+l.ym.slice(2,4):'')+(l.period?' '+l.period:'');
-    return `<div class="glog-row"><span class="glog-when">${when}</span><span class="glog-amt">+${l.amt}</span><span class="glog-tot">→ ${l.total}${x.unit?' '+x.unit:''}</span></div>`;
+    const prev=(+l.total||0)-(+l.amt||0);
+    return `<div class="glog-row"><span class="glog-when">${when}</span><span class="glog-mid"><span class="glog-prev">${prev}</span> <span class="glog-amt">+${l.amt}</span></span><span class="glog-tot">→ ${l.total}${x.unit?' '+x.unit:''}</span></div>`;
   }).join('') : '<div class="hint">No entries yet.</div>';
   document.getElementById('logModal').hidden=false; document.body.style.overflow='hidden'; };
 function logModalHide(){ document.getElementById('logModal').hidden=true; document.body.style.overflow=''; }
