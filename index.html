@@ -253,12 +253,10 @@
   .gd-row{display:flex;justify-content:space-between;gap:10px;font-size:11.5px;line-height:1.3}
   .gd-row span{color:var(--muted);font-weight:600}
   .gd-row b{color:#1b2440;font-weight:700;text-align:right}
-  .glog{font-size:11.5px}
-  .glog summary{cursor:pointer;color:var(--muted);font-weight:600;list-style:none;user-select:none;padding:2px 0}
-  .glog summary::-webkit-details-marker{display:none}
-  .glog summary:hover{color:#2d6cdf}
-  .glog-body{margin-top:4px;max-height:150px;overflow:auto;display:flex;flex-direction:column;gap:3px}
-  .glog-row{display:flex;justify-content:space-between;gap:8px;line-height:1.3;padding:2px 6px;background:rgba(255,255,255,.55);border-radius:6px}
+  .glog-btn{align-self:flex-start;cursor:pointer;font-size:11.5px;font-weight:600;color:var(--muted);background:rgba(255,255,255,.5);border:1px solid rgba(20,30,60,.12);border-radius:6px;padding:3px 8px}
+  .glog-btn:hover{color:#2d6cdf;border-color:#2d6cdf}
+  .glog-body{margin-top:6px;max-height:52vh;overflow:auto;display:flex;flex-direction:column;gap:4px}
+  .glog-row{display:flex;justify-content:space-between;gap:10px;line-height:1.35;padding:5px 10px;background:rgba(20,30,60,.04);border-radius:8px;font-size:13px}
   .glog-when{color:var(--muted);font-weight:600}
   .glog-amt{color:#16a34a;font-weight:700}
   .glog-tot{color:#1b2440;font-weight:700;text-align:right}
@@ -625,6 +623,7 @@
       </select></label>
       <div class="gform-foot">
         <button type="button" id="gDelete" class="btn" style="background:#ef4444;margin-right:auto;display:none">Delete goal</button>
+        <button type="button" id="gDone" class="btn" style="background:#16a34a;display:none">✓ Mark complete</button>
         <button type="button" id="gCancel" class="btn" style="background:#94a3b8;margin-left:auto">Cancel</button>
         <button type="submit" class="btn">Save goal</button>
         <span id="goalMsg" class="fmsg"></span>
@@ -650,6 +649,14 @@
         <span id="addMsg" class="fmsg"></span>
       </div>
     </form>
+   </div>
+  </div>
+  <div id="logModal" class="modal-ov" hidden>
+   <div class="card modal-card" style="max-width:420px">
+    <button type="button" id="glClose" class="modal-x" title="Close">✕</button>
+    <h2 id="glTitle">Log</h2>
+    <div class="hint">Every addition, newest first · period · resulting total.</div>
+    <div class="glog-body" id="glBody"></div>
    </div>
   </div>
   <div class="card gsec"><h2>Active goals</h2><div id="secActive"></div></div>
@@ -1359,7 +1366,10 @@ function submitGoal(ym,period){
   const amt=+document.getElementById('fGoalAmt').value||0;
   if(!x){ flash('Pick a goal', true); return; }
   if(amt<=0){ flash('Enter an amount > 0', true); return; }
-  x.cur=(+x.cur||0)+amt; saveGoals(g);
+  x.cur=(+x.cur||0)+amt;
+  // permanent per-goal history — this is the main path most entries come through
+  (x.logs=Array.isArray(x.logs)?x.logs:[]).push({ym, period, amt, total:x.cur});
+  saveGoals(g);
   let extra='';
   const mins=goalMins(x,amt);
   if(mins>0){ const all=loadEntries(); all.push({id:eid(), ym, period, type:'goal', goalId:x.id, amt, task:x.name, cat:x.cat, mins}); saveEntries(all); logSel=`${ym}-${period}`; extra=` · ${fmtShort(mins)} tracked ✓`; }
@@ -1795,7 +1805,7 @@ function goalRecurUpdate(){
   const now=new Date(), pl=(ex&&ex.recurPeriods)?ex.recurPeriods:periodsLeft(now,now.getFullYear());
   document.getElementById('gRecurCalc').textContent=`= ${pl} periods × ${pp} min = ${pp*pl} min total target`;
 }
-function goalFormReset(){ goalEdit=null; document.getElementById('goalForm').reset(); document.getElementById('gUnitLab').textContent='unit'; document.getElementById('goalFormTitle').textContent='Add a goal'; document.getElementById('gDelete').style.display='none'; goalRecurUpdate(); goalFormShow(false); }
+function goalFormReset(){ goalEdit=null; document.getElementById('goalForm').reset(); document.getElementById('gUnitLab').textContent='unit'; document.getElementById('goalFormTitle').textContent='Add a goal'; document.getElementById('gDelete').style.display='none'; document.getElementById('gDone').style.display='none'; goalRecurUpdate(); goalFormShow(false); }
 function initGoals(){
   const gv=document.getElementById('viewGoals');
   gv.addEventListener('dragstart',goalDragStart);
@@ -1803,7 +1813,7 @@ function initGoals(){
   gv.addEventListener('dragover',goalDragOver);
   gv.addEventListener('drop',goalDrop);
   document.getElementById('gCat').innerHTML = ALLCATS.map(c=>`<option>${c}</option>`).join('');
-  document.getElementById('goalCreateBtn').onclick=()=>{ goalEdit=null; document.getElementById('goalForm').reset(); document.getElementById('gUnitLab').textContent='unit'; document.getElementById('goalFormTitle').textContent='Add a goal'; document.getElementById('gDelete').style.display='none'; document.getElementById('goalMsg').textContent=''; goalRecurUpdate(); goalFormShow(true); };
+  document.getElementById('goalCreateBtn').onclick=()=>{ goalEdit=null; document.getElementById('goalForm').reset(); document.getElementById('gUnitLab').textContent='unit'; document.getElementById('goalFormTitle').textContent='Add a goal'; document.getElementById('gDelete').style.display='none'; document.getElementById('gDone').style.display='none'; document.getElementById('goalMsg').textContent=''; goalRecurUpdate(); goalFormShow(true); };
   document.getElementById('gCancel').onclick=()=>{ goalFormReset(); document.getElementById('goalMsg').textContent=''; };
   document.getElementById('gClose').onclick=()=>{ goalFormReset(); document.getElementById('goalMsg').textContent=''; };
   document.getElementById('goalModal').onclick=(e)=>{ if(e.target.id==='goalModal'){ goalFormReset(); document.getElementById('goalMsg').textContent=''; } };
@@ -1819,6 +1829,8 @@ function initGoals(){
   document.getElementById('aCancel').onclick=()=>addFormShow(false);
   document.getElementById('aClose').onclick=()=>addFormShow(false);
   document.getElementById('addModal').onclick=(e)=>{ if(e.target.id==='addModal') addFormShow(false); };
+  document.getElementById('glClose').onclick=logModalHide;
+  document.getElementById('logModal').onclick=(e)=>{ if(e.target.id==='logModal') logModalHide(); };
   document.getElementById('aDate').addEventListener('input', addPeriodHint);
   document.getElementById('addForm').addEventListener('submit', e=>{
     e.preventDefault();
@@ -1900,17 +1912,10 @@ function goalCard(x){
     hint ? `<div class="gd-row"><span>Pace</span><b>${hint}</b></div>` : ''
   ].filter(Boolean).join('');
   const logs = Array.isArray(x.logs) ? x.logs : [];
-  const logHtml = logs.length ? `<details class="glog">
-      <summary>📜 Log (${logs.length})</summary>
-      <div class="glog-body">${logs.slice().reverse().map(l=>{
-        const when = (l.ym?l.ym.slice(5)+'/'+l.ym.slice(2,4):'')+(l.period?' '+l.period:'');
-        return `<div class="glog-row"><span class="glog-when">${when}</span><span class="glog-amt">+${l.amt}</span><span class="glog-tot">→ ${l.total}${x.unit?' '+x.unit:''}</span></div>`;
-      }).join('')}</div>
-    </details>` : '';
+  const logHtml = logs.length ? `<button type="button" class="glog-btn" onclick="goalLogShow('${x.id}')">📜 Log (${logs.length})</button>` : '';
   return `<div class="gcard${overdue?' gcard-overdue':''}${x.done?' gcard-done':''}" draggable="true" data-id="${x.id}" style="--gcol:${col}">
     <div class="gcard-acts">
       ${x.target>0&&!x.done?`<button title="Add progress" onclick="goalAdd('${x.id}')">+</button>`:''}
-      <button title="${x.done?'Reopen goal':'Mark complete'}" onclick="goalToggleDone('${x.id}')">${x.done?'↩':'✓'}</button>
       <button title="Edit" onclick="goalEditStart('${x.id}')">✎</button>
     </div>
     <div class="gcard-top">
@@ -2050,9 +2055,21 @@ window.goalEditStart=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x
   document.getElementById('gMinPer').value=(x.minPerUnit==null?'':x.minPerUnit); document.getElementById('gUnitLab').textContent=x.unit||'unit';
   document.getElementById('gSec').value=x.sec; document.getElementById('goalFormTitle').textContent='Edit goal';
   document.getElementById('gRecurring').checked=!!x.recurring; document.getElementById('gPerPeriod').value=(x.perPeriod==null?'':x.perPeriod); goalRecurUpdate();
-  document.getElementById('gDelete').style.display=''; };
+  document.getElementById('gDelete').style.display='';
+  const gd=document.getElementById('gDone'); gd.style.display=''; gd.style.background=x.done?'#64748b':'#16a34a';
+  gd.textContent=x.done?'↩ Reopen goal':'✓ Mark complete';
+  gd.onclick=()=>{ goalFormReset(); document.getElementById('goalMsg').textContent=''; window.goalToggleDone(id); }; };
 window.goalToggleDone=function(id){ const g=loadGoals(); const x=g.find(o=>o.id===id); if(!x) return;
   x.done=!x.done; saveGoals(g); renderGoals(); if(document.getElementById('entryTable')) renderLog(); };
+window.goalLogShow=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x) return;
+  const logs=Array.isArray(x.logs)?x.logs:[];
+  document.getElementById('glTitle').textContent=`📜 ${x.name} — log (${logs.length})`;
+  document.getElementById('glBody').innerHTML = logs.length ? logs.slice().reverse().map(l=>{
+    const when=(l.ym?l.ym.slice(5)+'/'+l.ym.slice(2,4):'')+(l.period?' '+l.period:'');
+    return `<div class="glog-row"><span class="glog-when">${when}</span><span class="glog-amt">+${l.amt}</span><span class="glog-tot">→ ${l.total}${x.unit?' '+x.unit:''}</span></div>`;
+  }).join('') : '<div class="hint">No entries yet.</div>';
+  document.getElementById('logModal').hidden=false; document.body.style.overflow='hidden'; };
+function logModalHide(){ document.getElementById('logModal').hidden=true; document.body.style.overflow=''; }
 window.goalDel=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x||!confirm(`Delete "${x.name}"? This also removes its tracked time entries.`)) return;
   saveGoals(loadGoals().filter(o=>o.id!==id));
   const ents=loadEntries(), kept=ents.filter(e=>!(e.type==='goal'&&e.goalId===id)); if(kept.length!==ents.length) saveEntries(kept);
