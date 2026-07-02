@@ -2081,6 +2081,7 @@ window.goalDel=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x||!con
 // ---- view switch ----
 // ================= TIME PLANNING (daily fixed habits vs goal-based) =================
 // Fixed daily rituals/habits. Everything not listed here is goal-based (see Goals tab).
+const PLAN_WINDOW_DAYS=210; // fixed planning window for the year (21 periods × 10 days)
 const LS_HABITS='ptd_habits_v1';
 const SEED_HABITS=[
   {n:'Vishnu Sahasranāma', cat:'Spiritual', m:15},
@@ -2339,9 +2340,11 @@ function renderPlanning(){
   const stat=(lbl,val,sub)=>`<div class="card" style="text-align:center;padding:16px"><div class="hint" style="margin-bottom:6px">${lbl}</div><div style="font-size:30px;font-weight:700;line-height:1">${val}</div>${sub?`<div class="hint" style="margin-top:5px">${sub}</div>`:''}</div>`;
   const moAbbr=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const fmtDate=d=>`${d.getDate()} ${moAbbr[d.getMonth()]} ${d.getFullYear()}`;
+  const winStart=new Date(yr,11,31); winStart.setDate(winStart.getDate()-PLAN_WINDOW_DAYS); // fixed 210-day window, not sliding from today
   const strip=`<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
     <span style="text-transform:uppercase;letter-spacing:.06em;font-size:11px;font-weight:700;color:var(--muted)">Planning window</span>
-    <span style="display:inline-flex;align-items:center;gap:9px;background:rgba(127,127,127,.1);padding:5px 13px;border-radius:20px;font-size:13px;font-weight:600;color:var(--ink)">${fmtDate(now)}<span style="color:var(--muted);font-weight:400">→</span>${fmtDate(end)}</span>
+    <span style="display:inline-flex;align-items:center;gap:9px;background:rgba(127,127,127,.1);padding:5px 13px;border-radius:20px;font-size:13px;font-weight:600;color:var(--ink)">${fmtDate(winStart)}<span style="color:var(--muted);font-weight:400">→</span>${fmtDate(end)}</span>
+    <span style="display:inline-flex;align-items:center;gap:5px;background:rgba(127,127,127,.1);padding:5px 13px;border-radius:20px;font-size:13px;font-weight:600;color:var(--ink)">${PLAN_WINDOW_DAYS}<span style="color:var(--muted);font-weight:400">day window</span></span>
     <span style="display:inline-flex;align-items:center;gap:5px;background:rgba(127,127,127,.1);padding:5px 13px;border-radius:20px;font-size:13px;font-weight:600;color:var(--ink)">${pend}<span style="color:var(--muted);font-weight:400">days left</span></span>
   </div>
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px">
@@ -2395,7 +2398,7 @@ function renderPlanning(){
       <b>${passedP} of ${totPeriods}</b> periods done<span style="color:var(--muted)">·</span>${pLeft} left<span style="color:var(--muted)">·</span>on-pace = <b style="color:var(--ink)">${Math.round(pacePct)}%</b> done by now</div>
     <div style="margin-bottom:7px"><b style="color:var(--ink);text-transform:uppercase;letter-spacing:.04em;font-size:10.5px">% Done</b> &nbsp;${pill('#34a853','on / ahead of pace')} &nbsp; ${pill('#e84343','behind pace')}</div>
     <div><b style="color:var(--ink);text-transform:uppercase;letter-spacing:.04em;font-size:10.5px">Row tint</b> &nbsp;${pill('#e84343','&lt;25%')} ${pill('#F5A623','25–50%')} ${pill('#d4b400','50–75%')} ${pill('#6fae28','75%+')}</div></div>`;
-  const planHead=`<h2 style="margin:4px 0 10px;font-size:18px">Planning breakdown (210 days planned of which ${pend} days left)</h2>`;
+  const planHead=`<h2 style="margin:4px 0 10px;font-size:18px">Planning breakdown (${PLAN_WINDOW_DAYS} days planned of which ${pend} days left)</h2>`;
   document.getElementById('planning').innerHTML = strip + summary
     + `<div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:nowrap">`
     +   `<div style="flex:none">${planHead}${tableP}</div>`
