@@ -42,3 +42,9 @@ Persisted state = localStorage keys (`LS_*` consts ~line 766) + in-memory mirror
 - Sidebar-nav pages (Life Tips, Settings) use `.tipswrap` / `.tipside` / `.tipmain`.
 - PDF export = `window.print()` with `@media print` hiding `.noprint`/nav/tabs; `hidden` views don't print.
 - Goals have `sec`: `'active' | 'backlog' | 'dream'`.
+
+## Goal log, mark-complete, planning window (added 2026-07)
+- **Per-goal log** = `goal.logs[]` (nested prop, rides on `LS_GOALS` + Firebase sync, no new key). Each row `{ym, period, amt, total}` where `total` = the cumulative goal total AFTER that addition. Never purged; gone only when the goal is deleted. Written in BOTH progress paths: `submitGoal()` (Log Data tab → 🎯 Goal — the main path) and the goal card's `+` Add-progress modal (`addForm` submit). If you add a third way to bump `goal.cur`, push a log row there too or the log silently under-counts.
+- **Log display** = a `📜 Log (n)` button on the card → `goalLogShow(id)` opens the `#logModal` popup (scales to 100s; card stays compact). Row renders `prev +amt → total unit`, newest first (`prev = total - amt`).
+- **Mark complete** = `goal.done` (bool). Toggle via `goalToggleDone(id)`; the button lives in the **edit modal** footer (`#gDone`, shown/labelled in `goalEditStart`), NOT on the card. Done goals: hidden from active/backlog/dream/recurring filters, shown in `#secCompleted`, excluded from `renderGoalStats`, `paceLabel` returns 'Done', card gets `.gcard-done`, `+` hidden. Logged time is retained; reopen sets `done=false`.
+- **Planning window** = fixed `PLAN_WINDOW_DAYS=210` (21 periods × 10 days), NOT sliding from today. The strip shows `winStart (=Dec31 − 210d) → Dec 31` + "210 day window" + "N days left". `pend` (days left) still drives the per-day/per-period *math* — intentional; only the window *display* is fixed.
