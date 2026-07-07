@@ -2244,7 +2244,7 @@ function planYearTotals(){
     const doneH=srcArr.reduce((a,c)=>a+(agg[c]||0),0)/60;
     const hitems=(HABITS.find(h=>h.cat===k)?.items||[]);
     const habitH=hitems.reduce((a,i)=>a+i.m,0)*pend/60;
-    const gs=goals.filter(g=>srcArr.includes(g.cat) && g.sec==='active').map(g=>{
+    const gs=goals.filter(g=>srcArr.includes(g.cat) && g.sec==='active' && !g.done).map(g=>{
       if(g.recurring){ const pp=+g.perPeriod||0; return {name:g.name, h: pp/60*pLeft, leftU:0, unit:'mins', recurring:true}; } // perPeriod in minutes; flat forward commitment
       const mp=goalMinPer(g); const leftU=Math.max(0,(+g.target||0)-(+g.cur||0));
       return {name:g.name, h: mp>0? leftU*mp/60 : 0, leftU, unit:g.unit||''};
@@ -2264,7 +2264,7 @@ function planYearTotals(){
   // every active-goal AND habit category that isn't already a YTARGETS row → its own row,
   // so rowsData is the COMPLETE source: sum(allocated)==totH and the legend always reconciles with the lead.
   const extraCats=[...new Set([
-    ...goals.filter(g=>g.sec==='active').map(g=>g.cat),
+    ...goals.filter(g=>g.sec==='active' && !g.done).map(g=>g.cat),
     ...habitItems.map(i=>i.cat),
   ].filter(c=>!usedCats.has(c)))];
   const rowsData=[
