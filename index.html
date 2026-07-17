@@ -44,12 +44,34 @@ if(!window.Chart){
     --serif:Georgia,"Iowan Old Style","Palatino Linotype","Times New Roman",serif;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);padding:28px;-webkit-font-smoothing:antialiased}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);padding:28px 28px 28px 218px;-webkit-font-smoothing:antialiased}
   h1{font-size:22px;font-weight:700;letter-spacing:-.3px;font-family:var(--serif)}
   .sub{color:var(--muted);font-size:13px;margin-top:2px}
-  .wrap{max-width:1280px;margin:0 auto}
-  header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:12px}
-  #viewNav{flex-basis:100%;order:3;justify-content:center}
+  .wrap{max-width:1100px;margin:0 auto}
+  /* ---- left sidebar nav (ink-on-paper) ---- */
+  #sidebar{position:fixed;left:0;top:0;bottom:0;width:190px;background:var(--card);border-right:1px solid var(--line);display:flex;flex-direction:column;z-index:40}
+  .sb-brand{padding:24px 18px 16px;border-bottom:1px solid var(--line)}
+  .sb-brand h1{font-size:17px;line-height:1.25}
+  .sb-yr{font-size:12px;color:var(--muted);margin-top:3px}
+  #viewNav{display:flex;flex-direction:column;gap:2px;padding:14px 10px;flex:1;overflow-y:auto}
+  #viewNav button{display:flex;align-items:center;gap:10px;border:0;background:transparent;padding:10px 11px;border-radius:8px;font-size:11.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);cursor:pointer;text-align:left;border-left:3px solid transparent;transition:.12s}
+  #viewNav button:hover{color:var(--ink);background:var(--panel)}
+  #viewNav button.active{color:var(--ink2);background:var(--panel);border-left-color:var(--accent)}
+  .sb-ic{font-size:15px;width:19px;text-align:center;flex:0 0 auto}
+  /* ---- page header strip ---- */
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:12px;padding-bottom:16px;border-bottom:1px solid var(--line)}
+  .ph-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  #fbWho{font-size:12px;color:var(--muted)}
+  #fbBtn{cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 13px;border-radius:8px;font-size:12.5px;font-weight:600}
+  #fbBtn:hover{background:var(--panel)}
+  @media(max-width:860px){
+    body{padding:16px 12px 84px}
+    #sidebar{top:auto;bottom:0;right:0;width:100%;height:60px;flex-direction:row;align-items:stretch;border-right:0;border-top:1px solid var(--line);box-shadow:0 -2px 10px rgba(70,58,32,.08)}
+    .sb-brand{display:none}
+    #viewNav{flex-direction:row;padding:4px 2px;gap:0;justify-content:space-around;width:100%}
+    #viewNav button{flex:1;flex-direction:column;justify-content:center;gap:3px;padding:4px 2px;font-size:8.5px;letter-spacing:.02em;border-left:0;border-radius:8px;align-items:center;text-align:center}
+    #viewNav button.active{border-left:0}
+  }
   .tabs{display:flex;flex-wrap:wrap;gap:5px;background:#e7ddc8;padding:5px;border-radius:12px}
   .tabs button{border:0;background:transparent;padding:8px 13px;border-radius:8px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:.15s;white-space:nowrap}
   .tabs button.active{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(70,58,32,.12)}
@@ -206,11 +228,13 @@ if(!window.Chart){
   .gstats{display:flex;gap:14px;flex-wrap:wrap;margin:4px 0 18px}
   .goals-head{display:flex;align-items:stretch;gap:14px;margin-bottom:16px}
   .goals-head .gstats{margin:0;flex:1}
-  .goals-head #goalCreateBtn{flex:0 0 auto;align-self:stretch;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding:0 24px;min-width:124px;border:1px solid var(--accent);border-radius:14px;background:var(--accent);color:#fff;box-shadow:0 2px 6px rgba(61,82,102,.22);transition:.15s}
-  .goals-head #goalCreateBtn .gc-plus{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.14);border:1.5px solid rgba(255,255,255,.55);font-size:26px;font-weight:400;line-height:1}
-  .goals-head #goalCreateBtn .gc-lab{font-size:12px;font-weight:800;letter-spacing:.6px;text-transform:uppercase}
-  .goals-head #goalCreateBtn:hover{transform:translateY(-2px);background:#33475a;box-shadow:0 7px 16px rgba(61,82,102,.32)}
-  .goals-head #goalCreateBtn:active{transform:translateY(0);box-shadow:0 2px 5px rgba(61,82,102,.3)}
+  /* header primary actions (#45): create-goal + per-view delegates, pinned top-right */
+  #goalCreateBtn{display:inline-flex;align-items:center;gap:9px;padding:9px 18px;border:1px solid var(--accent);border-radius:10px;background:var(--accent);color:#fff;box-shadow:0 2px 6px rgba(61,82,102,.22);transition:.15s}
+  #goalCreateBtn .gc-plus{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,.14);border:1.5px solid rgba(255,255,255,.55);font-size:14px;font-weight:400;line-height:1}
+  #goalCreateBtn .gc-lab{font-size:11.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase}
+  #goalCreateBtn:hover{background:#33475a;box-shadow:0 4px 10px rgba(61,82,102,.3)}
+  .pgact{background:var(--accent);color:#fff;border:1px solid var(--accent);border-radius:10px;padding:9px 16px;font-size:12px;font-weight:700;letter-spacing:.04em}
+  .pgact:hover{background:#33475a}
   .gstat-cap{flex:1;min-width:220px;display:flex;align-items:center;justify-content:flex-start;gap:16px;background:linear-gradient(120deg,#7e3ff2,#e84393 50%,#f6b93b 100%);border:0;box-shadow:0 6px 18px rgba(126,63,242,.2);border-radius:16px;padding:14px 22px;color:#fff}
   .gstat-main{display:flex;flex-direction:column;line-height:1.05}
   .gstat-main b{font-size:30px;font-weight:800;letter-spacing:-1px;color:#fff}
@@ -337,7 +361,7 @@ if(!window.Chart){
     *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
     body{padding:0;background:#fff}
     .wrap{max-width:none}
-    #viewNav,#tabs,.noprint,#fbBtn,#fbWho,.periodtabs{display:none!important}
+    #sidebar,#viewNav,#tabs,.noprint,#fbBtn,#fbWho,.periodtabs{display:none!important}
     header{margin-bottom:10px}
     .card{box-shadow:none;border:1px solid #d4dae4;break-inside:avoid;page-break-inside:avoid}
     table,tr,.ptbl{break-inside:avoid;page-break-inside:avoid}
@@ -375,7 +399,7 @@ if(!window.Chart){
   }
   /* --- mobile pass (phones) --- */
   @media(max-width:640px){
-    body{padding:14px}
+    body{padding:14px 12px 84px}
     h1{font-size:19px}
     .wrap{max-width:100%}
     /* one-column grids */
@@ -449,25 +473,35 @@ if(!window.Chart){
 </script>
 </head>
 <body>
+<aside id="sidebar">
+  <div class="sb-brand">
+    <h1>Make It Count</h1>
+    <div class="sb-yr" id="hdYr"></div>
+  </div>
+  <nav id="viewNav">
+    <button data-v="overview" class="active"><span class="sb-ic">⌂</span><span class="sb-lab">Overview</span></button>
+    <button data-v="goals"><span class="sb-ic">◎</span><span class="sb-lab">Goals</span></button>
+    <button data-v="planning"><span class="sb-ic">▦</span><span class="sb-lab">Planning</span></button>
+    <button data-v="log"><span class="sb-ic">✎</span><span class="sb-lab">Log Data</span></button>
+    <button data-v="reports"><span class="sb-ic">▤</span><span class="sb-lab">Reports</span></button>
+    <button data-v="settings"><span class="sb-ic">⚙</span><span class="sb-lab">Settings</span></button>
+  </nav>
+</aside>
 <div class="wrap">
   <header>
     <div>
-      <h1>Make It Count <span id="hdYr" style="font-weight:500;color:var(--muted)"></span></h1>
+      <h1 id="pgTitle">Overview</h1>
       <div class="sub" id="sub">your finite hours, on purpose</div>
     </div>
-    <div class="tabs" id="viewNav">
-      <button data-v="overview" class="active">Overview</button>
-      <button data-v="goals">Goals</button>
-      <button data-v="planning">Time Planning</button>
-      <button data-v="log">Log Data</button>
-      <button data-v="reports">Reports</button>
-      <button data-v="settings">Settings</button>
-    </div>
-    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
-      <div style="display:flex;align-items:center;gap:10px">
-        <span id="fbWho" style="font-size:12px;color:#9aa3b2"></span>
-        <button id="fbBtn" onclick="fbToggle()" style="cursor:pointer;border:1px solid #3a4358;background:#1c2333;color:#e6e9ef;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600">Sign in to sync</button>
-      </div>
+    <div class="ph-right">
+      <button id="goalCreateBtn" class="btn" title="Create goal" aria-label="Create goal" hidden>
+        <span class="gc-plus">＋</span>
+        <span class="gc-lab">New goal</span>
+      </button>
+      <button id="pgLogBtn" class="btn pgact" hidden onclick="document.getElementById('periodEntryBtn').click()">📝 Log period</button>
+      <button id="pgPdfBtn" class="btn pgact" hidden onclick="document.getElementById('repPdfBtn').click()">⤓ Export PDF</button>
+      <span id="fbWho"></span>
+      <button id="fbBtn" onclick="fbToggle()">Sign in to sync</button>
     </div>
   </header>
 
@@ -684,10 +718,6 @@ if(!window.Chart){
 <div id="viewGoals" hidden>
   <div class="goals-head">
     <div class="gstats" id="goalStats"></div>
-    <button id="goalCreateBtn" class="btn" title="Create goal" aria-label="Create goal">
-      <span class="gc-plus">＋</span>
-      <span class="gc-lab">New goal</span>
-    </button>
   </div>
   <div id="goalModal" class="modal-ov" hidden>
    <div class="card modal-card" id="goalFormCard">
@@ -2801,8 +2831,14 @@ function setView(v){
     reports:'compare tracked hours across periods',
     settings:'manage categories & preferences'};
   document.getElementById('sub').textContent = subs[v];
-  document.getElementById('hdYr').textContent = '('+CUR_YM.slice(0,4)+')';
+  const titles={overview:'Overview', log:'Log Data', goals:'Goals', planning:'Time Planning', reports:'Reports', settings:'Settings'};
+  document.getElementById('pgTitle').textContent = titles[v];
+  document.getElementById('hdYr').textContent = CUR_YM.slice(0,4);
   document.querySelectorAll('#viewNav button').forEach(b=>b.classList.toggle('active', b.dataset.v===v));
+  // #45: per-view primary action pinned in the page header
+  document.getElementById('goalCreateBtn').hidden = v!=='goals';
+  document.getElementById('pgLogBtn').hidden = v!=='log';
+  document.getElementById('pgPdfBtn').hidden = v!=='reports';
   if(v==='overview'){ renderTabs(); setOv(ovTab); maybeShowLetter(mostGoalsBehind()); }
   if(v==='log') renderLog();
   if(v==='goals') renderGoals();
