@@ -48,6 +48,9 @@ if(!window.Chart){
   h1{font-size:22px;font-weight:700;letter-spacing:-.3px;font-family:var(--serif)}
   .sub{color:var(--muted);font-size:13px;margin-top:2px}
   .wrap{max-width:1100px;margin:0 auto}
+  /* #50: reading-width columns for row-based views (Overview untouched) */
+  #viewLog,#viewAudit{max-width:880px;margin:0 auto}
+  #viewGoals{max-width:1020px;margin:0 auto}
   /* ---- left sidebar nav (ink-on-paper) ---- */
   #sidebar{position:fixed;left:0;top:0;bottom:0;width:190px;background:var(--card);border-right:1px solid var(--line);display:flex;flex-direction:column;z-index:40}
   .sb-brand{padding:24px 18px 16px;border-bottom:1px solid var(--line)}
@@ -235,34 +238,34 @@ if(!window.Chart){
   #goalCreateBtn:hover{background:#33475a;box-shadow:0 4px 10px rgba(61,82,102,.3)}
   .pgact{background:var(--accent);color:#fff;border:1px solid var(--accent);border-radius:10px;padding:9px 16px;font-size:12px;font-weight:700;letter-spacing:.04em}
   .pgact:hover{background:#33475a}
-  .gstat-cap{flex:1;min-width:220px;display:flex;align-items:center;justify-content:flex-start;gap:16px;background:linear-gradient(120deg,#7e3ff2,#e84393 50%,#f6b93b 100%);border:0;box-shadow:0 6px 18px rgba(126,63,242,.2);border-radius:16px;padding:14px 22px;color:#fff}
+  .gstat-cap{flex:1;min-width:220px;display:flex;align-items:center;justify-content:flex-start;gap:16px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 18px;color:var(--ink)}
   .gstat-main{display:flex;flex-direction:column;line-height:1.05}
-  .gstat-main b{font-size:30px;font-weight:800;letter-spacing:-1px;color:#fff}
-  .gstat-main span{font-size:11px;font-weight:600;color:rgba(255,255,255,.7);margin-top:3px;text-transform:uppercase;letter-spacing:.5px}
+  .gstat-main b{font-size:26px;font-weight:800;letter-spacing:-1px;color:var(--ink2)}
+  .gstat-main span{font-size:11px;font-weight:600;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.5px}
   .gstat-break{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:7px;margin-left:auto}
-  .gs-pill{display:inline-flex;align-items:center;gap:4px;padding:4px 11px;border-radius:999px;font-size:12px;font-weight:600;line-height:1.4;background:rgba(255,255,255,.92);color:#334155}
+  .gs-pill{display:inline-flex;align-items:center;gap:4px;padding:4px 11px;border-radius:999px;font-size:12px;font-weight:600;line-height:1.4;background:var(--panel);color:#334155}
   .gs-pill b{font-weight:800;font-size:13px}
   .gs-up b{color:#15803d}
   .gs-mid b{color:#1d4ed8}
   .gs-down b{color:#b91c1c}
   .gs-left b{color:#b45309}
-  .gcards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-  .gcard{display:flex;flex-direction:column;gap:11px;padding:15px;border-radius:18px;position:relative;transition:.15s;text-align:left;background:color-mix(in srgb,var(--gcol,#8a93a3) 13%,#fff);border:2px solid color-mix(in srgb,var(--gcol,#8a93a3) 55%,#fff);cursor:grab}
+  /* goal ledger rows (#46) — calm one-per-line, colour only on status chip + bar */
+  .gcards{display:flex;flex-direction:column;gap:8px}
+  .gcard{display:flex;flex-direction:column;gap:8px;padding:11px 14px;border-radius:12px;position:relative;transition:.12s;text-align:left;background:var(--card);border:1px solid var(--line);cursor:grab}
   .gcard:active{cursor:grabbing}
   .gcard.dragging{opacity:.4;outline:2px dashed var(--gcol,#8a93a3);outline-offset:2px}
   .gcard .gcard-acts button{cursor:pointer}
-  .gcard:hover{box-shadow:0 8px 22px rgba(70,58,32,.14);transform:translateY(-3px)}
-  .gcard-top{display:flex;align-items:center;gap:13px}
-  .gring{position:relative;width:62px;height:62px;flex:0 0 auto}
-  .gring svg{width:62px;height:62px;transform:rotate(-90deg)}
-  .gring-bg{fill:none;stroke:rgba(70,58,32,.12);stroke-width:8}
-  .gring-fg{fill:none;stroke:#1c1a14;stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset .6s}
-  .gring-txt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#1c1a14}
-  .gcard-head{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;align-items:flex-start}
+  .gcard:hover{border-color:#d3cab2;box-shadow:0 3px 10px rgba(70,58,32,.09)}
+  .grow-line{display:flex;align-items:center;gap:12px;min-height:34px}
+  .grow-st{flex:0 0 26px;width:26px;height:26px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:800;line-height:1}
+  .grow-main{flex:1 1 230px;min-width:0}
   .gcard-name{font-size:14px;font-weight:700;color:var(--ink);max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .gcard-sub{font-size:12px;color:var(--muted)}
-  .gcard-sub b{color:var(--ink);font-size:15px}
-  .gcard-det{background:rgba(255,255,255,.55);border-radius:10px;padding:8px 11px;display:flex;flex-direction:column;gap:4px;transform-origin:top;animation:gdetflip .22s ease}
+  .grow-sub{font-size:11.5px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .grow-bar{position:relative;flex:0 0 210px;height:18px;border-radius:9px;background:rgba(70,58,32,.08);overflow:hidden}
+  .grow-bar i{position:absolute;top:0;bottom:0;left:0;background:var(--gcol,#8a93a3);border-radius:9px;transition:width .5s}
+  .grow-val{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;color:var(--ink2);text-shadow:0 0 3px rgba(255,255,255,.7)}
+  .grow-pct{flex:0 0 42px;text-align:right;font-size:13px;font-weight:800;color:var(--ink2)}
+  .gcard-det{background:var(--panel);border-radius:10px;padding:8px 11px;display:flex;flex-direction:column;gap:4px;transform-origin:top;animation:gdetflip .22s ease;margin-left:38px}
   @keyframes gdetflip{from{transform:perspective(500px) rotateX(-65deg);opacity:0}to{transform:perspective(500px) rotateX(0);opacity:1}}
   .gdet-btn{cursor:pointer;font-size:11px;font-weight:700;color:var(--muted);background:transparent;border:1px solid rgba(70,58,32,.14);border-radius:999px;padding:2px 9px}
   .gdet-btn:hover{color:#2d6cdf;border-color:#2d6cdf}
@@ -277,8 +280,6 @@ if(!window.Chart){
   .glog-amt{color:#16a34a;font-weight:700}
   .glog-tot{color:#1c1a14;font-weight:700;text-align:right}
   .gcard-done{opacity:.72}
-  .gcard-foot{display:flex;justify-content:space-between;align-items:center;border-top:1px solid rgba(70,58,32,.09);padding-top:8px;margin-top:auto}
-  .gcat{font-size:15px;line-height:1}
   .gcard-overdue{animation:gpulse 1.8s ease-in-out infinite}
   @keyframes gpulse{0%,100%{box-shadow:0 0 0 0 rgba(239,77,77,.0);border-color:#ef4d4d}50%{box-shadow:0 0 0 4px rgba(239,77,77,.28);border-color:#ef4d4d}}
   .obreak{margin-top:12px;padding:10px 12px;background:#f2ecdd;border-radius:10px}
@@ -315,13 +316,11 @@ if(!window.Chart){
   .peamt .unitlab{font-size:12px;max-width:72px;overflow:hidden;text-overflow:ellipsis}
   .pecol-g{width:auto;min-width:150px}
   .sechead{margin:26px 0 4px;font-size:17px}
-  .gbadge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;color:#fff}
-  .gwhen{font-size:11.5px;color:var(--muted);font-weight:600}
-  .gcard-acts{position:absolute;top:8px;right:8px;display:flex;gap:5px;opacity:0;transition:.15s}
+  .gcard-acts{display:flex;gap:5px;opacity:0;transition:.15s;flex:0 0 auto;align-items:center}
   .gcard:hover .gcard-acts{opacity:1}
   .gcard-acts button{border:1px solid rgba(70,58,32,.15);background:rgba(255,255,255,.75);width:26px;height:26px;border-radius:50%;cursor:pointer;color:#445;font-size:12px;line-height:1;padding:0}
   .gcard-acts button:hover{color:#2d6cdf;border-color:#2d6cdf;background:#fff}
-  .gminis{background:rgba(255,255,255,.55);border-radius:10px;padding:7px 10px;display:flex;flex-direction:column;gap:5px}
+  .gminis{border-left:2px solid var(--line);padding:2px 0 2px 12px;margin-left:38px;display:flex;flex-direction:column;gap:5px}
   .gminis-head{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
   .gmini{display:flex;align-items:center;gap:7px;font-size:12px}
   .gmini-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
@@ -335,9 +334,13 @@ if(!window.Chart){
   .gmini-check{color:#16a34a;font-weight:800;flex:none}
   .gmini-someday{opacity:.62}
   .gmini-tag{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:0 4px;margin-left:5px}
-  @media(max-width:980px){.gcards{grid-template-columns:repeat(3,1fr)}}
-  @media(max-width:720px){.gcards{grid-template-columns:repeat(2,1fr)}}
-  @media(max-width:460px){.gcards{grid-template-columns:1fr}}
+  @media(max-width:720px){
+    .grow-line{flex-wrap:wrap}
+    .grow-bar{flex:1 1 100%;order:5}
+    .grow-pct{flex:0 0 auto}
+    .gcard-acts{opacity:1}
+    .gcard-det,.gminis{margin-left:0}
+  }
   @media(max-width:880px){.gprog{min-width:110px}}
   .tipswrap{display:flex;gap:18px;align-items:flex-start}
   .tipside{flex:0 0 200px;display:flex;flex-direction:column;gap:6px}
@@ -2247,7 +2250,7 @@ function goalCard(x){
   const pace = paceLabel(x);
   const col = started ? paceColor(pace) : '#8a93a3';
   const badge = x.done ? 'Done' : (started ? pace : 'Not started');
-  const r=34, c=2*Math.PI*r, off=c*(1-pct/100);
+  const glyph = (x.done||raw>=100) ? '✓' : !started ? '—' : (pace==='Behind'||pace==='Lagging') ? '▼' : '▲';
   const m = monthsUntil(x.by);
   const dl = daysLeft(x.by);
   const overdue = x.target>0 && x.cur<x.target && dl!=null && dl<0;
@@ -2281,32 +2284,25 @@ function goalCard(x){
       </div>`;
     }).join('')}
   </div>` : '';
+  const subBits=[x.target>0?`Target: ${x.target} ${escHtml(x.unit||'')}`:'', when, badge].filter(Boolean).join(' · ');
   return `<div class="gcard${overdue?' gcard-overdue':''}${x.done?' gcard-done':''}" draggable="true" data-id="${x.id}" style="--gcol:${col}">
-    <div class="gcard-acts">
-      ${x.target>0&&!x.done?`<button title="Add progress" onclick="goalAdd('${x.id}')">+</button>`:''}
-      ${logs.length?`<button title="Log (${logs.length})" onclick="goalLogShow('${x.id}')">📜</button>`:''}
-      <button title="Edit" onclick="goalEditStart('${x.id}')">✎</button>
-    </div>
-    <div class="gcard-top">
-      <div class="gring">
-        <svg viewBox="0 0 76 76">
-          <circle cx="38" cy="38" r="29" fill="#fff"/>
-          <circle cx="38" cy="38" r="37" fill="none" stroke="rgba(70,58,32,.16)" stroke-width="1.5"/>
-          <circle cx="38" cy="38" r="29.5" fill="none" stroke="rgba(70,58,32,.1)" stroke-width="1"/>
-          <circle class="gring-bg" cx="38" cy="38" r="${r}"/>
-          <circle class="gring-fg" cx="38" cy="38" r="${r}" style="stroke:${col}" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/>
-        </svg>
-        <div class="gring-txt">${raw}%</div>
+    <div class="grow-line">
+      <span class="grow-st" style="background:${col}" title="${badge}">${glyph}</span>
+      <div class="grow-main">
+        <div class="gcard-name" title="${escHtml(x.name)}">${iconFor(x.cat)} ${escHtml(x.name)}</div>
+        <div class="grow-sub">${subBits}</div>
       </div>
-      <div class="gcard-head">
-        <div class="gcard-name" title="${escHtml(x.name)}">${escHtml(x.name)}</div>
-        <div class="gcard-sub"><b>${x.cur}</b>${x.target>0?` / ${x.target}`:''} ${escHtml(x.unit||'')}</div>
-        <span class="gbadge" style="background:${col}">${badge}</span>
+      <div class="grow-bar"><i style="width:${pct}%"></i><span class="grow-val">${x.cur}${x.target>0?` / ${x.target}`:''} ${escHtml(x.unit||'')}</span></div>
+      <span class="grow-pct">${x.target>0?raw+'%':''}</span>
+      <div class="gcard-acts">
+        ${x.target>0&&!x.done?`<button title="Add progress" onclick="goalAdd('${x.id}')">+</button>`:''}
+        ${logs.length?`<button title="Log (${logs.length})" onclick="goalLogShow('${x.id}')">📜</button>`:''}
+        <button title="Edit" onclick="goalEditStart('${x.id}')">✎</button>
+        ${det?`<button type="button" class="gdet-btn" title="Details" onclick="goalFlip('${x.id}')">▾</button>`:''}
       </div>
     </div>
     ${det?`<div class="gcard-det" hidden>${det}</div>`:''}
     ${minisHtml}
-    <div class="gcard-foot"><span class="gcat" title="${escHtml(x.cat)}">${iconFor(x.cat)}</span>${det?`<button type="button" class="gdet-btn" onclick="goalFlip('${x.id}')">details ▾</button>`:''}<span class="gwhen">${when}</span></div>
   </div>`;
 }
 // ---- drag-drop reordering of goal cards (within a section) ----
@@ -2466,7 +2462,7 @@ window.goalFlip=function(id){
   const card=document.querySelector(`.gcard[data-id="${id}"]`); if(!card) return;
   const open=card.classList.toggle('gcard-open');
   const d=card.querySelector('.gcard-det'); if(d) d.hidden=!open;
-  const b=card.querySelector('.gdet-btn'); if(b) b.textContent=open?'details ▴':'details ▾';
+  const b=card.querySelector('.gdet-btn'); if(b) b.textContent=open?'▴':'▾';
 };
 window.goalLogShow=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x) return;
   const logs=Array.isArray(x.logs)?x.logs:[];
