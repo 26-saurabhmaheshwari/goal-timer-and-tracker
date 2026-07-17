@@ -238,12 +238,13 @@ if(!window.Chart){
   .gcard-name{font-size:14px;font-weight:700;color:var(--ink);max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .gcard-sub{font-size:12px;color:var(--muted)}
   .gcard-sub b{color:var(--ink);font-size:15px}
-  .gcard-det{background:rgba(255,255,255,.55);border-radius:10px;padding:8px 11px;display:flex;flex-direction:column;gap:4px}
+  .gcard-det{background:rgba(255,255,255,.55);border-radius:10px;padding:8px 11px;display:flex;flex-direction:column;gap:4px;transform-origin:top;animation:gdetflip .22s ease}
+  @keyframes gdetflip{from{transform:perspective(500px) rotateX(-65deg);opacity:0}to{transform:perspective(500px) rotateX(0);opacity:1}}
+  .gdet-btn{cursor:pointer;font-size:11px;font-weight:700;color:var(--muted);background:transparent;border:1px solid rgba(70,58,32,.14);border-radius:999px;padding:2px 9px}
+  .gdet-btn:hover{color:#2d6cdf;border-color:#2d6cdf}
   .gd-row{display:flex;justify-content:space-between;gap:10px;font-size:11.5px;line-height:1.3}
   .gd-row span{color:var(--muted);font-weight:600}
   .gd-row b{color:#1c1a14;font-weight:700;text-align:right}
-  .glog-btn{align-self:flex-start;cursor:pointer;font-size:11.5px;font-weight:600;color:var(--muted);background:rgba(255,255,255,.5);border:1px solid rgba(70,58,32,.12);border-radius:6px;padding:3px 8px}
-  .glog-btn:hover{color:#2d6cdf;border-color:#2d6cdf}
   .glog-body{margin-top:6px;max-height:52vh;overflow:auto;display:flex;flex-direction:column;gap:4px}
   .glog-row{display:flex;justify-content:space-between;gap:10px;line-height:1.35;padding:5px 10px;background:rgba(70,58,32,.04);border-radius:8px;font-size:13px}
   .glog-when{color:var(--muted);font-weight:600}
@@ -277,6 +278,18 @@ if(!window.Chart){
   .chk .hint{margin:0;font-weight:500}
   .unitlab{align-self:center;font-size:13px;font-weight:600;color:var(--muted);white-space:nowrap}
   .time2{display:flex;gap:8px;align-items:center}
+  /* period-entry / pledge one-line rows */
+  .perow{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:9px;font-size:13.5px}
+  .perow.pe-z{background:rgba(70,58,32,.045)}
+  .perow .penm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+  .pein{width:62px;padding:6px 4px;border:1px solid var(--line);border-radius:8px;font-size:13px;text-align:center;background:#fff}
+  .pecol{width:62px;flex:0 0 auto;text-align:center;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700}
+  .pehead{padding:12px 10px 3px;border-bottom:1px solid var(--line);border-radius:0;margin-bottom:3px}
+  .pehead .penm{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700}
+  .peamt{display:flex;align-items:center;gap:6px;justify-content:flex-end;flex:0 0 auto}
+  .peamt .pein{width:76px}
+  .peamt .unitlab{font-size:12px;max-width:72px;overflow:hidden;text-overflow:ellipsis}
+  .pecol-g{width:auto;min-width:150px}
   .sechead{margin:26px 0 4px;font-size:17px}
   .gbadge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;color:#fff}
   .gwhen{font-size:11.5px;color:var(--muted);font-weight:600}
@@ -284,6 +297,18 @@ if(!window.Chart){
   .gcard:hover .gcard-acts{opacity:1}
   .gcard-acts button{border:1px solid rgba(70,58,32,.15);background:rgba(255,255,255,.75);width:26px;height:26px;border-radius:50%;cursor:pointer;color:#445;font-size:12px;line-height:1;padding:0}
   .gcard-acts button:hover{color:#2d6cdf;border-color:#2d6cdf;background:#fff}
+  .gminis{background:rgba(255,255,255,.55);border-radius:10px;padding:7px 10px;display:flex;flex-direction:column;gap:5px}
+  .gminis-head{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+  .gmini{display:flex;align-items:center;gap:7px;font-size:12px}
+  .gmini-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+  .gmini-bar{flex:0 0 44px;height:5px;border-radius:3px;background:rgba(70,58,32,.12);overflow:hidden}
+  .gmini-bar i{display:block;height:100%;background:var(--gcol,#8a93a3);border-radius:3px}
+  .gmini-sub{color:var(--muted);font-size:11px;white-space:nowrap}
+  .gmini button{border:1px solid rgba(70,58,32,.15);background:rgba(255,255,255,.75);width:20px;height:20px;border-radius:50%;cursor:pointer;color:#445;font-size:11px;line-height:1;padding:0;flex:none}
+  .gmini button:hover{color:#2d6cdf;border-color:#2d6cdf;background:#fff}
+  .gmini button.gmini-ok:hover{color:#16a34a;border-color:#16a34a}
+  .gmini-done .gmini-name{text-decoration:line-through;color:var(--muted)}
+  .gmini-check{color:#16a34a;font-weight:800;flex:none}
   @media(max-width:980px){.gcards{grid-template-columns:repeat(3,1fr)}}
   @media(max-width:720px){.gcards{grid-template-columns:repeat(2,1fr)}}
   @media(max-width:460px){.gcards{grid-template-columns:1fr}}
@@ -441,10 +466,6 @@ if(!window.Chart){
         <span id="fbWho" style="font-size:12px;color:#9aa3b2"></span>
         <button id="fbBtn" onclick="fbToggle()" style="cursor:pointer;border:1px solid #3a4358;background:#1c2333;color:#e6e9ef;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600">Sign in to sync</button>
       </div>
-      <button class="noprint" onclick="window.print()" title="Export to PDF" aria-label="Export to PDF" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;border:1px solid #e0392b;background:#fff;color:#e0392b;padding:6px 11px;border-radius:8px;font-size:12px;font-weight:700">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm0 1.5L18.5 8H14V3.5z"/><text x="12" y="18" font-size="7" font-weight="700" text-anchor="middle" fill="#fff">PDF</text></svg>
-        PDF
-      </button>
     </div>
   </header>
 
@@ -534,10 +555,14 @@ if(!window.Chart){
     </div>
     <div id="peBody"></div>
     <div class="frow noprint" style="margin-top:12px;gap:8px;flex-wrap:wrap;align-items:center">
-      <button type="button" id="pePrint" class="btn ghost" title="Print a blank sheet to fill in by hand over the 10 days">🖨️ Paper sheet</button>
-      <button type="button" id="pePoster" class="btn ghost" title="Print a one-page year grid of all 36 periods for the wall — colour each cell as you go">🎨 Wall poster</button>
-      <button type="button" id="peIcs" class="btn ghost" title="Add a calendar reminder to log this period">📅 Reminder</button>
-      <button type="button" id="peWitness" class="btn ghost" title="Copy a 3-line summary of this period to send to an accountability partner">📋 Witness note</button>
+      <details class="repdrop" id="peShare"><summary>🖨 Print &amp; share</summary>
+        <div class="repdrop-panel" style="display:flex;flex-direction:column;gap:6px;min-width:200px">
+          <button type="button" id="pePrint" class="btn ghost" title="Print a blank sheet to fill in by hand over the 10 days">🖨️ Paper sheet</button>
+          <button type="button" id="pePoster" class="btn ghost" title="Print a one-page year grid of all 36 periods for the wall — colour each cell as you go">🎨 Wall poster</button>
+          <button type="button" id="peIcs" class="btn ghost" title="Add a calendar reminder to log this period">📅 Reminder</button>
+          <button type="button" id="peWitness" class="btn ghost" title="Copy a 3-line summary of this period to send to an accountability partner">📋 Witness note</button>
+        </div>
+      </details>
       <button type="button" id="peSave" class="btn" style="margin-left:auto">Save period</button>
     </div>
     <span id="peMsg" class="fmsg"></span>
@@ -635,6 +660,7 @@ if(!window.Chart){
     </div>
   </div>
 
+  <div id="scrWrap"><!-- whole screen-time section; hidden by the features.screen toggle -->
   <h2 class="sechead">📱 Screen time — online vs the life you logged</h2>
   <div class="hint" style="margin:-6px 0 12px">Log it above with the <b>📱 Screen</b> type. This reflects the month you've selected.</div>
   <div class="grid">
@@ -654,6 +680,7 @@ if(!window.Chart){
     </div>
     <div class="ibox" id="onWhatIf"></div>
   </div>
+  </div><!-- /scrWrap -->
 </div><!-- /viewLog -->
 
 <div id="viewGoals" hidden>
@@ -698,6 +725,7 @@ if(!window.Chart){
       <div class="gform-foot">
         <button type="button" id="gDelete" class="btn" style="background:#ef4444;margin-right:auto;display:none">Delete goal</button>
         <button type="button" id="gDone" class="btn" style="background:#16a34a;display:none">✓ Mark complete</button>
+        <button type="button" id="gMini" class="btn" style="background:#7c5cd6;display:none">＋ Mini goal</button>
         <button type="button" id="gCancel" class="btn" style="background:#94a3b8;margin-left:auto">Cancel</button>
         <button type="submit" class="btn">Save goal</button>
         <span id="goalMsg" class="fmsg"></span>
@@ -796,6 +824,9 @@ if(!window.Chart){
       <div class="hint" style="margin:-6px 0 0">How far ahead the Planning tab looks, in whole 10-day periods (30–360).</div>
       <label style="display:flex;align-items:center;gap:8px;margin-top:10px"><input id="setLifeBar" type="checkbox" style="width:auto">Show life-progress bar on Overview</label>
       <div class="hint" style="margin:-4px 0 0">Off by default. A dotted view of your life in years/weeks — turn on only if you find it motivating, not confronting.</div>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:10px"><input id="setFeatScreen" type="checkbox" style="width:auto">Show Screen-time tracking (Log page)</label>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:6px"><input id="setFeatPlanning" type="checkbox" style="width:auto">Show Time Planning tab</label>
+      <div class="hint" style="margin:-4px 0 0">Untick to hide those parts of the app. Nothing is deleted — data and math stay; retick anytime.</div>
       <div class="gform-foot">
         <button type="submit" class="btn">Save</button>
         <span id="personalMsg" class="fmsg"></span>
@@ -811,10 +842,10 @@ if(!window.Chart){
       </div>
     </div>
     <h2 style="margin-top:26px">Backup</h2>
-    <div class="hint">Export downloads everything (entries, goals, habits, settings) as one JSON file. Import replaces this device's data with the file's contents, then reloads.</div>
+    <div class="hint">Download backup saves everything (entries, goals, habits, settings) as one JSON file. Restore replaces this device's data with the file's contents, then reloads.</div>
     <div class="frow" style="margin-top:12px">
-      <button type="button" class="btn" id="expBtn">⬇ Export data</button>
-      <button type="button" class="btn" id="impBtn">⬆ Import data</button>
+      <button type="button" class="btn" id="expBtn">⬇ Download backup</button>
+      <button type="button" class="btn" id="impBtn">⬆ Restore backup</button>
       <input type="file" id="impFile" accept=".json,application/json" hidden>
     </div>
   </div>
@@ -1184,10 +1215,12 @@ function initLogForm(){
   document.getElementById('periodEntryBtn').onclick = openPeriodEntry;
   document.getElementById('peClose').onclick = ()=>peShow(false);
   document.getElementById('peSave').onclick = savePeriodEntry;
-  document.getElementById('pePrint').onclick = printPeriodSheet;
-  document.getElementById('pePoster').onclick = printYearPoster;
-  document.getElementById('peIcs').onclick = downloadPeriodIcs;
-  document.getElementById('peWitness').onclick = ()=>copyWitness(document.getElementById('peMonth').value, document.getElementById('pePeriod').value, document.getElementById('peMsg'));
+  // Print & share dropdown: close the menu, then run the action
+  const peAct=(id,fn)=>{ document.getElementById(id).onclick=()=>{ document.getElementById('peShare').open=false; fn(); }; };
+  peAct('pePrint', printPeriodSheet);
+  peAct('pePoster', printYearPoster);
+  peAct('peIcs', downloadPeriodIcs);
+  peAct('peWitness', ()=>copyWitness(document.getElementById('peMonth').value, document.getElementById('pePeriod').value, document.getElementById('peMsg')));
   document.getElementById('cmtClose').onclick = ()=>cmtShow(false);
   document.getElementById('cmtSkip').onclick = ()=>cmtShow(false);
   document.getElementById('cmtSave').onclick = saveCommits;
@@ -1207,14 +1240,14 @@ function renderPeriodEntry(){
   const ym=document.getElementById('peMonth').value, period=document.getElementById('pePeriod').value;
   const es=loadEntries().filter(e=>e.ym===ym&&e.period===period);
   const habits=loadHabits().filter(h=>!h.paused&&!h.done);
-  const goals=goalsLive().filter(g=>(g.sec||'active')==='active' && !g.done);
+  const goals=loggableGoals(); // minis replace their parent here
   const doneHint=m=>m>0?`<span class="muted-sm">logged ${fmtShort(m)}</span>`:'';
   const hRows=habits.map((h,i)=>{
     const already=es.filter(e=>e.type==='project'&&e.task===h.n).reduce((a,e)=>a+e.mins,0);
-    return `<div class="frow" style="align-items:end">
-      <label style="flex:1.4">${habitIcon(h.cat)} ${escHtml(h.n)} <span class="muted-sm">${h.m}m/day</span> ${doneHint(already)}</label>
-      <label>Times <input type="number" min="0" step="1" data-pe-h="${i}" data-min="${+h.m||0}" data-name="${escHtml(h.n)}" data-cat="${escHtml(h.cat||'')}" style="width:70px"></label>
-      <label>+ mins <input type="number" min="0" step="1" data-pe-hx="${i}" style="width:70px"></label>
+    return `<div class="perow${i%2?' pe-z':''}">
+      <span class="penm" title="${escHtml(h.n)}">${habitIcon(h.cat)} ${escHtml(h.n)} <span class="muted-sm">${h.m}m/day</span> ${doneHint(already)}</span>
+      <input class="pein" type="number" min="0" step="1" data-pe-h="${i}" data-min="${+h.m||0}" data-name="${escHtml(h.n)}" data-cat="${escHtml(h.cat||'')}">
+      <input class="pein" type="number" min="0" step="1" data-pe-hx="${i}">
     </div>`;
   }).join('') || '<div class="hint">No active habits.</div>';
   const gRows=goals.map((g,i)=>{
@@ -1225,14 +1258,14 @@ function renderPeriodEntry(){
       const hit=already>=+c.amt, mark=already>0?(hit?'✅':'⚠️'):'';
       pledge=` <span class="muted-sm" title="You pledged this at the last period save" style="color:${hit?'#16a34a':'var(--muted)'}">🎯 pledged ${+c.amt} ${escHtml(g.unit||'')}${mark?` · ${mark}`:''}</span>`;
     }
-    return `<div class="frow" style="align-items:end">
-      <label style="flex:1.4">${goalIcon(g.cat)} ${escHtml(g.name)} ${already>0?`<span class="muted-sm">+${already} ${escHtml(g.unit||'')} logged</span>`:''}${pledge}</label>
-      <label>Amount <span class="time2"><input type="number" min="0" step="0.1" data-pe-g="${g.id}" style="width:90px"> <span class="unitlab">${escHtml(g.unit||'')}</span></span></label>
+    return `<div class="perow${i%2?' pe-z':''}">
+      <span class="penm" title="${escHtml(goalLabel(g))}">${goalIcon(g.cat)} ${escHtml(goalLabel(g))} ${already>0?`<span class="muted-sm">+${already} ${escHtml(g.unit||'')} logged</span>`:''}${pledge}</span>
+      <span class="peamt"><input class="pein" type="number" min="0" step="0.1" data-pe-g="${g.id}"> <span class="unitlab">${escHtml(g.unit||'')}</span></span>
     </div>`;
   }).join('') || '<div class="hint">No active goals.</div>';
   document.getElementById('peBody').innerHTML =
-    `<h2 style="font-size:15px;margin:14px 0 4px">Habits</h2>${hRows}
-     <h2 style="font-size:15px;margin:16px 0 4px">Goals</h2>${gRows}`;
+    `<div class="perow pehead"><span class="penm">Habits</span><span class="pecol">Times</span><span class="pecol">+ mins</span></div>${hRows}
+     <div class="perow pehead"><span class="penm">Goals</span><span class="pecol pecol-g">Amount</span></div>${gRows}`;
 }
 function savePeriodEntry(){
   const ym=document.getElementById('peMonth').value, period=document.getElementById('pePeriod').value;
@@ -1256,6 +1289,7 @@ function savePeriodEntry(){
     const x=goals.find(o=>o.id===inp.dataset.peG); if(!x) return;
     x.cur=(+x.cur||0)+amt;
     (x.logs=Array.isArray(x.logs)?x.logs:[]).push({ym, period, amt, total:x.cur});
+    if(x.parentId){ const p=goals.find(o=>o.id===x.parentId); if(p){ p.cur=(+p.cur||0)+amt; (p.logs=Array.isArray(p.logs)?p.logs:[]).push({ym, period, amt, total:p.cur, via:x.name}); } } // mini → echo to parent (no 2nd time entry)
     gTouched=true;
     const mins=goalMins(x,amt);
     if(mins>0){ all.push({id:eid(), ym, period, type:'goal', goalId:x.id, amt, task:x.name, cat:x.cat, mins}); }
@@ -1276,15 +1310,17 @@ function savePeriodEntry(){
 function cmtShow(on){ document.getElementById('commitModal').hidden=!on; document.body.style.overflow=on?'hidden':''; }
 function openCommitStep(savedYm, savedPeriod){
   const nx=nextPeriod(savedYm, savedPeriod);
-  const goals=goalsLive().filter(g=>(g.sec||'active')==='active' && !g.done);
+  const goals=loggableGoals(); // minis replace their parent here too
   if(!goals.length){ return; } // nothing to pledge — just skip the step
   document.getElementById('cmtSub').textContent=`For ${plabel(`${nx.ym}-${nx.period}`)} — one number per goal, what you'll get done. Optional. Its sheet shows the pledge; day-10 scores you against it.`;
-  document.getElementById('cmtBody').innerHTML=goals.map(g=>{
+  document.getElementById('cmtBody').innerHTML=
+    `<div class="perow pehead"><span class="penm">Goal</span><span class="pecol pecol-g">Pledge</span></div>`+
+    goals.map((g,i)=>{
     const c=g.commit;
     const pre=(c&&c.ym===nx.ym&&c.period===nx.period)?(+c.amt||''):'';
-    return `<div class="frow" style="align-items:end;margin-bottom:6px">
-      <label style="flex:1.4">${goalIcon(g.cat)} ${escHtml(g.name)}</label>
-      <label>Pledge <span class="time2"><input type="number" min="0" step="0.1" data-cmt-g="${g.id}" value="${pre}" style="width:90px"> <span class="unitlab">${escHtml(g.unit||'')}</span></span></label>
+    return `<div class="perow${i%2?' pe-z':''}">
+      <span class="penm" title="${escHtml(goalLabel(g))}">${goalIcon(g.cat)} ${escHtml(goalLabel(g))}</span>
+      <span class="peamt"><input class="pein" type="number" min="0" step="0.1" data-cmt-g="${g.id}" value="${pre}"> <span class="unitlab">${escHtml(g.unit||'')}</span></span>
     </div>`;
   }).join('');
   document.getElementById('cmtBody').dataset.ym=nx.ym;
@@ -1380,7 +1416,7 @@ function periodWitness(ym, period){
   // what got done: sum goal.logs amounts matching this period
   const done=[];
   goalsLive().forEach(g=>{
-    const amt=(Array.isArray(g.logs)?g.logs:[]).filter(r=>r.ym===ym&&r.period===period).reduce((a,r)=>a+(+r.amt||0),0);
+    const amt=(Array.isArray(g.logs)?g.logs:[]).filter(r=>r.ym===ym&&r.period===period&&!r.via).reduce((a,r)=>a+(+r.amt||0),0); // skip parent echo rows — the mini already counts
     if(amt>0) done.push(`${g.name} +${+amt.toFixed(2)} ${g.unit||''}`.trim());
   });
   const l2=done.length ? done.slice(0,4).join(', ')+(done.length>4?` +${done.length-4} more`:'') : 'No goal progress logged this period.';
@@ -1478,13 +1514,14 @@ function setLogType(t){
 }
 function goalIcon(cat){ return iconFor(cat); }
 function refreshGoalOptions(){
-  const g=goalsLive(), cur=document.getElementById('fGoal').value;
-  const opt=x=>`<option value="${x.id}" ${x.id===cur?'selected':''}>${goalIcon(x.cat)} ${escHtml(x.name)}</option>`;
-  const groups=[['active','Active'],['someday','Someday']];
-  document.getElementById('fGoal').innerHTML = groups.map(([sec,label])=>{
-    const rows=g.filter(x=>((x.sec||'active')==='active'?'active':'someday')===sec);
-    return rows.length?`<optgroup label="${label}">${rows.map(opt).join('')}</optgroup>`:'';
-  }).join('');
+  const cur=document.getElementById('fGoal').value;
+  const opt=x=>`<option value="${x.id}" ${x.id===cur?'selected':''}>${goalIcon(x.cat)} ${escHtml(goalLabel(x))}</option>`;
+  // Active = the loggable set (minis replace their parent); Someday = non-mini someday goals.
+  const active=loggableGoals();
+  const someday=goalsLive().filter(x=>(x.sec||'active')!=='active' && !x.parentId);
+  document.getElementById('fGoal').innerHTML =
+    (active.length?`<optgroup label="Active">${active.map(opt).join('')}</optgroup>`:'')+
+    (someday.length?`<optgroup label="Someday">${someday.map(opt).join('')}</optgroup>`:'');
   syncGoalFields();
 }
 function syncGoalFields(){
@@ -1535,9 +1572,12 @@ function habitLogHint(){
 // per-goal log (goal.logs[]) and the tracked-time entry stay in lockstep. If you
 // add a third way to bump goal.cur, call this — don't re-implement it.
 // extraLog = optional fields merged into the log row (addForm passes {d}). Returns tracked mins.
+// Mini goals: progress on a mini ALSO bumps its parent — parent gets an echo log row
+// tagged {via:miniName} but NO second time entry (time would double-count otherwise).
 function addGoalProgress(g, x, amt, ym, period, extraLog){
   x.cur=(+x.cur||0)+amt;
   (x.logs=Array.isArray(x.logs)?x.logs:[]).push({...(extraLog||{}), ym, period, amt, total:x.cur});
+  if(x.parentId){ const p=g.find(o=>o.id===x.parentId); if(p){ p.cur=(+p.cur||0)+amt; (p.logs=Array.isArray(p.logs)?p.logs:[]).push({ym, period, amt, total:p.cur, via:x.name}); } }
   saveGoals(g);
   const mins=goalMins(x,amt);
   if(mins>0){ const all=loadEntries(); all.push({id:eid(), ym, period, type:'goal', goalId:x.id, amt, task:x.name, cat:x.cat, mins}); saveEntries(all); logSel=`${ym}-${period}`; }
@@ -1992,6 +2032,9 @@ function renderPersonalSettings(){
   const w=document.getElementById('setPlanWin'); if(w) w.value=PLAN_WINDOW_DAYS;
   const lb=document.getElementById('setLifeBar'); if(lb) lb.checked=SHOW_LIFEBAR;
   const lt=document.getElementById('setLetter'); if(lt) lt.value=loadLetter().text||'';
+  const f=loadFeatures();
+  const fs=document.getElementById('setFeatScreen'); if(fs) fs.checked=!!f.screen;
+  const fp=document.getElementById('setFeatPlanning'); if(fp) fp.checked=!!f.planning;
 }
 function savePersonal(e){
   e.preventDefault();
@@ -2005,6 +2048,7 @@ function savePersonal(e){
   LIFE_TARGET=target;
   SHOW_LIFEBAR=!!document.getElementById('setLifeBar').checked; localStorage.setItem(LS_LIFEBAR, SHOW_LIFEBAR?'1':'0');
   setPlanWindow(+document.getElementById('setPlanWin').value); // persists + re-renders planning
+  saveFeatures({screen:!!document.getElementById('setFeatScreen').checked, planning:!!document.getElementById('setFeatPlanning').checked});
   renderLifeBar(); fbSyncPush(); // setView re-gates lifeBar visibility on next nav to Overview
   msg.textContent='Saved ✓'; msg.style.color='#34a853';
   setTimeout(()=>{ msg.textContent=''; }, 2000);
@@ -2024,6 +2068,31 @@ let goalEdit=null;
 function loadGoals(){ try{ const v=JSON.parse(localStorage.getItem(LS_GOALS)); return Array.isArray(v)?v:SEED_GOALS; }catch(e){ return SEED_GOALS; } }
 // Goals minus the Trash. Every DISPLAY/MATH path uses this; save/lookup paths keep using loadGoals() so trashed goals survive round-trips.
 function goalsLive(){ return loadGoals().filter(g=>!g.deleted); }
+// --- Mini goals: a goal with parentId is a slice of its parent. Progress on a mini
+// also bumps the parent (see addGoalProgress); log lists show minis INSTEAD of a
+// parent that has live minis; aggregates skip minis (the parent already counts them).
+function isMini(g){ return !!g.parentId; }
+function minisOf(id){ return goalsLive().filter(g=>g.parentId===id); }
+function goalLabel(g){ if(!g.parentId) return g.name; const p=loadGoals().find(o=>o.id===g.parentId); return p?`${p.name} ▸ ${g.name}`:g.name; }
+// What the log lists (Log Data dropdown, period entry, pledge) offer: active not-done
+// goals, but a parent with ≥1 live active mini is REPLACED by those minis. Orphan minis
+// (parent done/someday) stand alone so they stay loggable.
+function loggableGoals(){
+  const gs=goalsLive();
+  const liveActive=g=>!g.done && (g.sec||'active')==='active';
+  const out=[];
+  gs.forEach(g=>{
+    if(!liveActive(g)) return;
+    if(g.parentId){
+      const p=gs.find(o=>o.id===g.parentId);
+      if(!p || !liveActive(p)) out.push(g); // orphan mini stands alone
+      return; // otherwise it's added under its parent below
+    }
+    const kids=gs.filter(k=>k.parentId===g.id && liveActive(k));
+    if(kids.length) out.push(...kids); else out.push(g);
+  });
+  return out;
+}
 function saveGoals(g){ localStorage.setItem(LS_GOALS, JSON.stringify(g)); fbSyncPush(); }
 function fmtBy(by){ if(!by) return ''; const d=new Date(by+'T00:00:00'); return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
 function monthsUntil(by){ if(!by) return null; const d=new Date(by+'T00:00:00'), now=new Date(); let m=(d.getFullYear()-now.getFullYear())*12+(d.getMonth()-now.getMonth()); if(d.getDate()<now.getDate())m--; return m; }
@@ -2047,7 +2116,24 @@ function goalPeriodsToFinish(x){
   return Math.max(1, Math.ceil(((x.target-x.cur)/perDay)/10));
 }
 function goalFormShow(on){ document.getElementById('goalModal').hidden=!on; document.body.style.overflow=on?'hidden':''; }
-function goalFormReset(){ goalEdit=null; document.getElementById('goalForm').reset(); document.getElementById('gUnitLab').textContent='unit'; document.getElementById('goalFormTitle').textContent='Add a goal'; document.getElementById('gDelete').style.display='none'; document.getElementById('gDone').style.display='none'; goalFormShow(false); }
+let goalMiniParent=null; // set while the form is creating a mini goal (holds the parent's id)
+function goalFormReset(){ goalEdit=null; goalMiniParent=null; document.getElementById('goalForm').reset();
+  document.getElementById('gCat').disabled=false; document.getElementById('gUnit').disabled=false; document.getElementById('gSecWrap').style.display='';
+  document.getElementById('gUnitLab').textContent='unit'; document.getElementById('goalFormTitle').textContent='Add a goal';
+  document.getElementById('gDelete').style.display='none'; document.getElementById('gDone').style.display='none'; document.getElementById('gMini').style.display='none'; goalFormShow(false); }
+// Open the goal form pre-locked to carve a mini out of parent pid (cat/unit/mapping inherited, always active).
+window.startMiniCreate=function(pid){
+  const p=loadGoals().find(o=>o.id===pid); if(!p) return;
+  goalFormReset(); goalMiniParent=pid;
+  document.getElementById('goalFormTitle').textContent=`＋ Mini goal of “${p.name}”`;
+  document.getElementById('gCat').value=p.cat;
+  document.getElementById('gUnit').value=p.unit||''; document.getElementById('gUnitLab').textContent=p.unit||'unit';
+  document.getElementById('gMinPer').value=(p.minPerUnit==null?'':p.minPerUnit);
+  document.getElementById('gCat').disabled=true; document.getElementById('gUnit').disabled=true; // inherited from the parent
+  document.getElementById('gSecWrap').style.display='none'; // minis are always active
+  document.getElementById('goalMsg').textContent='';
+  goalFormShow(true); document.getElementById('gName').focus();
+};
 function initGoals(){
   const gv=document.getElementById('viewGoals');
   gv.addEventListener('dragstart',goalDragStart);
@@ -2055,7 +2141,8 @@ function initGoals(){
   gv.addEventListener('dragover',goalDragOver);
   gv.addEventListener('drop',goalDrop);
   document.getElementById('gCat').innerHTML = ALLCATS.map(c=>`<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');
-  document.getElementById('goalCreateBtn').onclick=()=>{ goalEdit=null; document.getElementById('goalForm').reset(); document.getElementById('gUnitLab').textContent='unit'; document.getElementById('goalFormTitle').textContent='Add a goal'; document.getElementById('gDelete').style.display='none'; document.getElementById('gDone').style.display='none'; document.getElementById('goalMsg').textContent=''; goalFormShow(true); };
+  document.getElementById('goalCreateBtn').onclick=()=>{ goalFormReset(); document.getElementById('goalMsg').textContent=''; goalFormShow(true); };
+  document.getElementById('gMini').onclick=()=>{ if(goalEdit) startMiniCreate(goalEdit); };
   document.getElementById('gCancel').onclick=()=>{ goalFormReset(); document.getElementById('goalMsg').textContent=''; };
   document.getElementById('gClose').onclick=()=>{ goalFormReset(); document.getElementById('goalMsg').textContent=''; };
   document.getElementById('goalModal').onclick=(e)=>{ if(e.target.id==='goalModal'){ goalFormReset(); document.getElementById('goalMsg').textContent=''; } };
@@ -2091,7 +2178,9 @@ function initGoals(){
       sec:document.getElementById('gSec').value, minPerUnit: mpRaw===''?null:(+mpRaw||0) };
     const g=loadGoals();
     if(goalEdit){ const i=g.findIndex(x=>x.id===goalEdit); if(i>=0){ g[i]={...g[i],...o}; saveGoals(g); syncGoalEntries(g[i]); } }
-    else { o.id='g'+Date.now(); g.push(o); saveGoals(g); }
+    else { o.id='g'+Date.now();
+      if(goalMiniParent){ const p=g.find(q=>q.id===goalMiniParent); if(p){ o.parentId=p.id; o.cat=p.cat; o.unit=p.unit; o.sec='active'; if(o.minPerUnit==null) o.minPerUnit=p.minPerUnit; } }
+      g.push(o); saveGoals(g); }
     document.getElementById('goalMsg').textContent='Saved ✓'; goalFormReset(); renderGoals();
     if(document.getElementById('entryTable')) renderLog();
   });
@@ -2137,10 +2226,27 @@ function goalCard(x){
     hint ? `<div class="gd-row"><span>Pace</span><b>${hint}</b></div>` : ''
   ].filter(Boolean).join('');
   const logs = Array.isArray(x.logs) ? x.logs : [];
-  const logHtml = logs.length ? `<button type="button" class="glog-btn" onclick="goalLogShow('${x.id}')">📜 Log (${logs.length})</button>` : '';
+  // Mini goals live INSIDE the parent card as slim rows — never as top-level cards.
+  const minis = x.parentId ? [] : minisOf(x.id);
+  const mDone = minis.filter(m=>m.done).length;
+  const minisHtml = minis.length ? `<div class="gminis">
+    <div class="gminis-head">🏅 ${mDone}/${minis.length} mini goal${minis.length>1?'s':''} accomplished</div>
+    ${minis.map(m=>{
+      const mpct=m.target>0?Math.min(100,Math.round((+m.cur||0)/m.target*100)):0;
+      return `<div class="gmini${m.done?' gmini-done':''}">
+        <span class="gmini-name" title="${escHtml(m.name)}">${escHtml(m.name)}</span>
+        <span class="gmini-bar"><i style="width:${mpct}%"></i></span>
+        <span class="gmini-sub">${m.cur}${m.target>0?`/${m.target}`:''}</span>
+        ${m.done?'<span class="gmini-check" title="Accomplished">✓</span>'
+          :`<button type="button" title="Add progress" onclick="goalAdd('${m.id}')">+</button><button type="button" class="gmini-ok" title="Mark accomplished" onclick="goalToggleDone('${m.id}')">✓</button>`}
+        <button type="button" title="Edit" onclick="goalEditStart('${m.id}')">✎</button>
+      </div>`;
+    }).join('')}
+  </div>` : '';
   return `<div class="gcard${overdue?' gcard-overdue':''}${x.done?' gcard-done':''}" draggable="true" data-id="${x.id}" style="--gcol:${col}">
     <div class="gcard-acts">
       ${x.target>0&&!x.done?`<button title="Add progress" onclick="goalAdd('${x.id}')">+</button>`:''}
+      ${logs.length?`<button title="Log (${logs.length})" onclick="goalLogShow('${x.id}')">📜</button>`:''}
       <button title="Edit" onclick="goalEditStart('${x.id}')">✎</button>
     </div>
     <div class="gcard-top">
@@ -2160,9 +2266,9 @@ function goalCard(x){
         <span class="gbadge" style="background:${col}">${badge}</span>
       </div>
     </div>
-    ${det?`<div class="gcard-det">${det}</div>`:''}
-    ${logHtml}
-    <div class="gcard-foot"><span class="gcat" title="${escHtml(x.cat)}">${iconFor(x.cat)}</span><span class="gwhen">${when}</span></div>
+    ${det?`<div class="gcard-det" hidden>${det}</div>`:''}
+    ${minisHtml}
+    <div class="gcard-foot"><span class="gcat" title="${escHtml(x.cat)}">${iconFor(x.cat)}</span>${det?`<button type="button" class="gdet-btn" onclick="goalFlip('${x.id}')">details ▾</button>`:''}<span class="gwhen">${when}</span></div>
   </div>`;
 }
 // ---- drag-drop reordering of goal cards (within a section) ----
@@ -2200,7 +2306,7 @@ function renderSec(filterFn, el, attention){
     : '<div class="empty">Nothing here yet. Add one above.</div>';
 }
 function renderGoalStats(){
-  const a=goalsLive().filter(g=>!g.done&&g.sec==='active'&&g.target>0);
+  const a=goalsLive().filter(g=>!g.done&&g.sec==='active'&&g.target>0&&!g.parentId); // minis excluded — the parent already counts them
   const ahead=a.filter(g=>['Done','Ahead'].includes(paceLabel(g))).length;
   const onTrack=a.filter(g=>paceLabel(g)==='On track').length;
   const lagging=a.filter(g=>['Lagging','Behind'].includes(paceLabel(g))).length;
@@ -2226,21 +2332,24 @@ function renderGoalStats(){
     </div>`;
 }
 function renderGoals(){ renderGoalStats();
-  renderSec(g=>!g.done&&(g.sec||'active')==='active','secActive',true);
-  renderSec(g=>!g.done&&(g.sec||'active')!=='active','secSomeday',false);
-  renderSec(g=>!!g.done,'secCompleted',false);
+  renderSec(g=>!g.done&&(g.sec||'active')==='active'&&!g.parentId,'secActive',true);
+  renderSec(g=>!g.done&&(g.sec||'active')!=='active'&&!g.parentId,'secSomeday',false);
+  renderSec(g=>!!g.done&&!g.parentId,'secCompleted',false);
   renderTrash();
   renderRenounced();
   if(document.getElementById('fGoal')) refreshGoalOptions(); }
 function renderTrash(){
   const el=document.getElementById('secTrash'); if(!el) return;
-  const rows=loadGoals().filter(g=>g.deleted);
+  const all=loadGoals();
+  // Minis whose parent is ALSO trashed ride the parent's row (restore/purge cascades) — no own row.
+  const rows=all.filter(g=>g.deleted && !(g.parentId && all.some(p=>p.id===g.parentId && p.deleted)));
   const wrap=document.getElementById('secTrashWrap'); if(wrap) wrap.hidden = rows.length===0;
   el.innerHTML = rows.map(g=>{
     const when=g.deletedAt? String(g.deletedAt).slice(0,10) : '';
+    const pn=g.parentId ? (all.find(p=>p.id===g.parentId)||{}).name : '';
     return `<div class="catrow" style="opacity:.75">
       <span class="cdot" style="background:${colorFor(g.cat)}"></span>
-      <span class="nm">${iconFor(g.cat)} ${escHtml(g.name)}${when?` <span class="muted-sm">· deleted ${when}</span>`:''}</span>
+      <span class="nm">${iconFor(g.cat)} ${escHtml(g.name)}${pn?` <span class="muted-sm">· mini of ${escHtml(pn)}</span>`:''}${when?` <span class="muted-sm">· deleted ${when}</span>`:''}</span>
       <span style="display:flex;gap:6px;flex-wrap:wrap">
         <button class="btn-sm" onclick="goalRestore('${g.id}')">↩ Restore</button>
         <button class="btn-sm" style="color:#ef4d4d;border-color:#ef4d4d" onclick="goalPurge('${g.id}')">🗑️ Delete forever</button>
@@ -2293,18 +2402,31 @@ window.goalEditStart=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x
   document.getElementById('gCur').value=x.cur; document.getElementById('gTarget').value=x.target;
   document.getElementById('gUnit').value=x.unit; document.getElementById('gStart').value=x.start||''; document.getElementById('gBy').value=x.by||'';
   document.getElementById('gMinPer').value=(x.minPerUnit==null?'':x.minPerUnit); document.getElementById('gUnitLab').textContent=x.unit||'unit';
-  document.getElementById('gSec').value=(x.sec||'active')==='active'?'active':'someday'; document.getElementById('goalFormTitle').textContent='Edit goal';
+  document.getElementById('gSec').value=(x.sec||'active')==='active'?'active':'someday';
+  const mini=!!x.parentId; // minis: cat/unit locked to the parent, no section, no sub-minis
+  document.getElementById('goalFormTitle').textContent=mini?'Edit mini goal':'Edit goal';
+  document.getElementById('gCat').disabled=mini; document.getElementById('gUnit').disabled=mini;
+  document.getElementById('gSecWrap').style.display=mini?'none':'';
+  document.getElementById('gMini').style.display=mini?'none':'';
   document.getElementById('gDelete').style.display='';
   const gd=document.getElementById('gDone'); gd.style.display=''; gd.style.background=x.done?'#64748b':'#16a34a';
   gd.textContent=x.done?'↩ Reopen goal':'✓ Mark complete';
   gd.onclick=()=>{ goalFormReset(); document.getElementById('goalMsg').textContent=''; window.goalToggleDone(id); }; };
 window.goalToggleDone=function(id){ const g=loadGoals(); const x=g.find(o=>o.id===id); if(!x) return;
   x.done=!x.done; saveGoals(g); renderGoals(); if(document.getElementById('entryTable')) renderLog(); };
+// Flip open one card's detail rows (gcard-det); only one card open at a time. Pure DOM — resets on re-render.
+window.goalFlip=function(id){
+  document.querySelectorAll('.gcard-open').forEach(c=>{ if(c.dataset.id!==id){ c.classList.remove('gcard-open'); const d=c.querySelector('.gcard-det'); if(d) d.hidden=true; } });
+  const card=document.querySelector(`.gcard[data-id="${id}"]`); if(!card) return;
+  const open=card.classList.toggle('gcard-open');
+  const d=card.querySelector('.gcard-det'); if(d) d.hidden=!open;
+  const b=card.querySelector('.gdet-btn'); if(b) b.textContent=open?'details ▴':'details ▾';
+};
 window.goalLogShow=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x) return;
   const logs=Array.isArray(x.logs)?x.logs:[];
   document.getElementById('glTitle').textContent=`📜 ${x.name} — log (${logs.length})`;
   document.getElementById('glBody').innerHTML = logs.length ? logs.slice().reverse().map(l=>{
-    const when=(l.ym?l.ym.slice(5)+'/'+l.ym.slice(2,4):'')+(l.period?' '+l.period:'');
+    const when=(l.ym?l.ym.slice(5)+'/'+l.ym.slice(2,4):'')+(l.period?' '+l.period:'')+(l.via?' · via '+escHtml(l.via):'');
     const prev=(+l.total||0)-(+l.amt||0);
     return `<div class="glog-row"><span class="glog-when">${when}</span><span class="glog-mid"><span class="glog-prev">${prev}</span> <span class="glog-amt">${(+l.amt||0)<0?'':'+'}${l.amt}</span></span><span class="glog-tot">→ ${l.total}${x.unit?' '+escHtml(x.unit):''}</span></div>`;
   }).join('') : '<div class="hint">No entries yet.</div>';
@@ -2312,15 +2434,20 @@ window.goalLogShow=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x) 
 function logModalHide(){ document.getElementById('logModal').hidden=true; document.body.style.overflow=''; }
 // Soft-delete: move to Trash. Tracked time entries are KEPT so nothing is lost; restore or purge from the Trash section.
 window.goalDel=function(id){ const g=loadGoals(); const x=g.find(o=>o.id===id); if(!x||!confirm(`Move "${x.name}" to Trash? Its tracked time is kept — you can restore it or delete it forever from the Trash section.`)) return;
-  x.deleted=true; x.deletedAt=new Date().toISOString(); saveGoals(g);
+  x.deleted=true; x.deletedAt=new Date().toISOString();
+  g.forEach(k=>{ if(k.parentId===id){ k.deleted=true; k.deletedAt=x.deletedAt; } }); // minis follow their parent
+  saveGoals(g);
   renderGoals(); if(document.getElementById('entryTable')) renderLog(); };
 window.goalRestore=function(id){ const g=loadGoals(); const x=g.find(o=>o.id===id); if(!x) return;
-  delete x.deleted; delete x.deletedAt; saveGoals(g);
+  delete x.deleted; delete x.deletedAt;
+  g.forEach(k=>{ if(k.parentId===id){ delete k.deleted; delete k.deletedAt; } }); // minis come back with the parent
+  saveGoals(g);
   renderGoals(); if(document.getElementById('entryTable')) renderLog(); };
 // Permanent delete (the old hard-delete): removes the goal AND its tracked time entries.
-window.goalPurge=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x||!confirm(`Permanently delete "${x.name}" and its tracked time entries? This cannot be undone.`)) return;
-  saveGoals(loadGoals().filter(o=>o.id!==id));
-  const ents=loadEntries(), kept=ents.filter(e=>!(e.type==='goal'&&e.goalId===id)); if(kept.length!==ents.length) saveEntries(kept);
+window.goalPurge=function(id){ const all=loadGoals(), x=all.find(o=>o.id===id); if(!x||!confirm(`Permanently delete "${x.name}" and its tracked time entries? This cannot be undone.`)) return;
+  const ids=new Set([id, ...all.filter(k=>k.parentId===id).map(k=>k.id)]); // a parent takes its minis along
+  saveGoals(all.filter(o=>!ids.has(o.id)));
+  const ents=loadEntries(), kept=ents.filter(e=>!(e.type==='goal'&&ids.has(e.goalId))); if(kept.length!==ents.length) saveEntries(kept);
   renderGoals(); if(document.getElementById('entryTable')) renderLog(); };
 
 // ---- view switch ----
@@ -2341,6 +2468,20 @@ const SEED_HABITS=[
 function loadHabits(){ try{ const v=JSON.parse(localStorage.getItem(LS_HABITS)); return Array.isArray(v)?v:SEED_HABITS; }catch(e){ return SEED_HABITS; } }
 function saveHabits(h){ localStorage.setItem(LS_HABITS, JSON.stringify(h)); fbSyncPush(); }
 function groupHabits(flat){ const o=[]; flat.forEach(i=>{ let g=o.find(x=>x.cat===i.cat); if(!g){g={cat:i.cat,items:[]};o.push(g);} g.items.push({n:i.n,m:i.m}); }); return o; }
+
+// ---- Feature toggles (Settings→Personal): hide Screen-time / Planning UI. Data + math untouched. ----
+const LS_FEATURES='ptd_features_v1';
+const SEED_FEATURES={screen:true, planning:true};
+function loadFeatures(){ return {...SEED_FEATURES, ...loadObj(LS_FEATURES,{})}; }
+function saveFeatures(f){ localStorage.setItem(LS_FEATURES, JSON.stringify(f)); fbSyncPush(); applyFeatures(); }
+function applyFeatures(){
+  const f=loadFeatures();
+  const ts=document.querySelector('#typeTabs button[data-t="screen"]'); if(ts) ts.style.display=f.screen?'':'none';
+  const sw=document.getElementById('scrWrap'); if(sw) sw.hidden=!f.screen;
+  if(!f.screen && ts && ts.classList.contains('active')) setLogType('project');
+  const pb=document.querySelector('#viewNav button[data-v="planning"]'); if(pb) pb.style.display=f.planning?'':'none';
+  if(!f.planning && !document.getElementById('viewPlanning').hidden) setView('overview');
+}
 
 // ---- Letter to future self (one object {text, writtenYm}) ----
 const LS_LETTER='ptd_letter_v1';
@@ -2433,7 +2574,7 @@ function planYearTotals(){
     const doneH=srcArr.reduce((a,c)=>a+(agg[c]||0),0)/60;
     const hitems=(HABITS.find(h=>h.cat===k)?.items||[]);
     const habitH=hitems.reduce((a,i)=>a+i.m,0)*pend/60;
-    const gs=goals.filter(g=>srcArr.includes(g.cat) && g.sec==='active' && !g.done).map(g=>{
+    const gs=goals.filter(g=>srcArr.includes(g.cat) && g.sec==='active' && !g.done && !g.parentId).map(g=>{
       const mp=goalMinPer(g); const leftU=Math.max(0,(+g.target||0)-(+g.cur||0));
       return {name:g.name, h: mp>0? leftU*mp/60 : 0, leftU, unit:g.unit||''};
     });
@@ -2450,7 +2591,7 @@ function planYearTotals(){
   // any logged / active-goal / habit category NOT in ALLCATS (e.g. deleted from Settings)
   // still gets a row, so rowsData stays COMPLETE: sum(allocated)==totH and totals reconcile.
   const extraCats=[...new Set([
-    ...goals.filter(g=>g.sec==='active' && !g.done).map(g=>g.cat),
+    ...goals.filter(g=>g.sec==='active' && !g.done && !g.parentId).map(g=>g.cat),
     ...habitItems.map(i=>i.cat),
     ...Object.keys(agg).filter(c=>agg[c]>0),
   ].filter(c=>!usedCats.has(c)))];
@@ -2620,7 +2761,7 @@ function maybeShowLetter(nudge){
 }
 // True when >half of active, targeted goals are Behind/Lagging — the "you're slipping" trigger.
 function mostGoalsBehind(){
-  const a=goalsLive().filter(g=>!g.done && g.sec==='active' && g.target>0);
+  const a=goalsLive().filter(g=>!g.done && g.sec==='active' && g.target>0 && !g.parentId);
   if(a.length<2) return false;
   const off=a.filter(g=>['Behind','Lagging'].includes(paceLabel(g))).length;
   return off > a.length/2;
@@ -2629,6 +2770,7 @@ function setView(v){
   if(v==='audit') v='log';   // Audit folded into Log Data
   if(v==='faq') v='settings'; // FAQ folded into Settings sidebar
   if(v==='pot'){ ovTab='pot'; v='overview'; } // Pot folded into Overview as a sub-tab
+  if(v==='planning' && !loadFeatures().planning) v='overview'; // Planning hidden by feature toggle
   if(!['overview','log','goals','planning','reports','settings'].includes(v)) v='overview';
   document.getElementById('viewOverview').hidden = v!=='overview';
   document.getElementById('viewLog').hidden = v!=='log';
@@ -2718,7 +2860,7 @@ function repSubjEntries(s, es){
 }
 function renderReports(){
   const subs=repSubjects();
-  if(repSel===null) repSel=new Set(['goalsAll','habitsAll']);
+  if(repSel===null) repSel=new Set(); // default = stacked overview only; drill-down adds per-subject charts
   // controls
   const granSel=`<select id="repGranSel" class="repsel">${REP_GRANS.map(([k,l])=>`<option value="${k}" ${k===repGran?'selected':''}>${l}</option>`).join('')}</select>`;
   const order=['Overall','Categories','Goals','Habits'];
@@ -2727,7 +2869,7 @@ function renderReports(){
     return `<div class="repgrp">${grp}</div>`+items.map(s=>
       `<label class="repopt"><input type="checkbox" data-k="${escHtml(s.key)}" ${repSel.has(s.key)?'checked':''}>${s.cat?iconFor(s.cat)+' ':''}${escHtml(s.title)}</label>`).join('');
   }).join('');
-  const subjDrop=`<details class="repdrop" ${repDropOpen?'open':''}><summary>Subjects · ${repSel.size} selected</summary><div class="repdrop-panel">${opts}</div></details>`;
+  const subjDrop=`<details class="repdrop" ${repDropOpen?'open':''}><summary>Drill down · ${repSel.size} selected</summary><div class="repdrop-panel">${opts}</div></details>`;
   const periodNote = repGran==='period' && Object.keys(loadRollup()).length
     ? `<div class="hint" style="margin-top:10px">Period view shows only the last ~3 months — older data is kept as monthly totals (no period detail).</div>` : '';
   document.getElementById('repControls').innerHTML =
@@ -2738,22 +2880,33 @@ function renderReports(){
   const es=loadEntries(), roll=loadRollup();
   const chosen=subs.filter(s=>repSel.has(s.key));
   const samplesByKey={}; chosen.forEach(s=>samplesByKey[s.key]=repSubjSamples(s,es,roll));
+  // main stacked chart sources: one series per category (same subjects as the drawer's Categories group)
+  const cats=subs.filter(s=>s.kind==='cat');
+  const catSamples={}; cats.forEach(s=>catSamples[s.key]=repSubjSamples(s,es,roll));
   const bMap=new Map();
-  Object.values(samplesByKey).forEach(arr=>arr.forEach(x=>{ const b=repBkt(x,repGran); if(b) bMap.set(b.key,b.label); }));
+  [...Object.values(catSamples), ...Object.values(samplesByKey)].forEach(arr=>arr.forEach(x=>{ const b=repBkt(x,repGran); if(b) bMap.set(b.key,b.label); }));
   const buckets=[...bMap].sort((a,b)=>a[0]<b[0]?-1:a[0]>b[0]?1:0).map(([key,label])=>({key,label}));
   const labels=buckets.map(b=>b.label);
+  const sumByBucket=rows=>{ const byB={}; rows.forEach(x=>{ const b=repBkt(x,repGran); if(b) byB[b.key]=(byB[b.key]||0)+(+x.mins||0); }); return buckets.map(b=>+((byB[b.key]||0)/60).toFixed(2)); };
   repCharts.forEach(c=>{try{c.destroy();}catch(_){}}); repCharts=[];
   const grid=document.getElementById('repGrid');
-  if(!chosen.length){ grid.innerHTML=`<div class="card" style="color:var(--muted)">Select at least one subject above.</div>`; }
-  else if(!buckets.length){ grid.innerHTML=`<div class="card" style="color:var(--muted)">No data for this selection yet — log time in the Log Data tab.</div>`; }
+  if(!buckets.length){ grid.innerHTML=`<div class="card" style="color:var(--muted)">No data yet — log time in the Log Data tab.</div>`; }
   else {
-    grid.innerHTML=chosen.map((s,i)=>
+    grid.innerHTML=`<div class="card repcard" style="grid-column:1/-1"><h2 style="font-size:15px;margin:0 0 8px">Time by category</h2><canvas id="repMain" style="max-height:300px"></canvas></div>`
+      + chosen.map((s,i)=>
       `<div class="card repcard"><h2 style="font-size:15px;margin:0">${s.cat?iconFor(s.cat)+' ':''}${escHtml(s.title)}</h2>`
       +`<div class="hint" id="repSub${i}" style="margin-bottom:8px"></div><canvas id="repC${i}"></canvas></div>`).join('');
+    // ONE stacked bar: categories per bucket — the default report
+    const datasets=cats.map(s=>({label:s.title, data:sumByBucket(catSamples[s.key]), backgroundColor:colorFor(s.name)})).filter(d=>d.data.some(v=>v>0));
+    repCharts.push(new Chart(document.getElementById('repMain'),{type:'bar',
+      data:{labels,datasets},
+      options:{animation:false,plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${c.raw} h`}}},
+        scales:{x:{stacked:true,grid:{display:false},ticks:{font:{size:10},autoSkip:false,maxRotation:60}},
+                y:{stacked:true,beginAtZero:true,grid:{color:'#e7ddc8'},ticks:{callback:v=>v+'h'}}}}}));
+    // drill-down per-subject charts (only for subjects ticked in the drawer)
     chosen.forEach((s,i)=>{
-      const rows=samplesByKey[s.key], byB={};
-      rows.forEach(x=>{ const b=repBkt(x,repGran); if(b) byB[b.key]=(byB[b.key]||0)+(+x.mins||0); });
-      const data=buckets.map(b=>+((byB[b.key]||0)/60).toFixed(2));
+      const rows=samplesByKey[s.key];
+      const data=sumByBucket(rows);
       const totH=+(rows.reduce((a,x)=>a+(+x.mins||0),0)/60).toFixed(1);
       document.getElementById('repSub'+i).textContent=`${totH}h total`;
       const col=s.cat?colorFor(s.cat):(s.kind==='goalsAll'?'#4C6EF5':'#8DC63F');
@@ -2835,6 +2988,7 @@ const SYNC_FIELDS=[
   ['habits',  LS_HABITS,  loadHabits,     'replace'],
   ['letter',  LS_LETTER,  loadLetter,     'replace'],
   ['renounced', LS_RENOUNCED, loadRenounced, 'id'],
+  ['features', LS_FEATURES, loadFeatures,   'replace'],
 ];
 function mergeById(loc,cld){ const m=new Map(); (Array.isArray(loc)?loc:[]).forEach(x=>{ if(x&&x.id!=null) m.set(x.id,x); }); (Array.isArray(cld)?cld:[]).forEach(x=>{ if(x&&x.id!=null) m.set(x.id,x); }); return [...m.values()]; }
 function mergeMap(loc,cld){ return {...(loc&&typeof loc==='object'&&!Array.isArray(loc)?loc:{}), ...(cld&&typeof cld==='object'&&!Array.isArray(cld)?cld:{})}; }
@@ -3011,12 +3165,25 @@ function renderPot(boxId){
     <text x="${cx}" y="${cy-1}" text-anchor="middle" font-size="44" font-weight="800" fill="#0e2a52" style="paint-order:stroke;stroke:rgba(255,255,255,.7);stroke-width:5px">${Math.round(fr*100)}%</text>
     <text x="${cx}" y="${cy+24}" text-anchor="middle" font-size="13" font-weight="700" fill="#2b557f" style="paint-order:stroke;stroke:rgba(255,255,255,.7);stroke-width:4px">${fmt(totDone)} / ${fmt(cap)}h</text>
   </svg>`;
-  // ---------- DOT-GRID poster ----------
-  const cols=20,rows=15,N=cols*rows, per=cap/N;
-  const cells=[]; zones.forEach(z=>{ const n=Math.round(z.doneH/per); for(let i=0;i<n;i++) cells.push(z.c); });
-  const cw=11,gap=3, gW=cols*(cw+gap)-gap, gH=rows*(cw+gap)-gap; let gr='';
-  for(let i=0;i<N;i++){ const x=(i%cols)*(cw+gap), y=Math.floor(i/cols)*(cw+gap); gr+=`<rect x="${x}" y="${y}" width="${cw}" height="${cw}" rx="3" fill="${cells[i]||'#e4e9f1'}"/>`; }
-  const dot=`<svg viewBox="0 0 ${gW} ${gH}" width="100%" style="max-width:320px;display:block;margin:0 auto">${gr}</svg>`;
+  // ---------- STONES JAR: one stone per 10-day period (36/yr), coloured by periodVerdict ----------
+  const entsJ=loadEntries(), perDayJ=loadHabits().filter(h=>!h.paused&&!h.done).reduce((a,h)=>a+(+h.m||0),0);
+  const VC={hit:'#16a34a',partial:'#f59e0b',miss:'#ef4444',none:'#9aa3b5'};
+  const stones=[];
+  for(let m=1;m<=12;m++){ const ym=`${yr}-${String(m).padStart(2,'0')}`;
+    ['P1','P2','P3'].forEach(p=>stones.push({t:`${MONTH_NAMES[m-1].slice(0,3)} ${p}`, v:periodVerdict(ym,p,entsJ,perDayJ)})); }
+  const nHit=stones.filter(s=>s.v==='hit').length, nPart=stones.filter(s=>s.v==='partial').length, nMiss=stones.filter(s=>s.v==='miss').length;
+  const placed=stones.filter(s=>s.v!=='future').length;
+  let stSvg=''; // chronological bottom-up: Jan P1 = bottom-left stone
+  stones.forEach((s,i)=>{
+    const row=Math.floor(i/6), col=i%6;
+    const x=45+col*27+(row%2?9:0), y=220-row*21, c=VC[s.v];
+    stSvg+=`<ellipse cx="${x}" cy="${y}" rx="13" ry="10" fill="${c||'#f4efe2'}" stroke="${c?'rgba(0,0,0,.18)':'#d9d1bd'}" stroke-width="1.2"${c?'':' stroke-dasharray="3 3"'}><title>${s.t} — ${s.v}</title></ellipse>`;
+  });
+  const jar=`<svg viewBox="0 0 240 252" width="100%" style="max-width:250px;display:block;margin:0 auto">
+    <path d="M78,14 q-4,24 -32,38 q-18,10 -18,36 v128 q0,28 28,28 h128 q28,0 28,-28 v-128 q0,-26 -18,-36 q-28,-14 -32,-38" fill="#fdfaf1" stroke="#c9c0a9" stroke-width="2.5"/>
+    <rect x="70" y="8" width="100" height="10" rx="5" fill="none" stroke="#c9c0a9" stroke-width="2.5"/>
+    ${stSvg}
+  </svg>`;
   // ---------- legend ----------
   const lrows=zones.slice().sort((a,b)=>b.doneH-a.doneH).map(z=>{ const pct=z.targetH>0?Math.round(z.doneH/z.targetH*100):0;
     return `<tr style="border-bottom:1px solid var(--line)">
@@ -3029,8 +3196,9 @@ function renderPot(boxId){
     <tbody>${lrows}</tbody></table>`;
   box.innerHTML=`
     <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:center;justify-content:center">
-      <div style="flex:1;min-width:240px">${dot}
-        <div style="margin:10px 0 0;font-size:12.5px;font-weight:700;text-align:center;color:var(--ink)">${Math.min(cells.length,N)} / ${N} squares filled · 1 square = ${per.toFixed(1)}h</div></div>
+      <div style="flex:1;min-width:240px">${jar}
+        <div style="margin:10px 0 0;font-size:12.5px;font-weight:700;text-align:center;color:var(--ink)">${placed} / 36 stones in the pot · 1 stone = one 10-day period</div>
+        <div style="margin:4px 0 0;font-size:12px;text-align:center;color:var(--muted)">🟢 ${nHit} hit · 🟡 ${nPart} partway · 🔴 ${nMiss} missed</div></div>
       <div style="flex:0 1 auto">${legend}</div>
       <div style="flex:1;min-width:230px">${orb}</div>
     </div>
@@ -3050,7 +3218,7 @@ function sjStep(target){ // pick units-per-wall so wall count lands in a readabl
 // Data-driven — no hardcoded category, no goal singled out by name.
 function journeyGoals(){
   const goals=(typeof loadGoals==='function')?loadGoals():[];
-  return goals.filter(x=>((x.sec||'active')==='active') && !x.done && !x.deleted && (+x.target>0));
+  return goals.filter(x=>((x.sec||'active')==='active') && !x.done && !x.deleted && !x.parentId && (+x.target>0));
 }
 function journeyScenesHTML(){
   const big=journeyGoals();
@@ -3230,6 +3398,7 @@ function archiveOldEntries(){
   }
 }
 try{ archiveOldEntries(); }catch(e){}
+applyFeatures(); // hide toggled-off sections before first paint
 (function(){ try{ const sv=localStorage.getItem(LS_VIEW); if(sv&&sv!=='overview') setView(sv); }catch(e){} })();
 // ---- Pot popup (shown once per 10-day period on first open — matches the once-per-period ritual, not daily nagging) ----
 function closePotPopup(){ const p=document.getElementById('potPopup'); if(p) p.hidden=true; }
