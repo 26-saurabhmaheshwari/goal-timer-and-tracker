@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <!--
   FILE MAP - grep these exact tags to jump (line numbers drift, names don't)
-  HTML views:   /viewOverview  /viewLog  /viewGoals  /viewPlanning  /viewAudit  /viewPot  /viewReports  /viewTips  /viewSettings  /viewFaq  (each closes with a div comment)
+  HTML views:   /viewOverview (contains ovYear/ovMonthly/ovPot sub-tabs)  /viewLog (+viewAudit below it)  /viewGoals  /viewPlanning  /viewReports  /viewSettings (FAQ = setFaq sidebar section)  (each closes with a div comment)
   JS sections:  "===== LOG VIEW"  "category management (Settings)"  "===== ONLINE / OFFLINE"
                 "===== LIFE BAR"  "===== GOALS"  "===== TIME PLANNING"  "===== AUDIT"  "===== ARCHIVE"
-  Data/state:   LS_GOALS / SEED_GOALS . LS_HABITS / SEED_HABITS / loadHabits / groupHabits . HABIT_COL . LS_ICONS / SEED_ICONS / ICONS / iconFor (category icons, Settings-managed) . LS_TIPS / TIP_SECTIONS / loadTips / renderTips / tipMd
+  Data/state:   LS_GOALS / SEED_GOALS . LS_HABITS / SEED_HABITS / loadHabits / groupHabits . LS_ICONS / SEED_ICONS / ICONS / iconFor (category icons, Settings-managed)
   Sync:         fbBlob (Firestore sync shape) . fb-data listener (incoming sync)
   Key fns:      renderLog . submitProject . refreshHabitOptions . renderPlanning . renderSettings . renderHabitsSettings
 -->
@@ -14,46 +14,61 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Project Time Distribution — 2026</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+// Offline / CDN-blocked fallback: if Chart.js didn't load, stub it so `new Chart(...)`
+// never throws (which would kill the whole page render). Each chart canvas is replaced
+// by a one-line hint; all the numbers/tables below are computed locally and unaffected.
+if(!window.Chart){
+  window.Chart=function(el){
+    try{ if(el&&el.parentElement){ const box=el.closest('.card')||el.parentElement;
+      if(!box.querySelector('.chart-off')){ const d=document.createElement('div');
+        d.className='chart-off'; d.style.cssText='padding:14px;color:var(--muted);font-size:13px;text-align:center';
+        d.textContent='📊 Chart needs an internet connection (Chart.js). Your numbers are unaffected.';
+        el.style.display='none'; el.parentElement.appendChild(d);
+      } } }catch(e){}
+    return {data:{},options:{},update:function(){},resize:function(){},destroy:function(){}};
+  };
+}
+</script>
 <style>
   :root{
-    --spiritual:#4C6EF5;
-    --youth:#8DC63F;
-    --family:#F5A623;
-    --mental:#EF5350;
-    --hobby:#8B2FE0;
-    --career:#B9BFC7;
-    --bg:#f4f6fb;
-    --card:#ffffff;
-    --ink:#1f2733;
-    --muted:#8a93a3;
-    --line:#eef1f6;
+    /* paper & ink theme — warm off-white paper, dark ink, near-monochrome */
+    --accent:#3d5266;      /* ink-blue accent (fountain-pen slate) */
+    --bg:#efe9db;          /* paper */
+    --card:#fbf7ec;        /* lighter paper (cards) */
+    --panel:#f2ecdd;       /* inset panel fill */
+    --ink:#2c2a24;         /* ink text */
+    --ink2:#1c1a14;        /* strong ink (numbers, emphasis) */
+    --muted:#8d8676;       /* faded ink */
+    --line:#e3dccb;        /* pencil hairline */
+    --serif:Georgia,"Iowan Old Style","Palatino Linotype","Times New Roman",serif;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);padding:28px;-webkit-font-smoothing:antialiased}
-  h1{font-size:22px;font-weight:700;letter-spacing:-.3px}
+  h1{font-size:22px;font-weight:700;letter-spacing:-.3px;font-family:var(--serif)}
   .sub{color:var(--muted);font-size:13px;margin-top:2px}
   .wrap{max-width:1280px;margin:0 auto}
   header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:12px}
   #viewNav{flex-basis:100%;order:3;justify-content:center}
-  .tabs{display:flex;flex-wrap:wrap;gap:5px;background:#e8ecf4;padding:5px;border-radius:12px}
+  .tabs{display:flex;flex-wrap:wrap;gap:5px;background:#e7ddc8;padding:5px;border-radius:12px}
   .tabs button{border:0;background:transparent;padding:8px 13px;border-radius:8px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:.15s;white-space:nowrap}
-  .tabs button.active{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(20,30,60,.12)}
+  .tabs button.active{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(70,58,32,.12)}
   .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
-  .kpi{background:var(--card);border-radius:16px;padding:18px 20px;box-shadow:0 1px 4px rgba(20,30,60,.05)}
+  .kpi{background:var(--card);border-radius:16px;padding:18px 20px;box-shadow:0 1px 4px rgba(70,58,32,.05)}
   .kpi .label{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
   .kpi .val{font-size:26px;font-weight:700;margin-top:6px;letter-spacing:-.5px}
   .kpi .delta{font-size:12px;margin-top:4px;font-weight:600}
   .up{color:#16a34a}.down{color:#dc2626}
   .grid{display:grid;grid-template-columns:1.1fr 1fr;gap:16px;margin-bottom:16px}
   .grid3{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-  .card{background:var(--card);border-radius:18px;padding:20px 22px;box-shadow:0 1px 4px rgba(20,30,60,.05)}
-  .card h2{font-size:15px;font-weight:700;margin-bottom:2px}
+  .card{background:var(--card);border-radius:18px;padding:20px 22px;box-shadow:0 1px 4px rgba(70,58,32,.05)}
+  .card h2{font-size:15px;font-weight:700;margin-bottom:2px;font-family:var(--serif)}
   .card .hint{font-size:12px;color:var(--muted);margin-bottom:14px}
   .donutbox{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
   .donutcanvas{position:relative;width:300px;height:300px;flex:0 0 auto}
   .center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
-  .center .big{font-size:34px;font-weight:700;color:#EF5350;letter-spacing:-1px}
-  .center .big span{font-size:16px;font-weight:600;color:#f1948f}
+  .center .big{font-size:34px;font-weight:700;color:var(--ink2);letter-spacing:-1px}
+  .center .big span{font-size:16px;font-weight:600;color:var(--muted)}
   .legend{flex:1;min-width:200px;display:flex;flex-direction:column;gap:8px}
   .lrow{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--line);border-radius:12px}
   .dot{width:9px;height:9px;border-radius:3px;flex:0 0 auto}
@@ -73,18 +88,18 @@
   .ms-table tr:last-child td{border-bottom:none}
   .ms-table .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;vertical-align:middle}
   .pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:6px}
-  .pcol{display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px;background:#f6f8fc;border-radius:14px}
-  .pcol-h{font-size:12px;font-weight:700;color:#1b2440}
+  .pcol{display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px;background:#f2ecdd;border-radius:14px}
+  .pcol-h{font-size:12px;font-weight:700;color:#1c1a14}
   .donutcanvas.sm{width:150px;height:150px}
-  .center .big.sm{font-size:18px;color:#1b2440}
+  .center .big.sm{font-size:18px;color:#1c1a14}
   .ms-table.mini{font-size:11.5px}
   .ms-table.mini td{padding:3px 5px}
   .ms-table.mini .muted{color:var(--muted)}
   .tagnow{font-size:10px;font-weight:700;background:#37b36b;color:#fff;padding:2px 8px;border-radius:20px;vertical-align:middle;margin-left:6px}
   /* NCERT-style gridlined table */
-  .ptbl{border:1.5px solid #c7ced9}
+  .ptbl{border:1.5px solid #cfc6b2}
   .ptbl th,.ptbl td{border:1px solid #d4dae4}
-  .ptbl thead th{background:#eef1f6;border-bottom:1.5px solid #c7ced9;color:#3a4254}
+  .ptbl thead th{background:#e7ddc8;border-bottom:1.5px solid #cfc6b2;color:#4a4536}
   .ptbl tbody td{vertical-align:middle}
   @media(max-width:720px){.pgrid{grid-template-columns:1fr}}
   canvas.chart{width:100%!important;height:280px!important}
@@ -109,37 +124,10 @@
   .lweeks{margin-top:18px;font-size:13px;line-height:1.55;color:#cfd6e4}
   .lweeks b{color:#fff;font-weight:800}
   .lnote{margin-top:12px;font-size:12.5px;font-style:italic;color:#ffd27a;font-weight:600;line-height:1.5}
-  /* 8h discretionary phone-battery */
-  .usagebox{margin-bottom:18px}
-  .batt-hand{font-size:13.5px;font-weight:700;color:var(--ink);margin-bottom:9px}
-  .batt-hand b{font-size:21px;color:#2c7d47;letter-spacing:-.5px}
-  .batt{display:flex;align-items:center;gap:4px}
-  .batt-body{position:relative;flex:1;height:44px;border:3px solid #b9c1cd;border-radius:10px;background:#cdddf7;overflow:hidden}
-  .batt-fill{position:absolute;top:0;left:0;width:100%;height:100%;display:flex}
-  .bseg{height:100%;transition:width .4s;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;letter-spacing:.2px;overflow:hidden;white-space:nowrap}
-  .batt-cells{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(90deg,transparent 0 calc(5% - 2px),rgba(40,50,70,.22) calc(5% - 2px) 5%)}
-  .batt-sq{position:absolute;inset:0;display:grid;grid-template-columns:repeat(90,minmax(0,1fr));gap:2px;padding:3px;align-items:stretch}
-  .batt-sq .zone{display:grid;grid-template-columns:subgrid;gap:2px;border-radius:6px;background:color-mix(in srgb,var(--zc) 13%,#fff);box-shadow:0 0 0 1px rgba(70,80,100,.28),inset 0 0 0 1px color-mix(in srgb,var(--zc) 26%,transparent)}
-  .batt-sq .zone i{min-width:0;border-radius:2px;box-shadow:inset 0 0 0 .5px rgba(255,255,255,.18)}
-  .batt-sq .zone i.empty{background:rgba(255,255,255,.55);box-shadow:inset 0 0 0 1px rgba(40,50,70,.08)}
-  .batt-cap{width:7px;height:22px;background:#b9c1cd;border-radius:0 4px 4px 0}
-  .batt-pro .batt-body{height:38px;border:1px solid rgba(40,50,70,.18);border-radius:11px;background:#eef1f6;box-shadow:inset 0 1px 4px rgba(20,30,60,.14)}
-  .batt-pro .bseg{box-shadow:inset 1px 0 0 rgba(255,255,255,.45)}
-  .batt-pro .bseg:first-child{box-shadow:none}
-  .batt-gloss{position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:linear-gradient(180deg,rgba(255,255,255,.38),rgba(255,255,255,0) 46%)}
-  .ybar-lbl{font-size:11.5px;font-weight:700;color:var(--muted);margin:0 0 6px}
-  /* year battery — diagonal "happening" stripes over the segments */
-  .batt-stripes{position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:repeating-linear-gradient(45deg,rgba(255,255,255,.22) 0 2px,transparent 2px 10px)}
-  .batt-meta{display:flex;gap:18px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);font-weight:600;margin-top:9px}
-  .batt-meta span{display:inline-flex;align-items:center}
-  .batt-meta .ybar-lbl{flex-basis:100%;display:block;margin:0 0 4px;font-weight:600;line-height:1.5}
-  .batt-meta b{margin-left:6px;color:var(--text)}
-  .batt-meta i{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;margin-right:7px;color:#fff;font-size:10.5px;font-weight:800;font-style:normal;letter-spacing:-.2px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25),0 1px 2px rgba(20,30,60,.18)}
-  .batt-meta i.empty{background:#fff;color:#64748b;box-shadow:inset 0 0 0 1px rgba(40,50,70,.20)}
   .insights{margin-top:16px}
   .insights h2{font-size:15px;font-weight:700;margin-bottom:12px}
   .ibox{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-  .icard{background:var(--card);border-radius:16px;padding:16px 18px;box-shadow:0 1px 4px rgba(20,30,60,.05);font-size:13.5px;line-height:1.5;color:#374151;border-left:4px solid var(--spiritual)}
+  .icard{background:var(--card);border-radius:16px;padding:16px 18px;box-shadow:0 1px 4px rgba(70,58,32,.05);font-size:13.5px;line-height:1.5;color:#3a362c;border-left:4px solid var(--accent)}
   .icard b{color:var(--ink)}
   @media(max-width:1100px){.ibox{grid-template-columns:1fr 1fr}}
   @media(max-width:880px){.grid,.ibox{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}}
@@ -148,9 +136,10 @@
   .frow{display:grid;grid-template-columns:1fr 1fr;gap:14px}
   .form label{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:600;color:var(--muted)}
   .form input,.form select{font-size:14px;padding:10px 12px;border:1px solid #dfe4ee;border-radius:10px;background:#fff;color:var(--ink);font-family:inherit}
-  .form input:focus,.form select:focus{outline:none;border-color:var(--spiritual)}
+  .form input:focus,.form select:focus{outline:none;border-color:var(--accent)}
   .time2{display:flex;gap:8px}.time2 input{width:100%}
-  .btn{align-self:flex-start;background:var(--spiritual);color:#fff;border:0;padding:11px 20px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer}
+  .btn{align-self:flex-start;background:var(--accent);color:#fff;border:0;padding:11px 20px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer}
+  .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
   .btn-sm{background:#eef1f8;color:#3a4256;border:1px solid var(--line);padding:7px 13px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer}
   .btn-sm:hover{background:#e2e7f3}
   .btn:hover{filter:brightness(1.05)}
@@ -160,29 +149,29 @@
   .modal-ov{position:fixed;inset:0;z-index:50;background:rgba(15,23,42,.55);backdrop-filter:blur(2px);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow:auto}
   .modal-ov[hidden]{display:none}
   .modal-card{position:relative;width:100%;max-width:520px;margin:auto}
-  .modal-x{position:absolute;top:14px;right:14px;width:30px;height:30px;border:0;border-radius:8px;background:#eef1f6;color:#475569;font-size:15px;cursor:pointer;line-height:1}
+  .modal-x{position:absolute;top:14px;right:14px;width:30px;height:30px;border:0;border-radius:8px;background:#e7ddc8;color:#5c5647;font-size:15px;cursor:pointer;line-height:1}
   .modal-x:hover{background:#e2e6ee}
-  .gmap{background:#f6f8fc;border:1px solid #e4e9f2;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+  .gmap{background:#f2ecdd;border:1px solid #e3dccb;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
   .gmap-lab{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
   .gmap-row{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--ink)}
   .gmap-row input{width:110px}
-  .gmap-row b{color:var(--spiritual)}
+  .gmap-row b{color:var(--accent)}
   .gform-sec{max-width:240px}
   .gform-foot{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:2px}
 .catlist{display:flex;flex-direction:column;gap:8px}
-.catrow{display:flex;align-items:center;gap:10px;padding:8px 12px;background:#f6f8fc;border:1px solid #e4e9f2;border-radius:10px}
+.catrow{display:flex;align-items:center;gap:10px;padding:8px 12px;background:#f2ecdd;border:1px solid #e3dccb;border-radius:10px}
 .catrow .nm{flex:1;font-weight:600;color:var(--ink)}
 .catrow .cdot{width:20px;height:20px;border-radius:6px;flex-shrink:0;border:1px solid rgba(0,0,0,.08)}
-.catrow .cedit{border:0;background:#eef1f6;color:#475569;width:28px;height:28px;border-radius:7px;cursor:pointer;font-size:13px;line-height:1}
+.catrow .cedit{border:0;background:#e7ddc8;color:#5c5647;width:28px;height:28px;border-radius:7px;cursor:pointer;font-size:13px;line-height:1}
 .catrow .cedit:hover{background:#e2e6ee}
   .movnav{display:flex;align-items:center;justify-content:center;gap:18px;margin-bottom:14px}
   .movnav span{font-size:17px;font-weight:700;color:var(--ink);min-width:140px;text-align:center}
   .movnav button{width:34px;height:34px;border-radius:50%;border:1px solid #d4dae4;background:#fff;color:var(--ink);font-size:18px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
-  .movnav button:hover:not(:disabled){background:#eef1f6}
+  .movnav button:hover:not(:disabled){background:#e7ddc8}
   .movnav button:disabled{opacity:.35;cursor:default}
   .periodtabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
   .periodtabs button{border:1px solid #dfe4ee;background:#fff;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer}
-  .periodtabs button.active{background:var(--spiritual);color:#fff;border-color:var(--spiritual)}
+  .periodtabs button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
   .table{display:flex;flex-direction:column;gap:6px;max-height:300px;overflow:auto}
   .trow{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;font-size:13.5px}
   .trow .tt{font-weight:600}.trow .tc{font-size:11px;color:#fff;padding:2px 8px;border-radius:6px;font-weight:600}
@@ -193,13 +182,13 @@
   .gbar{margin:14px 0}
   .gbar .gtop{display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:6px}
   .gbar .gtop b{font-weight:700}.gbar .gtop .gv{color:var(--muted);font-weight:600}
-  .gtrack{height:12px;background:#eef1f6;border-radius:8px;overflow:hidden}
+  .gtrack{height:12px;background:#e7ddc8;border-radius:8px;overflow:hidden}
   .gfill{height:100%;border-radius:8px;transition:width .4s}
   /* named goals */
   .goalrow{display:flex;align-items:center;gap:14px;padding:14px 2px;border-bottom:1px solid var(--line)}
   .goalrow:last-child{border-bottom:0}
   .gup{width:34px;height:34px;border-radius:9px;background:#5cb85c;color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex:0 0 auto;box-shadow:0 1px 3px rgba(0,0,0,.18)}
-  .gup.backlog{background:#d99a2b}.gup.dream{background:#9b59b6}
+  .gup.someday{background:#9b59b6}
   .ginfo{flex:1;min-width:150px}
   .gname{font-size:16px;font-weight:700;color:#2d6cdf}
   .gtar{font-size:12.5px;color:var(--muted);margin-top:2px}
@@ -238,13 +227,13 @@
   .gcard:active{cursor:grabbing}
   .gcard.dragging{opacity:.4;outline:2px dashed var(--gcol,#8a93a3);outline-offset:2px}
   .gcard .gcard-acts button{cursor:pointer}
-  .gcard:hover{box-shadow:0 8px 22px rgba(20,30,60,.14);transform:translateY(-3px)}
+  .gcard:hover{box-shadow:0 8px 22px rgba(70,58,32,.14);transform:translateY(-3px)}
   .gcard-top{display:flex;align-items:center;gap:13px}
   .gring{position:relative;width:62px;height:62px;flex:0 0 auto}
   .gring svg{width:62px;height:62px;transform:rotate(-90deg)}
-  .gring-bg{fill:none;stroke:rgba(20,30,60,.12);stroke-width:8}
-  .gring-fg{fill:none;stroke:#1b2440;stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset .6s}
-  .gring-txt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#1b2440}
+  .gring-bg{fill:none;stroke:rgba(70,58,32,.12);stroke-width:8}
+  .gring-fg{fill:none;stroke:#1c1a14;stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset .6s}
+  .gring-txt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#1c1a14}
   .gcard-head{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;align-items:flex-start}
   .gcard-name{font-size:14px;font-weight:700;color:var(--ink);max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .gcard-sub{font-size:12px;color:var(--muted)}
@@ -252,38 +241,38 @@
   .gcard-det{background:rgba(255,255,255,.55);border-radius:10px;padding:8px 11px;display:flex;flex-direction:column;gap:4px}
   .gd-row{display:flex;justify-content:space-between;gap:10px;font-size:11.5px;line-height:1.3}
   .gd-row span{color:var(--muted);font-weight:600}
-  .gd-row b{color:#1b2440;font-weight:700;text-align:right}
-  .glog-btn{align-self:flex-start;cursor:pointer;font-size:11.5px;font-weight:600;color:var(--muted);background:rgba(255,255,255,.5);border:1px solid rgba(20,30,60,.12);border-radius:6px;padding:3px 8px}
+  .gd-row b{color:#1c1a14;font-weight:700;text-align:right}
+  .glog-btn{align-self:flex-start;cursor:pointer;font-size:11.5px;font-weight:600;color:var(--muted);background:rgba(255,255,255,.5);border:1px solid rgba(70,58,32,.12);border-radius:6px;padding:3px 8px}
   .glog-btn:hover{color:#2d6cdf;border-color:#2d6cdf}
   .glog-body{margin-top:6px;max-height:52vh;overflow:auto;display:flex;flex-direction:column;gap:4px}
-  .glog-row{display:flex;justify-content:space-between;gap:10px;line-height:1.35;padding:5px 10px;background:rgba(20,30,60,.04);border-radius:8px;font-size:13px}
+  .glog-row{display:flex;justify-content:space-between;gap:10px;line-height:1.35;padding:5px 10px;background:rgba(70,58,32,.04);border-radius:8px;font-size:13px}
   .glog-when{color:var(--muted);font-weight:600}
   .glog-mid{white-space:nowrap}
   .glog-prev{color:var(--muted);font-weight:600}
   .glog-amt{color:#16a34a;font-weight:700}
-  .glog-tot{color:#1b2440;font-weight:700;text-align:right}
+  .glog-tot{color:#1c1a14;font-weight:700;text-align:right}
   .gcard-done{opacity:.72}
-  .gcard-foot{display:flex;justify-content:space-between;align-items:center;border-top:1px solid rgba(20,30,60,.09);padding-top:8px;margin-top:auto}
+  .gcard-foot{display:flex;justify-content:space-between;align-items:center;border-top:1px solid rgba(70,58,32,.09);padding-top:8px;margin-top:auto}
   .gcat{font-size:15px;line-height:1}
   .gcard-overdue{animation:gpulse 1.8s ease-in-out infinite}
   @keyframes gpulse{0%,100%{box-shadow:0 0 0 0 rgba(239,77,77,.0);border-color:#ef4d4d}50%{box-shadow:0 0 0 4px rgba(239,77,77,.28);border-color:#ef4d4d}}
-  .obreak{margin-top:12px;padding:10px 12px;background:#f6f8fc;border-radius:10px}
+  .obreak{margin-top:12px;padding:10px 12px;background:#f2ecdd;border-radius:10px}
   .obreak-h{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:6px}
   .orow{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12.5px;padding:3px 0}
-  .orow .op{font-weight:700;color:#1b2440;min-width:54px}
+  .orow .op{font-weight:700;color:#1c1a14;min-width:54px}
   .orow .om{color:var(--muted);flex:1}
-  .orow .ot{font-weight:700;color:#1b2440}
+  .orow .ot{font-weight:700;color:#1c1a14}
   .logsum{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 14px}
-  .logsum .chip{font-size:12px;font-weight:600;background:#f0f3f9;border-radius:999px;padding:5px 11px;color:#1b2440}
-  .logsum .chip b{color:#4C6EF5}
-  .logsum .chip.tot{background:#1b2440;color:#fff}
+  .logsum .chip{font-size:12px;font-weight:600;background:#f2ecdd;border-radius:999px;padding:5px 11px;color:#1c1a14}
+  .logsum .chip b{color:var(--accent)}
+  .logsum .chip.tot{background:#1c1a14;color:#fff}
   .logsum .chip.tot b{color:#9fc1ff}
   [hidden]{display:none!important}
-  .typetabs{display:flex;gap:8px;background:#f0f3f9;padding:5px;border-radius:12px}
+  .typetabs{display:flex;gap:8px;background:#f2ecdd;padding:5px;border-radius:12px}
   .typetabs button{flex:1;border:0;background:transparent;font-size:13px;font-weight:700;color:var(--muted);padding:9px 6px;border-radius:9px;cursor:pointer;font-family:inherit;transition:.15s}
-  .typetabs button.active{background:#fff;color:#1b2440;box-shadow:0 1px 3px rgba(20,30,60,.12)}
+  .typetabs button.active{background:#fff;color:#1c1a14;box-shadow:0 1px 3px rgba(70,58,32,.12)}
   .tgroup{display:flex;flex-direction:column;gap:14px}
-  .chk{flex-direction:row!important;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#1b2440;cursor:pointer}
+  .chk{flex-direction:row!important;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#1c1a14;cursor:pointer}
   .chk input{width:16px;height:16px;flex:0 0 auto}
   .chk .hint{margin:0;font-weight:500}
   .unitlab{align-self:center;font-size:13px;font-weight:600;color:var(--muted);white-space:nowrap}
@@ -293,7 +282,7 @@
   .gwhen{font-size:11.5px;color:var(--muted);font-weight:600}
   .gcard-acts{position:absolute;top:8px;right:8px;display:flex;gap:5px;opacity:0;transition:.15s}
   .gcard:hover .gcard-acts{opacity:1}
-  .gcard-acts button{border:1px solid rgba(20,30,60,.15);background:rgba(255,255,255,.75);width:26px;height:26px;border-radius:50%;cursor:pointer;color:#445;font-size:12px;line-height:1;padding:0}
+  .gcard-acts button{border:1px solid rgba(70,58,32,.15);background:rgba(255,255,255,.75);width:26px;height:26px;border-radius:50%;cursor:pointer;color:#445;font-size:12px;line-height:1;padding:0}
   .gcard-acts button:hover{color:#2d6cdf;border-color:#2d6cdf;background:#fff}
   @media(max-width:980px){.gcards{grid-template-columns:repeat(3,1fr)}}
   @media(max-width:720px){.gcards{grid-template-columns:repeat(2,1fr)}}
@@ -303,7 +292,7 @@
   .tipside{flex:0 0 200px;display:flex;flex-direction:column;gap:6px}
   .tipside button{text-align:left;border:0;background:#eef1f8;padding:11px 14px;border-radius:10px;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer;transition:.15s}
   .tipside button:hover{background:#e2e7f3}
-  .tipside button.active{background:var(--accent,#4C6EF5);color:#fff}
+  .tipside button.active{background:var(--accent,#3d5266);color:#fff}
   .tipmain{flex:1;min-width:0}
   .tipbody{line-height:1.7;font-size:15px;color:#2a3040;white-space:normal}
   .tipbody h3{margin:18px 0 6px;font-size:19px}
@@ -338,7 +327,7 @@
   .repdrop>summary::-webkit-details-marker{display:none}
   .repdrop>summary::after{content:'▾';margin-left:8px;color:var(--muted)}
   .repdrop[open]>summary::after{content:'▴'}
-  .repdrop-panel{position:absolute;z-index:20;margin-top:6px;min-width:240px;max-height:320px;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 28px rgba(20,30,60,.16);padding:8px 12px}
+  .repdrop-panel{position:absolute;z-index:20;margin-top:6px;min-width:240px;max-height:320px;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 28px rgba(70,58,32,.16);padding:8px 12px}
   .repopt{display:flex;align-items:center;gap:8px;padding:5px 4px;font-size:13px;cursor:pointer;border-radius:7px}
   .repopt:hover{background:rgba(127,127,127,.07)}
   .repopt input{cursor:pointer}
@@ -357,6 +346,26 @@
     #pdfReport .pdf-sec{break-inside:auto}
     #pdfReport .card{break-inside:avoid;page-break-inside:avoid}
   }
+  /* --- mobile pass (phones) --- */
+  @media(max-width:640px){
+    body{padding:14px}
+    h1{font-size:19px}
+    .wrap{max-width:100%}
+    /* one-column grids */
+    .grid,.grid3,.pgrid,.ibox,.frow{grid-template-columns:1fr!important}
+    .kpis{grid-template-columns:1fr 1fr!important}
+    /* inline 4-up stat rows (planning / audit) drop to 2-up */
+    [style*="repeat(4,1fr)"]{grid-template-columns:1fr 1fr!important}
+    #repGrid{grid-template-columns:1fr!important}
+    .repcard canvas{max-height:200px}
+    /* 44px tap targets */
+    .tabs button{padding:11px 14px;font-size:14px;min-height:44px}
+    .btn,.btn-sm,.tipside button,.repchip,.repsel,.repdrop>summary{min-height:44px}
+    .form input,.form select{min-height:44px;font-size:16px}
+    /* wide tables scroll instead of clipping (planning card is overflow:hidden) */
+    #viewPlanning .card{overflow-x:auto!important}
+    .modal-ov{padding:16px 8px}
+  }
 </style>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
@@ -374,28 +383,30 @@
   const auth = getAuth(app);
   const db = getFirestore(app);
   const provider = new GoogleAuthProvider();
-  const ALLOWED = ["26.saurabhcalendar@gmail.com"];
-  let uid = null, pushTimer = null;
+  let uid = null, pushTimer = null, pendingData = null;
 
   window.fbSignIn = () => signInWithPopup(auth, provider).catch(e => alert('Sign-in failed: ' + e.message));
   window.fbSignOut = () => signOut(auth);
+  const doPush = () => {
+    if (!uid || !pendingData) return;
+    const data = pendingData; pendingData = null;
+    setDoc(doc(db, 'users', uid), { ...data, updated: Date.now() }).catch(e => console.warn('fb push', e));
+  };
   window.fbPushRaw = (data) => {
     if (!uid) return;
+    pendingData = data;
     clearTimeout(pushTimer);
-    pushTimer = setTimeout(() => {
-      setDoc(doc(db, 'users', uid), { ...data, updated: Date.now() }).catch(e => console.warn('fb push', e));
-    }, 800);
+    pushTimer = setTimeout(doPush, 800);
   };
+  // flush the debounced push if the tab closes/hides within the 800ms window,
+  // otherwise the last edit never reaches Firestore
+  addEventListener('pagehide', doPush);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') doPush(); });
 
   onAuthStateChanged(auth, async (user) => {
     if (user) {
-      if (!ALLOWED.includes((user.email || '').toLowerCase())) {
-        alert('Not authorized: ' + (user.email || 'this account') + ' is not a registered user.');
-        uid = null;
-        document.dispatchEvent(new CustomEvent('fb-auth', { detail: { signedIn: false } }));
-        signOut(auth);
-        return;
-      }
+      // Any Google account may sign in; Firestore Security Rules scope each user to
+      // their own users/{uid} doc, so sign-in is inherently per-account (no hardcoded allowlist).
       uid = user.uid;
       document.dispatchEvent(new CustomEvent('fb-auth', { detail: { email: user.email, signedIn: true } }));
       try {
@@ -422,12 +433,8 @@
       <button data-v="goals">Goals</button>
       <button data-v="planning">Time Planning</button>
       <button data-v="log">Log Data</button>
-      <button data-v="audit">Audit</button>
-      <button data-v="pot">🫙 Pot</button>
       <button data-v="reports">Reports</button>
-      <button data-v="tips">Life Tips</button>
       <button data-v="settings">Settings</button>
-      <button data-v="faq">FAQ</button>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
       <div style="display:flex;align-items:center;gap:10px">
@@ -444,14 +451,30 @@
   <div id="lifeBar" class="lifebar"></div>
 
 <div id="viewOverview">
-  <div class="usagebox" id="kpis" style="margin-bottom:16px"></div>
+  <div id="onboard" class="card" hidden style="border-left:4px solid var(--accent);margin-bottom:16px">
+    <button onclick="onboardDismiss()" class="noprint" style="float:right;background:none;border:none;font-size:20px;line-height:1;cursor:pointer;color:var(--muted)" title="Dismiss">×</button>
+    <h2 style="margin-top:0">Welcome 👋</h2>
+    <div class="hint" style="margin-bottom:10px">A paper-first tracker built around one small ritual: every 10 days, sit down once and log where your time and effort actually went. No timers, no daily nagging.</div>
+    <div style="font-size:14px;line-height:1.8">
+      1. Open <b onclick="setView('settings')" style="cursor:pointer;text-decoration:underline">Settings</b> → set your name and rename the starter categories (Health, Learning, Work…) to fit your life.<br>
+      2. Add a few things you're working toward in <b onclick="setView('goals')" style="cursor:pointer;text-decoration:underline">Goals</b>.<br>
+      3. Every 10 days, come back and log your period. That's the whole habit.
+    </div>
+    <button onclick="onboardDismiss()" class="noprint" style="margin-top:12px">Get started</button>
+  </div>
+  <div id="letterCard" class="card noprint" hidden style="border-left:4px solid var(--accent);margin-bottom:16px">
+    <button onclick="letterDismiss()" style="float:right;background:none;border:none;font-size:20px;line-height:1;cursor:pointer;color:var(--muted)" title="Dismiss for now">×</button>
+    <h2 style="margin-top:0">📮 A note from past you</h2>
+    <div class="hint" id="letterWhen" style="margin-bottom:8px"></div>
+    <div id="letterText" style="font-size:14px;line-height:1.8;white-space:pre-wrap"></div>
+  </div>
   <div class="tabs" id="tabs" style="margin-bottom:18px"></div>
 
   <!-- ===== 2026 (year) ===== -->
   <div id="ovYear">
     <div style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap">
       <div class="card" style="flex:1;min-width:300px;margin:0">
-        <h2>2026 — category split</h2>
+        <h2 id="yearSplitH">2026 — category split</h2>
         <div class="hint">Where your tracked time went this year.</div>
         <div class="donutbox">
           <div class="donutcanvas">
@@ -475,9 +498,64 @@
 
   <!-- ===== Monthly (unique per-month data only) ===== -->
   <div id="ovMonthly" hidden></div>
+
+  <!-- ===== Pot (year-as-a-pot + journey scenes) ===== -->
+  <div id="ovPot" hidden>
+    <div class="card" style="max-width:none">
+      <h2 style="text-align:center">Your year in a pot</h2>
+      <div class="hint" style="text-align:center">Capacity = your yearly hour target. Water = hours you've actually filled, coloured by category.</div>
+      <div id="potBox" style="margin-top:14px"></div>
+    </div>
+    <div class="card" style="max-width:none;margin-top:18px">
+      <h2 style="text-align:center">Journey to the summit</h2>
+      <div class="hint" style="text-align:center">One scene per active goal. Break each wall to walk from where you stand toward the summit.</div>
+      <div id="journeyBox" style="margin-top:14px"></div>
+    </div>
+  </div>
 </div><!-- /viewOverview -->
 
 <div id="viewLog" hidden>
+  <div class="card" style="max-width:none;text-align:center;padding:16px">
+    <button type="button" id="periodEntryBtn" class="btn" style="font-size:15px">📝 Log the whole period</button>
+    <div class="hint" style="margin-top:6px">End-of-period ritual — enter every habit and goal for one 10-day block in a single sitting.</div>
+  </div>
+  <div id="periodModal" class="modal-ov" hidden>
+   <div class="card modal-card" style="max-width:560px">
+    <button type="button" id="peClose" class="modal-x" title="Close">✕</button>
+    <h2>Log the period</h2>
+    <div class="hint">Fill what you did this period, then save once. Amounts add to what's already logged.</div>
+    <div class="frow" style="margin-top:10px">
+      <label>Month <select id="peMonth"></select></label>
+      <label>Period <select id="pePeriod">
+        <option value="P1">Days 1–10</option>
+        <option value="P2">Days 11–20</option>
+        <option value="P3">Days 21–end</option>
+      </select></label>
+    </div>
+    <div id="peBody"></div>
+    <div class="frow noprint" style="margin-top:12px;gap:8px;flex-wrap:wrap;align-items:center">
+      <button type="button" id="pePrint" class="btn ghost" title="Print a blank sheet to fill in by hand over the 10 days">🖨️ Paper sheet</button>
+      <button type="button" id="pePoster" class="btn ghost" title="Print a one-page year grid of all 36 periods for the wall — colour each cell as you go">🎨 Wall poster</button>
+      <button type="button" id="peIcs" class="btn ghost" title="Add a calendar reminder to log this period">📅 Reminder</button>
+      <button type="button" id="peWitness" class="btn ghost" title="Copy a 3-line summary of this period to send to an accountability partner">📋 Witness note</button>
+      <button type="button" id="peSave" class="btn" style="margin-left:auto">Save period</button>
+    </div>
+    <span id="peMsg" class="fmsg"></span>
+   </div>
+  </div>
+  <div id="commitModal" class="modal-ov" hidden>
+   <div class="card modal-card" style="max-width:480px">
+    <button type="button" id="cmtClose" class="modal-x" title="Close">✕</button>
+    <h2>Pledge the next period</h2>
+    <div class="hint" id="cmtSub">One number per goal — what you'll get done next block. Optional. Next period's sheet shows it and the day-10 save scores you against it.</div>
+    <div id="cmtBody" style="margin-top:10px"></div>
+    <div class="frow noprint" style="margin-top:12px;gap:8px;align-items:center">
+      <button type="button" id="cmtSkip" class="btn ghost">Skip</button>
+      <button type="button" id="cmtSave" class="btn" style="margin-left:auto">Save pledge</button>
+    </div>
+    <span id="cmtMsg" class="fmsg"></span>
+   </div>
+  </div>
   <div class="grid">
     <div class="card">
       <h2>Log time</h2>
@@ -595,15 +673,10 @@
     <h2 id="goalFormTitle">Add a goal</h2>
     <div class="hint">Named goal with its own unit, target and deadline. Progress = current ÷ target.</div>
     <form id="goalForm" class="form">
-      <label style="display:flex;flex-direction:row;align-items:center;gap:10px;max-width:none;background:#f5f8fd;padding:11px 13px;border-radius:8px;cursor:pointer"><input type="checkbox" id="gRecurring" style="width:18px;height:18px;flex:none;margin:0"> <span>🔁 Recurring goal — fixed amount per period, target builds up over the year</span></label>
-      <label>Name <input id="gName" placeholder="e.g. N. MAHOTSAV"></label>
+      <label>Name <input id="gName" placeholder="e.g. Read 12 books"></label>
       <div class="frow">
         <label>Category <select id="gCat"></select></label>
-        <label id="gUnitWrap">Unit <input id="gUnit" placeholder="Paath / mala / Minutes"></label>
-      </div>
-      <div class="frow" id="gRecurRow" hidden>
-        <label>Minutes / period <input id="gPerPeriod" type="number" min="0" step="any" placeholder="e.g. 40"></label>
-        <div class="hint" id="gRecurCalc" style="align-self:end;margin:0 0 8px">—</div>
+        <label id="gUnitWrap">Unit <input id="gUnit" placeholder="books / sessions / Minutes"></label>
       </div>
       <div class="frow">
         <label id="gCurWrap"><span id="gCurLab">Current</span> <input id="gCur" type="number" min="0" step="any" placeholder="0"></label>
@@ -620,8 +693,7 @@
       </div>
       <label class="gform-sec" id="gSecWrap">Section <select id="gSec">
         <option value="active">Active goal</option>
-        <option value="backlog">Backlog</option>
-        <option value="dream">Dream</option>
+        <option value="someday">Someday</option>
       </select></label>
       <div class="gform-foot">
         <button type="button" id="gDelete" class="btn" style="background:#ef4444;margin-right:auto;display:none">Delete goal</button>
@@ -662,10 +734,18 @@
    </div>
   </div>
   <div class="card gsec"><h2>Active goals</h2><div id="secActive"></div></div>
-  <div class="card gsec"><h2>🔁 Recurring goals</h2><div class="hint">Per-period commitments that accumulate over the year — caught up like goals, not lapsed like habits.</div><div id="secRecurring"></div></div>
-  <div class="card gsec"><h2>Backlog goals</h2><div class="hint">Things to start later.</div><div id="secBacklog"></div></div>
-  <div class="card gsec"><h2>Dreams</h2><div class="hint">Big aspirations — no deadline pressure.</div><div id="secDream"></div></div>
+  <div class="card gsec"><h2>Someday</h2><div class="hint">Not started yet — things to begin later and big no-deadline aspirations.</div><div id="secSomeday"></div></div>
   <div class="card gsec"><h2>✅ Completed</h2><div class="hint">Marked done. Logged time is kept; reopen any time to keep going.</div><div id="secCompleted"></div></div>
+  <div class="card gsec" id="secTrashWrap" hidden><h2>🗑️ Trash</h2><div class="hint">Deleted goals. Their tracked time is kept until you delete forever. Restore any time.</div><div id="secTrash"></div></div>
+  <div class="card gsec">
+    <h2>🚫 Renounced</h2>
+    <div class="hint">Things you've deliberately said no to, so your time goes to what's above. Saying no on purpose is what makes the yes's real.</div>
+    <form id="renForm" class="frow" style="margin-top:10px;gap:8px;align-items:end">
+      <label style="flex:1">What are you letting go of? <input id="renInput" type="text" placeholder="e.g. doomscrolling after 9pm" maxlength="120"></label>
+      <button type="submit" class="btn">Renounce</button>
+    </form>
+    <div id="renList" style="margin-top:12px"></div>
+  </div>
 </div><!-- /viewGoals -->
 
 <div id="viewPlanning" hidden>
@@ -673,63 +753,12 @@
 </div><!-- /viewPlanning -->
 
 <div id="viewAudit" hidden>
-  <div class="card" style="max-width:none">
+  <div class="card" style="max-width:none;margin-top:20px">
     <h2>Audit — recent entries</h2>
     <div class="hint">Every entry from the last 40 days, grouped by period, and exactly how it affected your goals and planning. A rolling validation log.</div>
     <div id="auditTable" style="margin-top:12px"></div>
   </div>
 </div><!-- /viewAudit -->
-<div id="viewPot" hidden>
-  <div class="card" style="max-width:none">
-    <h2 style="text-align:center">Your year in a pot</h2>
-    <div class="hint" style="text-align:center">Capacity = your yearly hour target. Water = hours you've actually filled, coloured by category.</div>
-    <div id="potBox" style="margin-top:14px"></div>
-  </div>
-  <div class="card" style="max-width:none;margin-top:18px">
-    <h2 style="text-align:center">Journey to Shiva — Life's Big goals</h2>
-    <div class="hint" style="text-align:center">One scene per Life's Big goal. Break each wall to walk from where you stand toward Shiva, meditating in the Himalayas.</div>
-    <div id="shivaBox" style="margin-top:14px"></div>
-  </div>
-</div><!-- /viewPot -->
-<div id="viewFaq" hidden>
-  <div class="card" style="max-width:760px;line-height:1.55">
-    <h2>How the numbers work</h2>
-    <div class="hint">Plain-English definition of every figure on Overview, Pot and Time Planning. All figures recompute live each time you open a page.</div>
-
-    <h3 style="margin:18px 0 6px">Source of truth</h3>
-    <p>Everything is derived from two raw inputs stored on this device (and synced via Firebase):</p>
-    <ul>
-      <li><b>Logged entries</b> — every time-log you record. This is the only source of <b>Done</b> hours.</li>
-      <li><b>Goals &amp; Habits config</b> — your targets and daily habits. This is the only source of <b>To&nbsp;do</b> hours.</li>
-    </ul>
-    <p>There is no separate stored "total". Overview, Pot and Time Planning all call one function (<code>planYearTotals()</code>), so their headline numbers are always identical — change a goal or log time and all three move together.</p>
-
-    <h3 style="margin:18px 0 6px">Done</h3>
-    <p>Sum of every logged entry this year, by category. Counts <b>all</b> logged time regardless of a goal's status — time on <i>backlog</i> or <i>dream</i> goals still adds to Done.</p>
-
-    <h3 style="margin:18px 0 6px">To do (a.k.a. "left")</h3>
-    <p>The forward commitment for the rest of the year:</p>
-    <ul>
-      <li><b>Active goals only</b> (backlog &amp; dream excluded). A normal goal's remaining = <code>(target − current) × minutes-per-unit</code>. A recurring goal = <code>per-period × periods left</code>.</li>
-      <li><b>Daily habits</b> = <code>sum(habit minutes/day) × days left</code> in the year.</li>
-    </ul>
-
-    <h3 style="margin:18px 0 6px">Total / Capacity</h3>
-    <p><code>Total = Done + To&nbsp;do</code>. This is the Pot's capacity and the Overview battery's total. It is <b>not</b> 3h/day × 365 — it reflects your actual plan.</p>
-
-    <h3 style="margin:18px 0 6px">Per period · Per month · Per day</h3>
-    <ul>
-      <li>A <b>period</b> = a third of a month: P1 = days 1–10, P2 = 11–20, P3 = 21–end (~3 periods/month).</li>
-      <li><b>Per period</b> = To&nbsp;do ÷ periods left in the year.</li>
-      <li><b>Per month</b> = To&nbsp;do ÷ months left (days left ÷ 30.44).</li>
-      <li><b>Per day required</b> = To&nbsp;do ÷ days left, shown split as <b>fixed</b> (your daily habits — a constant) + <b>goals</b> (the remainder from active goals).</li>
-    </ul>
-
-    <h3 style="margin:18px 0 6px">Consistency note</h3>
-    <p>Overview (year), Pot and Time Planning share the same source (Time Planning), so Total / Done / To&nbsp;do match exactly across them. The monthly view shows only the category donut + breakdown for each month — actual logged time, no targets.</p>
-  </div>
-</div><!-- /viewFaq -->
-
 <div id="viewReports" hidden>
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
@@ -745,35 +774,13 @@
   <div id="repProgress" style="margin-top:16px"></div>
 </div><!-- /viewReports -->
 
-<div id="viewTips" hidden>
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-      <h2 style="margin:0">Life Tips</h2>
-      <div class="noprint" style="display:flex;gap:8px">
-        <button id="tipEditBtn" class="btn-sm">✎ Edit</button>
-        <button id="tipSaveBtn" class="btn-sm" style="display:none">Save</button>
-        <button id="tipCancelBtn" class="btn-sm" style="display:none">Cancel</button>
-        <button id="tipPdfBtn" class="btn-sm">⤓ Export PDF</button>
-      </div>
-    </div>
-    <div class="hint">Long-form notes &amp; wisdom. Plain text with simple markdown: <code># Heading</code>, <code>## Sub</code>, <code>- bullet</code>. Export PDF prints all sections.</div>
-    <div class="tipswrap" style="margin-top:14px">
-      <div class="tipside noprint" id="tipSide"></div>
-      <div class="tipmain">
-        <div id="tipBody" class="tipbody"></div>
-        <textarea id="tipEdit" style="display:none"></textarea>
-        <div id="tipMsg" class="muted-sm" style="margin-top:6px"></div>
-      </div>
-    </div>
-  </div>
-</div><!-- /viewTips -->
-
 <div id="viewSettings" hidden>
   <div class="tipswrap">
     <div class="tipside" id="setSide">
       <button data-s="personal" class="active">Personal</button>
       <button data-s="cats">Categories</button>
       <button data-s="habits">Habits</button>
+      <button data-s="faq">FAQ</button>
     </div>
     <div class="tipmain">
   <div class="card" id="setPersonal">
@@ -784,12 +791,32 @@
         <label>Name <input id="setName" type="text" placeholder="Your name"></label>
         <label>Date of birth <input id="setDob" type="date"></label>
         <label>Life target (yrs) <input id="setTarget" type="number" min="1" max="150" step="1" style="width:110px"></label>
+        <label>Planning window (days) <input id="setPlanWin" type="number" min="30" max="360" step="10" style="width:130px"></label>
       </div>
+      <div class="hint" style="margin:-6px 0 0">How far ahead the Planning tab looks, in whole 10-day periods (30–360).</div>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:10px"><input id="setLifeBar" type="checkbox" style="width:auto">Show life-progress bar on Overview</label>
+      <div class="hint" style="margin:-4px 0 0">Off by default. A dotted view of your life in years/weeks — turn on only if you find it motivating, not confronting.</div>
       <div class="gform-foot">
         <button type="submit" class="btn">Save</button>
         <span id="personalMsg" class="fmsg"></span>
       </div>
     </form>
+    <h2 style="margin-top:26px">Letter to your future self</h2>
+    <div class="hint">Write once a year, in plain words: what you hope this year adds up to, why it matters. It surfaces on the Overview when you're slipping, and again at year end — a nudge from past you.</div>
+    <div class="form" style="margin-top:12px">
+      <textarea id="setLetter" rows="6" placeholder="Dear future me…" style="width:100%;box-sizing:border-box;resize:vertical"></textarea>
+      <div class="gform-foot" style="margin-top:8px">
+        <button type="button" id="setLetterSave" class="btn">Save letter</button>
+        <span id="letterMsg" class="fmsg"></span>
+      </div>
+    </div>
+    <h2 style="margin-top:26px">Backup</h2>
+    <div class="hint">Export downloads everything (entries, goals, habits, settings) as one JSON file. Import replaces this device's data with the file's contents, then reloads.</div>
+    <div class="frow" style="margin-top:12px">
+      <button type="button" class="btn" id="expBtn">⬇ Export data</button>
+      <button type="button" class="btn" id="impBtn">⬆ Import data</button>
+      <input type="file" id="impFile" accept=".json,application/json" hidden>
+    </div>
   </div>
 
   <div class="card" id="setCats" hidden>
@@ -824,6 +851,44 @@
         <span id="habitMsg" class="fmsg"></span>
       </div>
     </form>
+  </div>
+
+  <div class="card" id="setFaq" hidden style="line-height:1.55">
+    <h2>How the numbers work</h2>
+    <div class="hint">Plain-English definition of every figure on Overview (its year and Pot views) and Time Planning. All figures recompute live each time you open a page.</div>
+
+    <h3 style="margin:18px 0 6px">Source of truth</h3>
+    <p>Everything is derived from two raw inputs stored on this device (and synced via Firebase):</p>
+    <ul>
+      <li><b>Logged entries</b> — every time-log you record. This is the only source of <b>Done</b> hours.</li>
+      <li><b>Goals &amp; Habits config</b> — your targets and daily habits. This is the only source of <b>To&nbsp;do</b> hours.</li>
+    </ul>
+    <p>There is no separate stored "total". Overview, Pot and Time Planning all call one function (<code>planYearTotals()</code>), so their headline numbers are always identical — change a goal or log time and all three move together.</p>
+
+    <h3 style="margin:18px 0 6px">Done</h3>
+    <p>Sum of every logged entry this year, by category. Counts <b>all</b> logged time regardless of a goal's status — time on <i>someday</i> goals still adds to Done.</p>
+
+    <h3 style="margin:18px 0 6px">To do (a.k.a. "left")</h3>
+    <p>The forward commitment for the rest of the year:</p>
+    <ul>
+      <li><b>Active goals only</b> (someday and completed goals excluded). A goal's remaining = <code>(target − current) × minutes-per-unit</code>.</li>
+      <li><b>Daily habits</b> = <code>sum(habit minutes/day) × days left</code> in the year.</li>
+    </ul>
+
+    <h3 style="margin:18px 0 6px">Total / Capacity</h3>
+    <p><code>Total = Done + To&nbsp;do</code>. This is the Pot's capacity. It is <b>not</b> 3h/day × 365 — it reflects your actual plan.</p>
+
+    <h3 style="margin:18px 0 6px">Per period · Per month · Per day</h3>
+    <ul>
+      <li>A <b>period</b> = a third of a month: P1 = days 1–10, P2 = 11–20, P3 = 21–end (~3 periods/month).</li>
+      <li><b>Per period</b> = To&nbsp;do ÷ periods left in the year.</li>
+      <li><b>Per month</b> = To&nbsp;do ÷ months left (days left ÷ 30.44).</li>
+      <li><b>Per day required</b> = To&nbsp;do ÷ days left, shown split as <b>fixed</b> (your daily habits — a constant) + <b>goals</b> (the remainder from active goals).</li>
+    </ul>
+    <p><b>"Days left" always means the real days between today and 31 Dec</b> — that is what every per-period/month/day figure divides by. The <b>planning window</b> you set in Settings (default 210 days) only changes the date strip and "days planned" label on Time Planning; it does <b>not</b> change the pace math.</p>
+
+    <h3 style="margin:18px 0 6px">Consistency note</h3>
+    <p>Overview (year and Pot views) and Time Planning share the same source, so Total / Done / To&nbsp;do match exactly across them. The monthly view shows only the category donut + breakdown for each month — actual logged time, no targets.</p>
   </div>
     </div>
   </div>
@@ -873,16 +938,10 @@
 
 <script>
 // ---- DATA (minutes) ----
-const SEED_COLORS = {Spiritual:'#4C6EF5',Youth:'#8DC63F','SRM Study':'#F5A623',Mental:'#EF5350',Hobby:'#8B2FE0','Career & Finance':'#B9BFC7'};
+const SEED_COLORS = {Health:'#8DC63F',Learning:'#4C6EF5',Work:'#B9BFC7',Relationships:'#EF5350',Creativity:'#8B2FE0'};
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function curYM(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
-const SEED_MONTHS = [
-  {m:'Jan 2026', cats:{Spiritual:900, Youth:690, Family:120}},                 // 28h30m
-  {m:'Feb 2026', cats:{Spiritual:670, Youth:580, Family:100}},                 // 22h30m
-  {m:'Mar 2026', cats:{Spiritual:903, Youth:274, Hobby:100}},                  // 21h17m (Mental merged into Hobby)
-  {m:'Apr 2026', cats:{Spiritual:1027,Youth:591, Family:48}},                  // 27h46m
-  {m:'May 2026', cats:{Spiritual:1634,Youth:995, Family:108, Career:30}},      // 46h07m
-];
+const SEED_MONTHS = []; // blank history for new users; withCurrentMonth() always injects the live month
 const LS_MONTHS = 'ptd_months_v1';
 const CUR_YM = curYM();
 // ensure the real calendar month + any month with raw Log entries are present (dynamic, never persisted)
@@ -900,19 +959,22 @@ let MONTHS = loadMonths();
 // effective category totals: any month with raw Log entries is sourced live from them (cats stay empty);
 // archived months (entries rolled up + purged) fall back to their static cats snapshot.
 function monthCats(M){ const ym=ymOf(M.m); const ec=entryCats(ym); return (ym===CUR_YM || Object.keys(ec).length) ? ec : (M.cats||{}); }
-const SEED_ALLCATS = ['Spiritual','Youth','SRM Study','Career & Finance','Hobby'];
+const SEED_ALLCATS = ['Health','Learning','Work','Relationships','Creativity'];
 const SEED_TASK_CAT = {
-  'ONS':'Spiritual','TDS-SK-Mala':'Spiritual','Bala-AH3':'Spiritual','Vishnu Sahasranam':'Spiritual',
-  'GauPradakshina':'Spiritual','NM-DK':'Spiritual','NMaho':'Spiritual','Sundarkand':'Spiritual',
-  'Walk':'Youth','Rejuvenate':'Youth','Nurture':'Youth','Nails-10Min':'Youth',
-  'SRM-Play':'SRM Study','SRM-20':'SRM Study',
-  'OppurtunityPrep':'Career & Finance','Study':'Career & Finance',
-  'Book Reading':'Hobby','Gardening':'Hobby','Pranav':'Hobby'
+  'Walk':'Health','Workout':'Health',
+  'Reading':'Learning','Course':'Learning',
+  'Deep work':'Work','Admin':'Work',
+  'Family time':'Relationships',
+  'Music':'Creativity','Writing':'Creativity'
 };
 const LS_COLORS='ptd_colors_v1', LS_ALLCATS='ptd_allcats_v1', LS_TASKCAT='ptd_taskcat_v1', LS_ICONS='ptd_icons_v1';
-const SEED_ICONS = {Spiritual:'🕉️',Youth:'💪','SRM Study':'👨‍👩‍👧','Career & Finance':'💼',Hobby:'🎨',Mental:'🧠'};
-function loadObj(k,seed){ try{ const v=JSON.parse(localStorage.getItem(k)); return (v&&typeof v==='object'&&Object.keys(v).length)?v:seed; }catch(e){ return seed; } }
-function loadArr(k,seed){ try{ const v=JSON.parse(localStorage.getItem(k)); return (Array.isArray(v)&&v.length)?v:seed; }catch(e){ return seed; } }
+const SEED_ICONS = {Health:'💪',Learning:'📚',Work:'💼',Relationships:'❤️',Creativity:'🎨'};
+// seed ONLY when the key is absent or unreadable — a saved empty {}/[] is a real user choice
+// (e.g. deleting every default category) and must NOT resurrect the seeds on reload
+function loadObj(k,seed){ try{ const raw=localStorage.getItem(k); if(raw===null) return seed; const v=JSON.parse(raw); return (v&&typeof v==='object'&&!Array.isArray(v))?v:seed; }catch(e){ return seed; } }
+function loadArr(k,seed){ try{ const raw=localStorage.getItem(k); if(raw===null) return seed; const v=JSON.parse(raw); return Array.isArray(v)?v:seed; }catch(e){ return seed; } }
+// escape user text before it goes into innerHTML/attributes (names, units, categories are free text)
+function escHtml(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 let COLORS  = {...SEED_COLORS, ...loadObj(LS_COLORS, {})};
 let ICONS   = {...SEED_ICONS, ...loadObj(LS_ICONS, {})};
 let ALLCATS = loadArr(LS_ALLCATS, SEED_ALLCATS);
@@ -925,11 +987,6 @@ const fmt = m => `${Math.floor(m/60)}h ${m%60}m`;
 const fmtShort = m => { const h=Math.floor(m/60),mm=m%60; return mm? `${h}h ${mm}m`:`${h}h`; };
 const hrs = m => +(m/60).toFixed(2);
 const total = c => Object.values(c).reduce((a,b)=>a+b,0);
-// blue shade by value: highest = darkest, lowest = lightest
-function shadeScale(vals){
-  const mn=Math.min(...vals), mx=Math.max(...vals), span=(mx-mn)||1;
-  return vals.map(v=>{ const t=(v-mn)/span; const L=Math.round(74-t*36); return `hsl(227 89% ${L}%)`; });
-}
 // vivid, distinct hue per bar — purple→blue→teal→green→yellow→orange→red, cycling
 function huePalette(n){ return Array.from({length:n},(_,i)=>{
   const t = n>1 ? i/(n-1) : 0;            // light cyan → deep navy ramp
@@ -939,97 +996,9 @@ function huePalette(n){ return Array.from({length:n},(_,i)=>{
   return `hsl(${h} ${s}% ${l}%)`;
 }); }
 
-// ---- KPIs ----
-function renderKPIs(){
-  document.getElementById('kpis').innerHTML = ''; // Overview year battery removed
-  return;
-  // Year-level 8h/day discretionary budget — honest elapsed-vs-future split.
-  // Elapsed time is split Used / Wasted / Untracked; future days are "still ahead".
-  const onl=loadOnline();
-  let usedH=0, wastedH=0, wasteKnown=false, curUsedH=0, curWastedH=0;
-  MONTHS.forEach(M=>{
-    const ym=ymOf(M.m);
-    const u=total(monthCats(M))/60; usedH+=u;
-    const o=onl[ym]; let wH=0;
-    if(o){ wasteKnown=true; wH=onlineAgg(o).wasteH; wastedH+=wH; }
-    if(ym===CUR_YM){ curUsedH=u; curWastedH=wH; }
-  });
-  const yr=+CUR_YM.slice(0,4), now=new Date();
-  const soY=new Date(yr,0,1), eoY=new Date(yr,11,31);
-  const totalDays=Math.round((eoY-soY)/864e5)+1;               // 365 (or 366)
-  const elapsedDays=Math.min(totalDays, Math.max(1, Math.floor((now-soY)/864e5)+1)); // Jan 1 → today
-  const aheadDays=totalDays-elapsedDays;                        // tomorrow → Dec 31
-  const yearPool=DAILY_H*totalDays;                            // 8h/day × whole year
-  const elapsedPool=DAILY_H*elapsedDays;
-  const aheadPool=DAILY_H*aheadDays;
-  const tracked=usedH+(wasteKnown?wastedH:0);
-  const untracked=Math.max(0, elapsedPool-tracked);           // lived but never logged
-  // ahead + untracked + tracked = yearPool exactly
-  document.getElementById('kpis').innerHTML = yearUsageHTML({
-    yr, yearPool, totalDays, aheadPool, aheadDays, elapsedDays, passedPool:elapsedPool, untracked, used:usedH, wasted:wasteKnown?wastedH:null
-  });
-}
-// Category targets. Each zone fills with coloured cells to its progress vs its own
-// target; the rest stays white (still to do). Targets/capacity now come from
-// planYearTotals() (done + allocated per category) — see rowsData.
-const YTARGETS = [
-  {k:'Spiritual', src:['Spiritual'], h:319,     c:'#4C6EF5'},
-  {k:"Life's Big",src:["Life's Big"],h:123,     c:'#E84393'},
-  {k:'Youth',     src:['Youth'],     pct:40,    c:'#8DC63F'},
-  {k:'SRM Study', src:['SRM Study'],    h:51, c:'#F5A623'},
-  {k:'Career & Finance', src:['Career & Finance'], h:62, c:'#5A49B8'},
-  {k:'Hobby',     src:['Hobby'],     rest:true, c:'#8B2FE0'},
-];
-// Shared capsule battery renderer. zones = [{k,c,doneH,targetH,pct}]; lead = headline string.
-// Used by the Overview year battery (yearUsageHTML), built from planYearTotals().rowsData.
-function capsuleBattery(zones, lead){
-  const fmt=n=>Math.round(n).toLocaleString('en-US');
-  const totT=zones.reduce((a,z)=>a+z.targetH,0);
-  zones=zones.map(z=>({...z, pct: z.pct!=null?z.pct:(totT>0?z.targetH/totT*100:0)}));
-  const shade=(hex,amt)=>{hex=hex.replace('#','');const n=parseInt(hex,16);let r=n>>16,g=(n>>8)&255,b=n&255;const t=amt<0?0:255,p=Math.abs(amt);r=Math.round(r+(t-r)*p);g=Math.round(g+(t-g)*p);b=Math.round(b+(t-b)*p);return `rgb(${r},${g},${b})`;};
-  // allocate cells per zone proportional to its target %, summing to N
-  const N=90;
-  let cnt=zones.map(z=>Math.max(1,Math.round(z.pct/100*N)));
-  let diff=N-cnt.reduce((a,b)=>a+b,0);
-  while(diff!==0){ // nudge the biggest zone to hit N exactly
-    let idx=0;cnt.forEach((v,i)=>{if(diff>0?cnt[i]>cnt[idx]:cnt[i]>1&&cnt[i]>=cnt[idx])idx=i;});
-    cnt[idx]+=diff>0?1:-1; diff+=diff>0?-1:1;
-  }
-  const cells=zones.map((z,zi)=>{
-    const w=cnt[zi];
-    const prog=z.targetH>0?Math.min(1,z.doneH/z.targetH):0;
-    let filled=Math.round(prog*w);
-    if(z.doneH>0&&filled<1) filled=1;       // any progress shows at least one cell
-    if(filled>w) filled=w;
-    let inner='';
-    for(let j=0;j<w;j++){
-      if(j<filled){const f=filled>1?j/(filled-1):0;const amt=0.06-0.30*f;inner+=`<i style="background:${shade(z.c,amt)}"></i>`;}
-      else inner+=`<i class="empty"></i>`;
-    }
-    return `<div class="zone" style="--zc:${z.c};grid-column:span ${w}">${inner}</div>`;
-  }).join('');
-  // integer %s that sum to exactly 100 (largest-remainder) so labels never read 101
-  const dp=zones.map(z=>Math.floor(z.pct));
-  let rem=100-dp.reduce((a,b)=>a+b,0);
-  zones.map((z,i)=>({i,f:z.pct-dp[i]})).sort((a,b)=>b.f-a.f).forEach((o,k)=>{if(k<rem)dp[o.i]++;});
-  const meta=zones.map((z,i)=>`<span><i style="background:${z.c}">${dp[i]}%</i>${z.k} <b>${fmt(z.doneH)}/${fmt(z.targetH)}h</b> · ${fmt(Math.max(0,z.targetH-z.doneH))}h left</span>`).join('');
-  return `<div class="batt batt-pro">
-      <div class="batt-body">
-        <div class="batt-sq">${cells}</div>
-        <div class="batt-gloss"></div>
-      </div>
-      <div class="batt-cap"></div>
-    </div>
-    <div class="batt-meta"><span class="ybar-lbl">${lead}</span>${meta}</div>`;
-}
-function yearUsageHTML(o){
-  const fmt=n=>Math.round(n).toLocaleString('en-US');
-  const P=planYearTotals();
-  const yp=P.yearH; // capacity = Planning year total (logged + to-do), not YBATT_DAILY×days
-  // zones from the SAME planning rows as the lead, so cells + legend reconcile with done/to-do/total
-  const zones=P.rowsData.filter(r=>r.target>0).map(r=>({k:r.k,c:r.color,doneH:r.done,targetH:r.target}));
-  return capsuleBattery(zones, `Your ${o.yr} plan — ${fmt(yp)}h total = ${fmt(P.tot.done)}h done + ${fmt(P.totH)}h to do`);
-}
+// (YTARGETS removed 2026-07 — planning rows now come straight from ALLCATS in planYearTotals();
+// targets are computed from goals+habits, so the hardcoded hour list was dead data.)
+// (capsuleBattery + yearUsageHTML removed 2026-07 — only caller was the retired Overview year battery)
 
 // ---- Year donut (category split across all months) ----
 let yearDonutChart;
@@ -1041,7 +1010,7 @@ function renderYearDonut(){
   const cols=labels.map(l=>COLORS[l]); const tot=data.reduce((a,b)=>a+b,0);
   document.getElementById('yearCenterVal').innerHTML=`${Math.floor(tot/60)}<span>h</span> ${tot%60}<span>m</span>`;
   document.getElementById('yearLegend').innerHTML=entries.map(([n,v])=>
-    `<tr><td><span class="dot" style="background:${COLORS[n]}"></span>${n}</td>
+    `<tr><td><span class="dot" style="background:${COLORS[n]}"></span>${escHtml(n)}</td>
      <td style="text-align:right;font-weight:600">${fmtShort(v)}</td>
      <td style="text-align:right;color:var(--muted)">${Math.round(v/tot*100)}%</td></tr>`).join('');
   const cfg={type:'doughnut',
@@ -1072,7 +1041,7 @@ function donutCfg(cats){
 }
 function legendRows(cats){
   const {labels,data,tot}=catsParts(cats);
-  return labels.map((n,idx)=>`<tr><td><span class="dot" style="background:${COLORS[n]||'#b9c1cd'}"></span>${n}</td>
+  return labels.map((n,idx)=>`<tr><td><span class="dot" style="background:${COLORS[n]||'#b9c1cd'}"></span>${escHtml(n)}</td>
      <td style="text-align:right;font-weight:600">${fmtShort(data[idx])}</td>
      <td style="text-align:right;color:var(--muted)">${tot?Math.round(data[idx]/tot*100):0}%</td></tr>`).join('');
 }
@@ -1121,47 +1090,14 @@ function renderDonut(i){
 }
 window.ovMonthGo=function(d){ current=Math.max(0,Math.min(MONTHS.length-1,current+d)); renderDonut(current); };
 
-// ---- Usage: of 8h/day discretionary time → used / wasted / free ----
-const DAILY_H = 8;
 function ymOf(label){ const [mn,y]=label.split(' '); return `${y}-${String(MONTH_NAMES.indexOf(mn)+1).padStart(2,'0')}`; }
-// Phone-battery: green=used, red=wasted, empty cells=free ("still in your hands"). wasted=null → unknown.
-function usageHTML(pool, used, wasted, label, past){
-  const w = wasted==null?0:wasted;
-  const free = Math.max(0, pool - used - w);
-  const p = v => pool>0 ? Math.round(v/pool*100) : 0;
-  const pw = v => pool>0 ? (v/pool*100) : 0;
-  // free time is "still yours" (blue, hope) while the period is ongoing; once a
-  // month/year is fully past, that unspent time is gone for good → grey.
-  const freeBg = past ? '#c2c9d4' : '#ffe45c';
-  const freeBd = past ? '#a6aebb' : '#e0bd1f';
-  const freeLbl = past ? 'Gone' : 'Still yours';
-  const hand = past
-    ? `📒 <b>${used.toFixed(0)}h</b> tracked of ${pool.toFixed(0)}h · ${free.toFixed(0)}h (${p(free)}%) gone unspent`
-    : `⚡ <b>${free.toFixed(0)}h</b> still in your hands · ${p(free)}% of ${pool.toFixed(0)}h left to spend`;
-  return `<div class="batt-hand">${hand}</div>
-    <div class="batt">
-      <div class="batt-body" style="background:${freeBg}">
-        <div class="batt-fill">
-          <div class="bseg" style="width:${pw(used)}%;background:#37b36b"></div>
-          <div class="bseg" style="width:${pw(w)}%;background:#ef6b5a"></div>
-        </div>
-        <div class="batt-cells"></div>
-      </div>
-      <div class="batt-cap"></div>
-    </div>
-    <div class="batt-meta">
-      <span><i style="background:#37b36b"></i>Used ${used.toFixed(0)}h · ${p(used)}%</span>
-      <span><i style="background:#ef6b5a"></i>Wasted ${wasted==null?'— add online':w.toFixed(0)+'h · '+p(w)+'%'}</span>
-      <span><i style="background:${freeBg};border:1px solid ${freeBd}"></i>${freeLbl} ${free.toFixed(0)}h · ${p(free)}%</span>
-      <span>${label}</span>
-    </div>`;
-}
 
 // ---- Tabs ----
 function renderTabs(){
   const yearBtn = `<button data-o="year" class="${ovTab==='year'?'active':''}">${CUR_YM.slice(0,4)}</button>`;
   const monthlyBtn = `<button data-o="monthly" class="${ovTab==='monthly'?'active':''}">Monthly</button>`;
-  document.getElementById('tabs').innerHTML = yearBtn + monthlyBtn;
+  const potBtn = `<button data-o="pot" class="${ovTab==='pot'?'active':''}">🫙 Pot</button>`;
+  document.getElementById('tabs').innerHTML = yearBtn + monthlyBtn + potBtn;
   document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{
     setOv(b.dataset.o);
     renderTabs();
@@ -1179,68 +1115,11 @@ function renderTotalTrend(){
         backgroundColor:huePalette(MONTHS.length),
         borderRadius:8,maxBarThickness:46}]},
     options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.raw} h`}}},
-      scales:{y:{beginAtZero:true,grid:{color:'#eef1f6'},ticks:{callback:v=>v+'h'}},x:{grid:{display:false}}}}
+      scales:{y:{beginAtZero:true,grid:{color:'#e7ddc8'},ticks:{callback:v=>v+'h'}},x:{grid:{display:false}}}}
   });
 }
 
-// ---- Stacked bar by category ----
-function renderStack(){
-  const MC=MONTHS.map(monthCats);
-  const ds = ALLCATS.map(cat=>({
-    label:cat, backgroundColor:COLORS[cat],
-    data:MC.map(c=>hrs(c[cat]||0)), borderRadius:4, maxBarThickness:46
-  }));
-  new Chart(document.getElementById('stack'),{
-    type:'bar',
-    data:{labels:MONTHS.map(x=>x.m.split(' ')[0]),datasets:ds},
-    options:{plugins:{legend:{position:'bottom',labels:{boxWidth:10,boxHeight:10,usePointStyle:true,pointStyle:'circle',font:{size:11}}},
-      tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${c.raw} h`}}},
-      scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,grid:{color:'#eef1f6'},ticks:{callback:v=>v+'h'}}}}
-  });
-}
-
-// ---- Per-category lines ----
-function renderLines(){
-  const MC=MONTHS.map(monthCats);
-  const ds = ALLCATS.map(cat=>({
-    label:cat, borderColor:COLORS[cat], backgroundColor:COLORS[cat],
-    data:MC.map(c=>c[cat]!=null?hrs(c[cat]):null),
-    spanGaps:true, tension:.35, borderWidth:2.5, pointRadius:3, pointHoverRadius:5
-  }));
-  new Chart(document.getElementById('lines'),{
-    type:'line',
-    data:{labels:MONTHS.map(x=>x.m.split(' ')[0]),datasets:ds},
-    options:{plugins:{legend:{position:'bottom',labels:{boxWidth:10,boxHeight:10,usePointStyle:true,pointStyle:'circle',font:{size:11}}},
-      tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${c.raw} h`}}},
-      scales:{y:{beginAtZero:true,grid:{color:'#eef1f6'},ticks:{callback:v=>v+'h'}},x:{grid:{display:false}}}}
-  });
-}
-
-// ---- Insights (computed) ----
-function renderInsights(){
-  const totals = MONTHS.map(x=>total(x.cats));
-  const grand = totals.reduce((a,b)=>a+b,0);
-  const sp = MONTHS.map(x=>x.cats.Spiritual||0);
-  const yt = MONTHS.map(x=>x.cats.Youth||0);
-  const peak = MONTHS[totals.indexOf(Math.max(...totals))];
-  const low  = MONTHS[totals.indexOf(Math.min(...totals))];
-  const spShare = Math.round(sp.reduce((a,b)=>a+b,0)/grand*100);
-  const ytShare = Math.round(yt.reduce((a,b)=>a+b,0)/grand*100);
-  const mayJump = Math.round((totals.at(-1)-totals.at(-2))/totals.at(-2)*100);
-  const spGrowth = Math.round((sp.at(-1)-sp[0])/sp[0]*100);
-  const firstHalf = (totals[0]+totals[1]+totals[2])/3/60;
-  const secondHalf = (totals[3]+totals[4])/2/60;
-  const li = [
-    `<b>May was peak month</b> at ${fmtShort(total(peak.cats))} — a <b>${mayJump}%</b> jump over April and ~2× the Feb/Mar low.`,
-    `<b>Momentum is building</b> — total time rose two months running, climbing from the Feb/Mar dip (~21h) to <b>${fmtShort(total(peak.cats))}</b> in May.`,
-    `<b>The second half is stronger</b> — Apr–May averaged <b>${secondHalf.toFixed(0)}h</b>/mo vs <b>${firstHalf.toFixed(0)}h</b> across Jan–Mar; a clear step-up.`,
-    `<b>March was an outlier</b> — the only month with Hobby logged, but also your lowest Youth (${fmtShort(Math.min(...yt))}); breadth came at the cost of your #2.`,
-    `<b>High volatility</b> — months swing from ${fmtShort(Math.min(...totals))} to ${fmtShort(Math.max(...totals))}; consistency itself could be a target.`,
-  ];
-  const accents = ['#4C6EF5','#8DC63F','#F5A623','#EF5350','#8B2FE0','#4C6EF5','#8DC63F','#F5A623'];
-  document.getElementById('insights').innerHTML =
-    li.map((x,i)=>`<div class="icard" style="border-left-color:${accents[i%accents.length]}">${x}</div>`).join('');
-}
+// (renderStack / renderLines / renderInsights removed 2026-07 — never called; their canvases don't exist)
 
 // ---- General time tips (overview mini-tips box) ----
 function renderMiniTips(){
@@ -1274,8 +1153,9 @@ function hslToHex(h,s,l){ const a=s*Math.min(l,1-l);
 function colorFor(cat){ if(COLORS[cat])return COLORS[cat];
   let h=0; for(const c of cat) h=(c.charCodeAt(0)+((h<<5)-h))|0;
   return hslToHex(Math.abs(h)%360,0.65,0.55); }
-function ymList(){ // Jun 2026 .. May 2027
-  const out=[]; for(let i=5;i<=16;i++){ const y=2026+Math.floor(i/12), m=i%12; out.push({key:`${y}-${String(m+1).padStart(2,'0')}`, label:`${MONTH_NAMES[m]} ${y}`}); }
+function ymList(){ // rolling 12-month window relative to today: 10 back .. current .. 1 ahead
+  const out=[]; const [cy,cm]=CUR_YM.split('-').map(Number); const base=cy*12+(cm-1);
+  for(let i=-10;i<=1;i++){ const t=base+i, y=Math.floor(t/12), m=t%12; out.push({key:`${y}-${String(m+1).padStart(2,'0')}`, label:`${MONTH_NAMES[m]} ${y}`}); }
   return out;
 }
 function pkey(e){ return `${e.ym}-${e.period}`; }
@@ -1286,6 +1166,7 @@ let logType='project';
 function eid(){ return Date.now()+''+Math.floor(performance.now()); }
 function initLogForm(){
   document.getElementById('fMonth').innerHTML = ymList().map(o=>`<option value="${o.key}">${o.label}</option>`).join('');
+  document.getElementById('fMonth').value = CUR_YM;
   refreshHabitOptions(); refreshGoalOptions();
   document.querySelectorAll('#typeTabs button').forEach(b=>b.onclick=()=>setLogType(b.dataset.t));
   document.getElementById('fGoal').addEventListener('change', syncGoalFields);
@@ -1295,10 +1176,296 @@ function initLogForm(){
   document.getElementById('fHabitExtra').addEventListener('input', habitLogHint);
   document.getElementById('fDevice').addEventListener('change', ()=>{
     document.getElementById('fScrWasteRow').hidden = document.getElementById('fDevice').value!=='laptop'; });
-  document.getElementById('onRedirect').innerHTML = ALLCATS.map(c=>`<option ${c==='Career'?'selected':''}>${c}</option>`).join('');
+  document.getElementById('onRedirect').innerHTML = ALLCATS.map(c=>`<option value="${escHtml(c)}" ${c==='Career'?'selected':''}>${escHtml(c)}</option>`).join('');
   document.getElementById('onRedirect').addEventListener('change', ()=>renderOnline());
   document.getElementById('logForm').addEventListener('submit', onLogSubmit);
+  // --- whole-period bulk entry ---
+  document.getElementById('peMonth').innerHTML = ymList().map(o=>`<option value="${o.key}">${o.label}</option>`).join('');
+  document.getElementById('periodEntryBtn').onclick = openPeriodEntry;
+  document.getElementById('peClose').onclick = ()=>peShow(false);
+  document.getElementById('peSave').onclick = savePeriodEntry;
+  document.getElementById('pePrint').onclick = printPeriodSheet;
+  document.getElementById('pePoster').onclick = printYearPoster;
+  document.getElementById('peIcs').onclick = downloadPeriodIcs;
+  document.getElementById('peWitness').onclick = ()=>copyWitness(document.getElementById('peMonth').value, document.getElementById('pePeriod').value, document.getElementById('peMsg'));
+  document.getElementById('cmtClose').onclick = ()=>cmtShow(false);
+  document.getElementById('cmtSkip').onclick = ()=>cmtShow(false);
+  document.getElementById('cmtSave').onclick = saveCommits;
+  document.getElementById('peMonth').addEventListener('change', renderPeriodEntry);
+  document.getElementById('pePeriod').addEventListener('change', renderPeriodEntry);
   setLogType('project');
+}
+function peShow(on){ document.getElementById('periodModal').hidden=!on; document.body.style.overflow=on?'hidden':''; }
+function openPeriodEntry(){
+  // default month/period to the currently selected log month + period
+  document.getElementById('peMonth').value = document.getElementById('fMonth').value;
+  document.getElementById('pePeriod').value = document.getElementById('fPeriod').value;
+  document.getElementById('peMsg').textContent='';
+  renderPeriodEntry(); peShow(true);
+}
+function renderPeriodEntry(){
+  const ym=document.getElementById('peMonth').value, period=document.getElementById('pePeriod').value;
+  const es=loadEntries().filter(e=>e.ym===ym&&e.period===period);
+  const habits=loadHabits().filter(h=>!h.paused&&!h.done);
+  const goals=goalsLive().filter(g=>(g.sec||'active')==='active' && !g.done);
+  const doneHint=m=>m>0?`<span class="muted-sm">logged ${fmtShort(m)}</span>`:'';
+  const hRows=habits.map((h,i)=>{
+    const already=es.filter(e=>e.type==='project'&&e.task===h.n).reduce((a,e)=>a+e.mins,0);
+    return `<div class="frow" style="align-items:end">
+      <label style="flex:1.4">${habitIcon(h.cat)} ${escHtml(h.n)} <span class="muted-sm">${h.m}m/day</span> ${doneHint(already)}</label>
+      <label>Times <input type="number" min="0" step="1" data-pe-h="${i}" data-min="${+h.m||0}" data-name="${escHtml(h.n)}" data-cat="${escHtml(h.cat||'')}" style="width:70px"></label>
+      <label>+ mins <input type="number" min="0" step="1" data-pe-hx="${i}" style="width:70px"></label>
+    </div>`;
+  }).join('') || '<div class="hint">No active habits.</div>';
+  const gRows=goals.map((g,i)=>{
+    const already=(Array.isArray(g.logs)?g.logs:[]).filter(l=>l.ym===ym&&l.period===period).reduce((a,l)=>a+(+l.amt||0),0);
+    const c=g.commit;
+    let pledge='';
+    if(c && c.ym===ym && c.period===period && +c.amt>0){
+      const hit=already>=+c.amt, mark=already>0?(hit?'✅':'⚠️'):'';
+      pledge=` <span class="muted-sm" title="You pledged this at the last period save" style="color:${hit?'#16a34a':'var(--muted)'}">🎯 pledged ${+c.amt} ${escHtml(g.unit||'')}${mark?` · ${mark}`:''}</span>`;
+    }
+    return `<div class="frow" style="align-items:end">
+      <label style="flex:1.4">${goalIcon(g.cat)} ${escHtml(g.name)} ${already>0?`<span class="muted-sm">+${already} ${escHtml(g.unit||'')} logged</span>`:''}${pledge}</label>
+      <label>Amount <span class="time2"><input type="number" min="0" step="0.1" data-pe-g="${g.id}" style="width:90px"> <span class="unitlab">${escHtml(g.unit||'')}</span></span></label>
+    </div>`;
+  }).join('') || '<div class="hint">No active goals.</div>';
+  document.getElementById('peBody').innerHTML =
+    `<h2 style="font-size:15px;margin:14px 0 4px">Habits</h2>${hRows}
+     <h2 style="font-size:15px;margin:16px 0 4px">Goals</h2>${gRows}`;
+}
+function savePeriodEntry(){
+  const ym=document.getElementById('peMonth').value, period=document.getElementById('pePeriod').value;
+  const body=document.getElementById('peBody');
+  const all=loadEntries(); const goals=loadGoals();
+  let added=0, gTouched=false;
+  // habits
+  body.querySelectorAll('[data-pe-h]').forEach(inp=>{
+    const i=inp.dataset.peH;
+    const perDay=+inp.dataset.min||0;
+    const times=Math.max(0,+inp.value||0);
+    const extra=Math.max(0,+(body.querySelector(`[data-pe-hx="${i}"]`)||{}).value||0);
+    const mins=Math.round(times*perDay+extra);
+    if(mins<=0) return;
+    all.push({id:eid(), ym, period, type:'project', task:inp.dataset.name, cat:inp.dataset.cat, mins, times, extra});
+    added++;
+  });
+  // goals
+  body.querySelectorAll('[data-pe-g]').forEach(inp=>{
+    const amt=+inp.value||0; if(amt<=0) return;
+    const x=goals.find(o=>o.id===inp.dataset.peG); if(!x) return;
+    x.cur=(+x.cur||0)+amt;
+    (x.logs=Array.isArray(x.logs)?x.logs:[]).push({ym, period, amt, total:x.cur});
+    gTouched=true;
+    const mins=goalMins(x,amt);
+    if(mins>0){ all.push({id:eid(), ym, period, type:'goal', goalId:x.id, amt, task:x.name, cat:x.cat, mins}); }
+    added++;
+  });
+  if(!added){ const m=document.getElementById('peMsg'); m.style.color='#dc2626'; m.textContent='Nothing entered — fill at least one row.'; return; }
+  saveEntries(all); if(gTouched) saveGoals(goals);
+  logSel=`${ym}-${period}`;
+  peShow(false);
+  renderLog(); renderGoals();
+  const v=periodVerdict(ym,period);
+  const VW={hit:'🟢 GREEN (hit the plan)',partial:'🟡 AMBER (partway)',miss:'🔴 RED (missed)'};
+  const tail = VW[v] ? ` — colour this cell on your wall poster: ${VW[v]}` : '';
+  flash(`Logged ${added} item${added>1?'s':''} for ${plabel(`${ym}-${period}`)}${tail}`);
+  openCommitStep(ym, period);
+}
+// --- Pledge the NEXT period (goal.commit={ym,period,amt}, rides LS_GOALS) ---
+function cmtShow(on){ document.getElementById('commitModal').hidden=!on; document.body.style.overflow=on?'hidden':''; }
+function openCommitStep(savedYm, savedPeriod){
+  const nx=nextPeriod(savedYm, savedPeriod);
+  const goals=goalsLive().filter(g=>(g.sec||'active')==='active' && !g.done);
+  if(!goals.length){ return; } // nothing to pledge — just skip the step
+  document.getElementById('cmtSub').textContent=`For ${plabel(`${nx.ym}-${nx.period}`)} — one number per goal, what you'll get done. Optional. Its sheet shows the pledge; day-10 scores you against it.`;
+  document.getElementById('cmtBody').innerHTML=goals.map(g=>{
+    const c=g.commit;
+    const pre=(c&&c.ym===nx.ym&&c.period===nx.period)?(+c.amt||''):'';
+    return `<div class="frow" style="align-items:end;margin-bottom:6px">
+      <label style="flex:1.4">${goalIcon(g.cat)} ${escHtml(g.name)}</label>
+      <label>Pledge <span class="time2"><input type="number" min="0" step="0.1" data-cmt-g="${g.id}" value="${pre}" style="width:90px"> <span class="unitlab">${escHtml(g.unit||'')}</span></span></label>
+    </div>`;
+  }).join('');
+  document.getElementById('cmtBody').dataset.ym=nx.ym;
+  document.getElementById('cmtBody').dataset.period=nx.period;
+  document.getElementById('cmtMsg').textContent='';
+  cmtShow(true);
+}
+function saveCommits(){
+  const body=document.getElementById('cmtBody');
+  const ym=body.dataset.ym, period=body.dataset.period;
+  const goals=loadGoals(); let n=0;
+  body.querySelectorAll('[data-cmt-g]').forEach(inp=>{
+    const g=goals.find(o=>o.id===inp.dataset.cmtG); if(!g) return;
+    const amt=+inp.value||0;
+    if(amt>0){ g.commit={ym, period, amt}; n++; }
+    else if(g.commit && g.commit.ym===ym && g.commit.period===period){ delete g.commit; } // cleared
+  });
+  saveGoals(goals);
+  cmtShow(false); renderGoals();
+  flash(n?`Pledged ${n} goal${n>1?'s':''} for ${plabel(`${ym}-${period}`)}`:'No pledge set');
+}
+// --- Paper sheet + calendar reminder for the 10-day period ---
+function periodDays(ym, period){
+  const [y,m]=ym.split('-').map(Number);
+  const last=new Date(y, m, 0).getDate(); // day 0 of next month = last day of this one
+  const r = period==='P1' ? {start:1,end:10} : period==='P2' ? {start:11,end:20} : {start:21,end:last};
+  return {y, m, start:r.start, end:r.end};
+}
+function printPeriodSheet(){
+  const ym=document.getElementById('peMonth').value, period=document.getElementById('pePeriod').value;
+  const pd=periodDays(ym,period);
+  const habits=loadHabits().filter(h=>!h.paused&&!h.done);
+  const goals=goalsLive().filter(g=>(g.sec||'active')==='active'&&!g.done);
+  const days=[]; for(let d=pd.start;d<=pd.end;d++) days.push(d);
+  const hHead=days.map(d=>`<th>${d}</th>`).join('');
+  const hRows=habits.map(h=>`<tr><td class="nm">${escHtml(h.n)} <span class="t">${h.m}m</span></td>${days.map(()=>'<td></td>').join('')}</tr>`).join('')
+    || `<tr><td class="empty" colspan="${days.length+1}">No habits set — add some in Settings.</td></tr>`;
+  const gRows=goals.map(g=>{
+    const c=g.commit, pl=(c&&c.ym===ym&&c.period===period&&+c.amt>0)?` <span class="t">🎯 pledged ${+c.amt}</span>`:'';
+    return `<tr><td class="nm">${escHtml(g.name)}${pl}</td><td class="line"></td><td class="u">${escHtml(g.unit||'')}</td></tr>`;
+  }).join('')
+    || `<tr><td class="empty" colspan="3">No active goals.</td></tr>`;
+  const title=`${ymLabel(ym)} · Days ${pd.start}–${pd.end}`;
+  const html=`<!doctype html><html><head><meta charset="utf-8"><title>${title} — paper sheet</title>
+  <style>
+   *{box-sizing:border-box} body{font:13px/1.4 -apple-system,Segoe UI,Arial,sans-serif;color:#111;margin:28px;background:#fff}
+   h1{font-size:18px;margin:0 0 2px} .sub{color:#555;margin:0 0 16px;font-size:12px}
+   h2{font-size:13px;margin:18px 0 6px;text-transform:uppercase;letter-spacing:.05em;color:#333}
+   table{border-collapse:collapse;width:100%} th,td{border:1px solid #bbb;padding:5px 6px;text-align:center}
+   th{background:#f2f2f2;font-weight:600;font-size:11px} td.nm{text-align:left;white-space:nowrap} td.nm .t{color:#888;font-size:11px}
+   td.line{width:60%} td.u{text-align:left;color:#666;width:80px;white-space:nowrap}
+   .g td{height:26px} .h td{height:24px} td.empty{color:#888;font-style:italic;text-align:left}
+   .foot{margin-top:20px;color:#555;font-size:11px;border-top:1px solid #ddd;padding-top:8px}
+   @media print{ .noprint{display:none} }
+  </style></head><body>
+   <button class="noprint" onclick="window.print()" style="float:right;padding:8px 14px;cursor:pointer">Print</button>
+   <h1>10-day sheet</h1>
+   <p class="sub">${title} · tick each day you did it, write goal amounts as you go.</p>
+   <h2>Habits — daily</h2>
+   <table class="h"><thead><tr><th style="text-align:left">Habit</th>${hHead}</tr></thead><tbody>${hRows}</tbody></table>
+   <h2>Goals — running total this period</h2>
+   <table class="g"><tbody>${gRows}</tbody></table>
+   <p class="foot">On the last day, open the dashboard → <b>Log the whole period</b> → transcribe these once. That's the ritual.</p>
+   <script>window.onload=function(){setTimeout(function(){try{window.print()}catch(e){}},250)}<\/script>
+  </body></html>`;
+  const w=window.open('','_blank');
+  if(!w){ const msg=document.getElementById('peMsg'); msg.style.color='#dc2626'; msg.textContent='Pop-up blocked — allow pop-ups to print the sheet.'; return; }
+  w.document.write(html); w.document.close();
+}
+// Verdict for one period vs the fixed-habit plan. Returns hit/partial/miss for
+// elapsed periods, 'future' for ones not yet finished (no logs), 'none' if no plan.
+// perDay = total habit minutes/day; passed in so the 36-cell poster loop stays cheap.
+function periodVerdict(ym, period, ents, perDay){
+  ents = ents || loadEntries();
+  if(perDay==null) perDay = loadHabits().filter(h=>!h.paused&&!h.done).reduce((a,h)=>a+(+h.m||0),0);
+  const pd=periodDays(ym,period);
+  const key=`${ym}-${period}`;
+  const logged=ents.filter(e=>pkey(e)===key).reduce((a,e)=>a+(+e.mins||0),0);
+  const end=new Date(pd.y, pd.m-1, pd.end, 23,59,59);
+  if(end>new Date() && logged<=0) return 'future';
+  const plan=perDay*(pd.end-pd.start+1);
+  if(plan<=0) return logged>0?'hit':'none';
+  const r=logged/plan;
+  return r>=0.8?'hit':r>=0.4?'partial':'miss';
+}
+// Witness note: a plain-text 3-line summary of a period to copy + send to an accountability
+// partner. Line 1 = period + verdict, line 2 = what got done, line 3 = the next-period pledge.
+function periodWitness(ym, period){
+  const key=`${ym}-${period}`;
+  const V={hit:'🟢 hit the plan', partial:'🟡 partway', miss:'🔴 missed it', future:'⏳ in progress', none:'logged'};
+  const v=periodVerdict(ym, period);
+  const l1=`📮 ${plabel(key)} — ${V[v]||'logged'}`;
+  // what got done: sum goal.logs amounts matching this period
+  const done=[];
+  goalsLive().forEach(g=>{
+    const amt=(Array.isArray(g.logs)?g.logs:[]).filter(r=>r.ym===ym&&r.period===period).reduce((a,r)=>a+(+r.amt||0),0);
+    if(amt>0) done.push(`${g.name} +${+amt.toFixed(2)} ${g.unit||''}`.trim());
+  });
+  const l2=done.length ? done.slice(0,4).join(', ')+(done.length>4?` +${done.length-4} more`:'') : 'No goal progress logged this period.';
+  // next-period pledge
+  const nx=nextPeriod(ym, period);
+  const pledges=[];
+  goalsLive().forEach(g=>{ const c=g.commit; if(c&&c.ym===nx.ym&&c.period===nx.period&&+c.amt>0) pledges.push(`${g.name} ${+c.amt} ${g.unit||''}`.trim()); });
+  const l3=pledges.length ? `Next (${plabel(`${nx.ym}-${nx.period}`)}): `+pledges.slice(0,4).join(', ') : `Next (${plabel(`${nx.ym}-${nx.period}`)}): no pledge yet.`;
+  return `${l1}\n${l2}\n${l3}`;
+}
+async function copyWitness(ym, period, msgEl){
+  const txt=periodWitness(ym, period);
+  try{ await navigator.clipboard.writeText(txt); if(msgEl){ msgEl.style.color='#16a34a'; msgEl.textContent='Witness note copied — paste it to your accountability partner ✓'; } }
+  catch(e){ if(msgEl){ msgEl.style.color='var(--muted)'; msgEl.textContent=txt; } } // clipboard blocked (file://): show it to copy by hand
+}
+// One-page wall poster: 12 months × 3 periods = 36 cells. Elapsed cells are pre-
+// coloured by verdict; future cells print blank to colour in by hand each period.
+function printYearPoster(){
+  const yr=(new Date()).getFullYear();
+  const ents=loadEntries();
+  const perDay=loadHabits().filter(h=>!h.paused&&!h.done).reduce((a,h)=>a+(+h.m||0),0);
+  const COLS=[['P1','1–10'],['P2','11–20'],['P3','21–end']];
+  const VC={hit:'#16a34a',partial:'#f59e0b',miss:'#ef4444'};
+  let rows='';
+  for(let m=1;m<=12;m++){
+    const ym=`${yr}-${String(m).padStart(2,'0')}`;
+    const cells=COLS.map(([p,lab])=>{
+      const v=periodVerdict(ym,p,ents,perDay);
+      const fill=VC[v]||'';
+      const st=fill?`background:${fill};color:#fff;border-color:${fill}`:'';
+      return `<td class="cell"><div class="box" style="${st}"><span class="pl">${lab}</span></div></td>`;
+    }).join('');
+    rows+=`<tr><th class="mo">${MONTH_NAMES[m-1]}</th>${cells}</tr>`;
+  }
+  const html=`<!doctype html><html><head><meta charset="utf-8"><title>${yr} wall poster — 36 periods</title>
+  <style>
+   *{box-sizing:border-box} body{font:13px/1.4 -apple-system,Segoe UI,Arial,sans-serif;color:#111;margin:24px;background:#fff}
+   h1{font-size:20px;margin:0 0 2px} .sub{color:#555;margin:0 0 14px;font-size:12px}
+   table{border-collapse:collapse;width:100%} th.ph{background:#f2f2f2;font-size:11px;text-transform:uppercase;letter-spacing:.05em;padding:6px}
+   th.mo{text-align:left;width:70px;font-weight:600;padding:0 8px} td.cell{padding:4px}
+   .box{border:1.5px solid #999;border-radius:6px;height:52px;position:relative}
+   .box .pl{position:absolute;bottom:3px;right:6px;font-size:10px;color:inherit;opacity:.7}
+   .legend{display:flex;gap:18px;flex-wrap:wrap;margin:16px 0;font-size:12px;align-items:center}
+   .legend span{display:inline-flex;align-items:center;gap:6px} .sw{width:14px;height:14px;border-radius:3px;border:1px solid #999;display:inline-block}
+   .foot{margin-top:14px;color:#555;font-size:11px;border-top:1px solid #ddd;padding-top:8px}
+   @media print{ .noprint{display:none} @page{margin:14mm} }
+  </style></head><body>
+   <button class="noprint" onclick="window.print()" style="float:right;padding:8px 14px;cursor:pointer">Print</button>
+   <h1>${yr} — a year in 36 periods</h1>
+   <p class="sub">One cell per 10-day block. Pin it on the wall. After each period's save, the app tells you the colour — fill the cell in by hand.</p>
+   <div class="legend">
+     <span><i class="sw" style="background:#16a34a"></i> Green — hit the plan</span>
+     <span><i class="sw" style="background:#f59e0b"></i> Amber — got partway</span>
+     <span><i class="sw" style="background:#ef4444"></i> Red — missed</span>
+     <span><i class="sw" style="background:#fff"></i> Blank — still ahead of you</span>
+   </div>
+   <table><thead><tr><th class="mo"></th>${COLS.map(([,lab])=>`<th class="ph">${lab}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>
+   <p class="foot">Filled cells are already scored from what you logged. Colour the rest yourself, one period at a time — that's the ritual.</p>
+   <script>window.onload=function(){setTimeout(function(){try{window.print()}catch(e){}},250)}<\/script>
+  </body></html>`;
+  const w=window.open('','_blank');
+  if(!w){ const msg=document.getElementById('peMsg'); msg.style.color='#dc2626'; msg.textContent='Pop-up blocked — allow pop-ups to print the poster.'; return; }
+  w.document.write(html); w.document.close();
+}
+function downloadPeriodIcs(){
+  const ym=document.getElementById('peMonth').value, period=document.getElementById('pePeriod').value;
+  const pd=periodDays(ym,period), p2=n=>String(n).padStart(2,'0');
+  const day=`${pd.y}${p2(pd.m)}${p2(pd.end)}`;
+  const now=new Date();
+  const stamp=`${now.getUTCFullYear()}${p2(now.getUTCMonth()+1)}${p2(now.getUTCDate())}T${p2(now.getUTCHours())}${p2(now.getUTCMinutes())}${p2(now.getUTCSeconds())}Z`;
+  const title=`Log your period — ${plabel(`${ym}-${period}`)}`;
+  const ics=[
+    'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//time-dashboard//paper-ritual//EN','CALSCALE:GREGORIAN',
+    'BEGIN:VEVENT',`UID:period-${ym}-${period}@time-dashboard`,`DTSTAMP:${stamp}`,
+    `DTSTART:${day}T190000`,`DTEND:${day}T193000`,`SUMMARY:${title}`,
+    'DESCRIPTION:Sit down once and transcribe your 10-day paper sheet into the dashboard.',
+    'BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:Log your 10-day period','TRIGGER:-PT2H','END:VALARM',
+    'END:VEVENT','END:VCALENDAR'
+  ].join('\r\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([ics],{type:'text/calendar'}));
+  a.download=`log-period-${ym}-${period}.ics`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+  const msg=document.getElementById('peMsg'); msg.style.color='#16a34a'; msg.textContent='Reminder downloaded — open the .ics to add it to your calendar.';
 }
 function setLogType(t){
   logType=t;
@@ -1311,11 +1478,11 @@ function setLogType(t){
 }
 function goalIcon(cat){ return iconFor(cat); }
 function refreshGoalOptions(){
-  const g=loadGoals(), cur=document.getElementById('fGoal').value;
-  const opt=x=>`<option value="${x.id}" ${x.id===cur?'selected':''}>${goalIcon(x.cat)} ${x.name}</option>`;
-  const groups=[['active','Active'],['backlog','Backlog'],['dream','Dream']];
+  const g=goalsLive(), cur=document.getElementById('fGoal').value;
+  const opt=x=>`<option value="${x.id}" ${x.id===cur?'selected':''}>${goalIcon(x.cat)} ${escHtml(x.name)}</option>`;
+  const groups=[['active','Active'],['someday','Someday']];
   document.getElementById('fGoal').innerHTML = groups.map(([sec,label])=>{
-    const rows=g.filter(x=>(x.sec||'active')===sec);
+    const rows=g.filter(x=>((x.sec||'active')==='active'?'active':'someday')===sec);
     return rows.length?`<optgroup label="${label}">${rows.map(opt).join('')}</optgroup>`:'';
   }).join('');
   syncGoalFields();
@@ -1363,18 +1530,26 @@ function habitLogHint(){
   const el=document.getElementById('fHabitHint'); if(!el) return;
   el.textContent = (t||e)? `${t} × ${perDay}m${e?` + ${e}m extra`:''} = ${fmtShort(Math.round(t*perDay+e))}` : `${perDay}m required per day`;
 }
+// SINGLE source of truth for bumping a goal's progress. Both progress paths
+// (submitGoal = Log Data tab, addForm = goal card "+") funnel through here so the
+// per-goal log (goal.logs[]) and the tracked-time entry stay in lockstep. If you
+// add a third way to bump goal.cur, call this — don't re-implement it.
+// extraLog = optional fields merged into the log row (addForm passes {d}). Returns tracked mins.
+function addGoalProgress(g, x, amt, ym, period, extraLog){
+  x.cur=(+x.cur||0)+amt;
+  (x.logs=Array.isArray(x.logs)?x.logs:[]).push({...(extraLog||{}), ym, period, amt, total:x.cur});
+  saveGoals(g);
+  const mins=goalMins(x,amt);
+  if(mins>0){ const all=loadEntries(); all.push({id:eid(), ym, period, type:'goal', goalId:x.id, amt, task:x.name, cat:x.cat, mins}); saveEntries(all); logSel=`${ym}-${period}`; }
+  return mins;
+}
 function submitGoal(ym,period){
   const g=loadGoals(), x=g.find(o=>o.id===document.getElementById('fGoal').value);
   const amt=+document.getElementById('fGoalAmt').value||0;
   if(!x){ flash('Pick a goal', true); return; }
   if(amt<=0){ flash('Enter an amount > 0', true); return; }
-  x.cur=(+x.cur||0)+amt;
-  // permanent per-goal history — this is the main path most entries come through
-  (x.logs=Array.isArray(x.logs)?x.logs:[]).push({ym, period, amt, total:x.cur});
-  saveGoals(g);
-  let extra='';
-  const mins=goalMins(x,amt);
-  if(mins>0){ const all=loadEntries(); all.push({id:eid(), ym, period, type:'goal', goalId:x.id, amt, task:x.name, cat:x.cat, mins}); saveEntries(all); logSel=`${ym}-${period}`; extra=` · ${fmtShort(mins)} tracked ✓`; }
+  const mins=addGoalProgress(g, x, amt, ym, period);
+  const extra = mins>0 ? ` · ${fmtShort(mins)} tracked ✓` : '';
   document.getElementById('fGoalAmt').value='';
   flash(`+${amt} ${x.unit||''} → “${x.name}”${extra}`);
   syncGoalFields(); renderGoals(); renderLog();
@@ -1405,13 +1580,13 @@ function refreshCatOptions(){
   const el=document.getElementById('fCat'); if(!el) return;
   const custom=[...new Set(loadEntries().map(e=>e.cat))].filter(c=>!ALLCATS.includes(c));
   const cur=el.value;
-  el.innerHTML=[...ALLCATS,...custom].map(c=>`<option ${c===cur?'selected':''}>${c}</option>`).join('');
+  el.innerHTML=[...ALLCATS,...custom].map(c=>`<option value="${escHtml(c)}" ${c===cur?'selected':''}>${escHtml(c)}</option>`).join('');
 }
 function refreshHabitOptions(){
   const el=document.getElementById('fHabit'); if(!el) return;
-  const cur=el.value, h=loadHabits();
+  const cur=el.value, h=loadHabits().filter(it=>!it.paused&&!it.done); // paused/done not loggable
   el.innerHTML = h.length
-    ? h.map(it=>`<option value="${it.n.replace(/"/g,'&quot;')}" data-cat="${(it.cat||'').replace(/"/g,'&quot;')}" data-min="${+it.m||0}"${it.n===cur?' selected':''}>${habitIcon(it.cat)} ${it.n} · ${it.m}m</option>`).join('')
+    ? h.map(it=>`<option value="${escHtml(it.n)}" data-cat="${escHtml(it.cat||'')}" data-min="${+it.m||0}"${it.n===cur?' selected':''}>${habitIcon(it.cat)} ${escHtml(it.n)} · ${it.m}m</option>`).join('')
     : '<option value="">No habits — add some in Settings</option>';
   if(typeof habitLogHint==='function') habitLogHint();
 }
@@ -1419,15 +1594,15 @@ function refreshHabitOptions(){
 function persistCats(){ localStorage.setItem(LS_ALLCATS, JSON.stringify(ALLCATS)); localStorage.setItem(LS_COLORS, JSON.stringify(COLORS)); localStorage.setItem(LS_ICONS, JSON.stringify(ICONS)); fbSyncPush(); }
 function refreshAllCatPickers(){
   if(document.getElementById('fCat')) refreshCatOptions();
-  ['gCat','onRedirect'].forEach(id=>{ const el=document.getElementById(id); if(el){ const cur=el.value; el.innerHTML=ALLCATS.map(c=>`<option ${c===cur?'selected':''}>${c}</option>`).join(''); } });
+  ['gCat','onRedirect'].forEach(id=>{ const el=document.getElementById(id); if(el){ const cur=el.value; el.innerHTML=ALLCATS.map(c=>`<option value="${escHtml(c)}" ${c===cur?'selected':''}>${escHtml(c)}</option>`).join(''); } });
 }
 function renderSettings(){
   const el=document.getElementById('catList'); if(!el) return;
   const used=new Set(loadEntries().map(e=>e.cat));
-  el.innerHTML = ALLCATS.map(c=>{ const e=c.replace(/'/g,"\\'");
+  el.innerHTML = ALLCATS.map(c=>{ const e=escHtml(c.replace(/'/g,"\\'"));
     return `<div class="catrow">
       <span class="cdot" style="background:${colorFor(c)}"></span>
-      <span class="nm">${iconFor(c)} ${c}</span>
+      <span class="nm">${iconFor(c)} ${escHtml(c)}</span>
       ${used.has(c)?'<span class="muted-sm">in use</span>':''}
       <button class="cedit" title="Edit" onclick="catEditStart('${e}')">✎</button>
     </div>`; }).join('') || '<div class="empty">No categories. Add one below.</div>';
@@ -1440,19 +1615,68 @@ function setSettab(s){
   document.getElementById('setPersonal').hidden = s!=='personal';
   document.getElementById('setCats').hidden = s!=='cats';
   document.getElementById('setHabits').hidden = s!=='habits';
+  document.getElementById('setFaq').hidden = s!=='faq';
   document.querySelectorAll('#setSide button').forEach(b=>b.classList.toggle('active', b.dataset.s===s));
   if(s==='personal') renderPersonalSettings();
 }
-function habitCatOpts(c){ return ALLCATS.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"${x===c?' selected':''}>${x}</option>`).join(''); }
+function habitCatOpts(c){ return ALLCATS.map(x=>`<option value="${escHtml(x)}"${x===c?' selected':''}>${escHtml(x)}</option>`).join(''); }
+// --- habit adherence: "hit plan N of last M periods" (pure derived, no new state) ---
+const HABIT_HIT=0.8;      // logged ≥ 80% of the period plan = a hit
+const ADHERE_WINDOW=6;    // look back this many elapsed periods (~2 months, inside entry retention)
+function prevPeriod(ym, p){
+  const order=['P1','P2','P3'], i=order.indexOf(p);
+  if(i>0) return {ym, period:order[i-1]};
+  let [y,m]=ym.split('-').map(Number); m--; if(m<1){m=12;y--;}
+  return {ym:`${y}-${String(m).padStart(2,'0')}`, period:'P3'};
+}
+function nextPeriod(ym, p){
+  const order=['P1','P2','P3'], i=order.indexOf(p);
+  if(i<2) return {ym, period:order[i+1]};
+  let [y,m]=ym.split('-').map(Number); m++; if(m>12){m=1;y++;}
+  return {ym:`${y}-${String(m).padStart(2,'0')}`, period:'P1'};
+}
+// N of last M elapsed periods where this habit logged ≥80% of its plan.
+// Only counts periods the system was actually in use (has ≥1 entry) so a brand-new habit isn't punished for history it wasn't around for.
+function habitAdherence(name, perDay, M){
+  M=M||ADHERE_WINDOW; perDay=+perDay||0;
+  if(perDay<=0) return {hit:0, of:0};
+  const all=loadEntries();
+  const active=new Set(all.map(pkey));
+  const byKey={};
+  all.forEach(e=>{ if(e.type==='project' && e.task===name) byKey[pkey(e)]=(byKey[pkey(e)]||0)+e.mins; });
+  const now=new Date();
+  let cur=prevPeriod(CUR_YM, periodOfDay(now.getDate())); // start from the last *completed* period
+  let hit=0, of=0;
+  for(let i=0;i<M;i++){
+    const key=`${cur.ym}-${cur.period}`;
+    if(active.has(key)){
+      const pd=periodDays(cur.ym,cur.period), plan=perDay*(pd.end-pd.start+1);
+      if(plan>0){ of++; if((byKey[key]||0) >= HABIT_HIT*plan) hit++; }
+    }
+    cur=prevPeriod(cur.ym,cur.period);
+  }
+  return {hit, of};
+}
+function habitAdhereBadge(it){
+  if(it.done||it.paused) return '';
+  const a=habitAdherence(it.n, it.m);
+  if(!a.of) return '';
+  const good=a.hit/a.of>=HABIT_HIT;
+  return ` <span class="muted-sm" title="Hit ≥80% of plan in ${a.hit} of the last ${a.of} periods" style="color:${good?'#16a34a':'var(--muted)'}">${good?'✓':'•'} ${a.hit}/${a.of} periods</span>`;
+}
 function renderHabitsSettings(){
   const el=document.getElementById('habitList'); if(!el) return;
   const h=loadHabits();
-  el.innerHTML = h.map((it,i)=>`<div class="catrow">
-      <span class="cdot" style="background:${HABIT_COL[it.cat]||colorFor(it.cat)}"></span>
-      <span class="nm">${habitIcon(it.cat)} ${it.n}</span>
-      <span class="muted-sm">${it.cat} · ${it.m}m</span>
+  el.innerHTML = h.map((it,i)=>{
+    const off=it.done||it.paused, badge=it.done?' <span class="muted-sm">✓ done</span>':(it.paused?' <span class="muted-sm">⏸ paused</span>':'');
+    return `<div class="catrow"${off?' style="opacity:.5"':''}>
+      <span class="cdot" style="background:${colorFor(it.cat)}"></span>
+      <span class="nm">${habitIcon(it.cat)} ${escHtml(it.n)}${badge}${habitAdhereBadge(it)}</span>
+      <span class="muted-sm">${escHtml(it.cat)} · ${it.m}m</span>
+      <button class="cedit" title="${it.paused?'Resume':'Pause'}" onclick="habitTogglePause(${i})">${it.paused?'▶':'⏸'}</button>
+      <button class="cedit" title="${it.done?'Reopen':'Mark done'}" onclick="habitToggleDone(${i})">${it.done?'↺':'✓'}</button>
       <button class="cedit" title="Edit" onclick="habitEditStart(${i})">✎</button>
-    </div>`).join('') || '<div class="empty">No habits. Add one below.</div>';
+    </div>`;}).join('') || '<div class="empty">No habits. Add one below.</div>';
   const sel=document.getElementById('newHabitCat'); if(sel) sel.innerHTML=habitCatOpts(sel.value||ALLCATS[0]);
 }
 let habitEditIdx=null;
@@ -1486,6 +1710,14 @@ window.habitDelCurrent=function(){
   if(!document.getElementById('viewPlanning').hidden) renderPlanning();
   habitModalShow(false);
 };
+function habitToggle(i,flag){
+  const h=loadHabits(), it=h[i]; if(!it) return;
+  it[flag]=!it[flag]; if(it[flag]&&flag==='done') it.paused=false; // done clears paused
+  saveHabits(h); renderHabitsSettings(); refreshHabitOptions();
+  if(!document.getElementById('viewPlanning').hidden) renderPlanning();
+}
+window.habitTogglePause=function(i){ habitToggle(i,'paused'); };
+window.habitToggleDone=function(i){ habitToggle(i,'done'); };
 let catEdit=null;
 function catModalShow(on){ document.getElementById('catModal').hidden=!on; document.body.style.overflow=on?'hidden':''; }
 window.catEditStart=function(c){
@@ -1528,7 +1760,7 @@ function refreshTaskOptions(){
   const cat=document.getElementById('fCat').value;
   const base = TASKS.filter(t=>TASK_CAT[t]===cat);
   const custom=[...new Set(loadEntries().filter(e=>e.cat===cat).map(e=>e.task))].filter(t=>!base.includes(t));
-  el.innerHTML=[...base,...custom].map(t=>`<option value="${t.replace(/"/g,'&quot;')}">`).join('');
+  el.innerHTML=[...base,...custom].map(t=>`<option value="${escHtml(t)}">`).join('');
 }
 function deleteEntry(id){
   const all=loadEntries(); const e=all.find(x=>x.id===id);
@@ -1536,7 +1768,10 @@ function deleteEntry(id){
   if(!confirm(`Delete this entry${e.task?` “${e.task}”`:''}? This can't be undone.`)) return;
   if(e && e.type==='goal' && e.goalId && e.amt!=null){ // roll the goal's count back down
     const g=loadGoals(), gx=g.find(o=>o.id===e.goalId);
-    if(gx){ gx.cur=Math.max(0,(+gx.cur||0)-(+e.amt||0)); saveGoals(g); if(document.getElementById('secActive')) renderGoals(); }
+    if(gx){ gx.cur=Math.max(0,(+gx.cur||0)-(+e.amt||0));
+      // rollback rides the same permanent log (negative amt) so the history still reconciles
+      (gx.logs=Array.isArray(gx.logs)?gx.logs:[]).push({ym:e.ym, period:e.period, amt:-(+e.amt||0), total:gx.cur});
+      saveGoals(g); if(document.getElementById('secActive')) renderGoals(); }
   }
   saveEntries(all.filter(x=>x.id!==id)); refreshCatOptions(); renderLog();
 }
@@ -1570,7 +1805,7 @@ function renderLog(){
   const rows = all.filter(e=>pkey(e)===logSel);
   document.getElementById('entryCount').textContent = all.length? `· ${all.length} total` : '';
   document.getElementById('entryTable').innerHTML = rows.length
-    ? rows.map(e=>`<div class="trow"><span class="tt">${e.task}${e.times?` <span style="color:var(--muted);font-size:12px">×${e.times}${e.extra?` +${e.extra}m`:''}</span>`:''}</span>
+    ? rows.map(e=>`<div class="trow"><span class="tt">${escHtml(e.task)}${e.times?` <span style="color:var(--muted);font-size:12px">×${e.times}${e.extra?` +${e.extra}m`:''}</span>`:''}</span>
         <span class="tc" style="background:${colorFor(e.cat)}">${e.cat}</span>
         <span class="tm">${fmtShort(e.mins)}</span>
         <button class="del" onclick="deleteEntry('${e.id}')">✕</button></div>`).join('')
@@ -1597,18 +1832,19 @@ function renderLog(){
     backgroundColor:huePalette(keys.length),
     borderColor:keys.map(k=>k===logSel?'#EF5350':'transparent'),borderWidth:2,borderRadius:8,maxBarThickness:46}]},
     options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.raw} h`}}},
-      scales:{y:{beginAtZero:true,grid:{color:'#eef1f6'},ticks:{callback:v=>v+'h'}},x:{grid:{display:false}}}}};
+      scales:{y:{beginAtZero:true,grid:{color:'#e7ddc8'},ticks:{callback:v=>v+'h'}},x:{grid:{display:false}}}}};
   if(logTrendChart){logTrendChart.data=tcfg.data;logTrendChart.options=tcfg.options;logTrendChart.update();}
   else logTrendChart=new Chart(document.getElementById('logTrend'),tcfg);
 
   renderOnline();
+  try{ renderAudit(); }catch(e){}   // Audit panel now lives at the bottom of Log Data
 }
 
 // ================= ONLINE / OFFLINE =================
 const LS_ONLINE='ptd_online_v1';
 let onSplitChart;
 // May 2026 phone screen-time from the phone usage screenshot: 20h 30m total
-const SEED_ONLINE={'2026-05':{phone:20.5, lap:0, lapWaste:0}};
+const SEED_ONLINE={}; // no demo screen-time; user's own entries populate this
 function loadOnline(){ try{ const v=JSON.parse(localStorage.getItem(LS_ONLINE)); return {...SEED_ONLINE, ...(v||{})}; }catch(e){ return {...SEED_ONLINE}; } }
 function saveOnline(o){ localStorage.setItem(LS_ONLINE, JSON.stringify(o)); fbSyncPush(); }
 function daysIn(ym){ const y=+ym.slice(0,4), m=+ym.slice(5,7); return new Date(y,m,0).getDate(); }
@@ -1654,7 +1890,7 @@ function renderOnline(){
   const sc={type:'bar',data:{labels:['Online (screen)','Offline (logged)'],
     datasets:[{data:[+online.toFixed(1),+offlineH.toFixed(1)],backgroundColor:['#EF5350','#8DC63F'],borderRadius:8,maxBarThickness:80}]},
     options:{indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.raw} h`}}},
-      scales:{x:{beginAtZero:true,grid:{color:'#eef1f6'},ticks:{callback:v=>v+'h'}},y:{grid:{display:false}}}}};
+      scales:{x:{beginAtZero:true,grid:{color:'#e7ddc8'},ticks:{callback:v=>v+'h'}},y:{grid:{display:false}}}}};
   if(onSplitChart){onSplitChart.data=sc.data;onSplitChart.update();} else onSplitChart=new Chart(document.getElementById('onSplit'),sc);
 
   // what-if
@@ -1683,9 +1919,10 @@ function onlinePeriodBreakdown(d){
 }
 
 // ================= LIFE BAR =================
-const LS_DOB='ptd_dob_v1', LS_NAME='ptd_name_v1', LS_TARGET='ptd_target_v1';
+const LS_DOB='ptd_dob_v1', LS_NAME='ptd_name_v1', LS_TARGET='ptd_target_v1', LS_LIFEBAR='ptd_lifebar_v1';
+let SHOW_LIFEBAR = localStorage.getItem(LS_LIFEBAR)==='1'; // opt-in: the life-progress bar is hidden unless the user turns it on
 let LIFE_TARGET = Math.min(150, Math.max(1, +localStorage.getItem(LS_TARGET) || 80));
-function loadDob(){ return localStorage.getItem(LS_DOB) || '1990-01-26'; }
+function loadDob(){ return localStorage.getItem(LS_DOB) || '1990-01-01'; }
 function loadName(){ return localStorage.getItem(LS_NAME) || ''; }
 function lifeColor(t){ // green -> yellow(.55) -> red, same stops as the old bar
   const g=[55,179,107], y=[245,196,81], r=[239,107,90];
@@ -1695,6 +1932,7 @@ function lifeColor(t){ // green -> yellow(.55) -> red, same stops as the old bar
 }
 function renderLifeBar(){
   const el=document.getElementById('lifeBar'); if(!el) return;
+  if(!SHOW_LIFEBAR){ el.hidden=true; el.innerHTML=''; return; } // opt-in
   const dob=loadDob(); const [y,m,da]=dob.split('-').map(Number);
   const birth=new Date(y,m-1,da), now=new Date();
   const yrs=(now-birth)/(365.25*24*3600*1000);
@@ -1728,6 +1966,7 @@ function renderLifeBar(){
     <div class="lchips">
       <span><b>${birthdays}</b> birthdays left</span>
       <span><b>${months.toLocaleString()}</b> months left</span>
+      <span><b>${Math.max(0,Math.round(leftDays/10)).toLocaleString()}</b> ten-day periods left</span>
       <span><b>${leftWeeks.toLocaleString()}</b> weekends left</span>
       <span><b>${leftDays.toLocaleString()}</b> days left</span>
       <span><b>~${parentVisits.toLocaleString()}</b> weekends left with your parents</span>
@@ -1750,6 +1989,9 @@ function renderPersonalSettings(){
   const n=document.getElementById('setName'), d=document.getElementById('setDob'), t=document.getElementById('setTarget');
   if(!n) return;
   n.value=loadName(); d.value=loadDob(); t.value=LIFE_TARGET;
+  const w=document.getElementById('setPlanWin'); if(w) w.value=PLAN_WINDOW_DAYS;
+  const lb=document.getElementById('setLifeBar'); if(lb) lb.checked=SHOW_LIFEBAR;
+  const lt=document.getElementById('setLetter'); if(lt) lt.value=loadLetter().text||'';
 }
 function savePersonal(e){
   e.preventDefault();
@@ -1761,27 +2003,27 @@ function savePersonal(e){
   if(!target){ msg.textContent='Enter a valid life target.'; msg.style.color='#ef4444'; return; }
   localStorage.setItem(LS_NAME, name); localStorage.setItem(LS_DOB, dob); localStorage.setItem(LS_TARGET, String(target));
   LIFE_TARGET=target;
-  renderLifeBar(); fbSyncPush();
+  SHOW_LIFEBAR=!!document.getElementById('setLifeBar').checked; localStorage.setItem(LS_LIFEBAR, SHOW_LIFEBAR?'1':'0');
+  setPlanWindow(+document.getElementById('setPlanWin').value); // persists + re-renders planning
+  renderLifeBar(); fbSyncPush(); // setView re-gates lifeBar visibility on next nav to Overview
   msg.textContent='Saved ✓'; msg.style.color='#34a853';
   setTimeout(()=>{ msg.textContent=''; }, 2000);
 }
 
 // ================= GOALS (named, with units + deadline) =================
-const LS_GOALS='ptd_goals2_v1', LS_VIEW='ptd_view_v1';
+const LS_GOALS='ptd_goals2_v1', LS_VIEW='ptd_view_v1', LS_ONBOARDED='ptd_onboarded_v1';
+const SEED_YR=CUR_YM.slice(0,4); // neutral starter goals span the current year, not a hardcoded one
 const SEED_GOALS=[
-  {id:'g1',name:'N. MAHOTSAV',     cat:'Spiritual',cur:590, target:1250, unit:'Paath',     start:'2026-01-01',by:'2026-09-01',sec:'active'},
-  {id:'g2',name:'ONS-7100',        cat:'Spiritual',cur:2163,target:7100, unit:'mala',      start:'2026-01-01',by:'2026-12-31',sec:'active'},
-  {id:'g3',name:'NM - Devi Kavach',cat:'Spiritual',cur:62,  target:121,  unit:'Paath',     start:'2026-01-01',by:'2026-12-31',sec:'active'},
-  {id:'g4',name:'Sundarkand',      cat:'Spiritual',cur:4,   target:75,   unit:'Paath',     start:'2026-01-01',by:'2026-12-31',sec:'active'},
-  {id:'g5',name:'Gau Pradakshina', cat:'Spiritual',cur:52,  target:12500,unit:'Parikramas',start:'2026-01-01',by:'2026-12-31',sec:'active'},
-  {id:'g6',name:'Walk-51',         cat:'Youth',    cur:230, target:3060, unit:'Minutes',   start:'2026-01-01',by:'2026-12-31',sec:'active'},
-  {id:'g7',name:'Rejuvenate-51',   cat:'Youth',    cur:15,  target:3060, unit:'Minutes',   start:'2026-01-01',by:'2026-12-31',sec:'active'},
-  {id:'g8',name:'Study-51',        cat:'Career & Finance',cur:30,target:3060,unit:'Minutes',start:'2026-01-01',by:'2026-12-31',sec:'active'},
+  {id:'g1',name:'Read 12 books',      cat:'Learning',  cur:0,target:12,  unit:'books',    start:SEED_YR+'-01-01',by:SEED_YR+'-12-31',sec:'active'},
+  {id:'g2',name:'Exercise regularly', cat:'Health',    cur:0,target:3600,unit:'Minutes',  start:SEED_YR+'-01-01',by:SEED_YR+'-12-31',sec:'active'},
+  {id:'g3',name:'Learn a new skill',  cat:'Creativity',cur:0,target:100, unit:'sessions', start:SEED_YR+'-01-01',by:SEED_YR+'-12-31',sec:'someday'},
 ];
 // pace colour: blue=ahead, green=on track, orange=lagging, red=behind
 function expFrac(x){ if(!x.by) return null; const end=new Date(x.by+'T00:00:00'); const start=new Date(((x.start)||((end.getFullYear())+'-01-01'))+'T00:00:00'); const now=new Date(); if(now<=start) return 0; if(now>=end) return 1; return (now-start)/(end-start); }
 let goalEdit=null;
 function loadGoals(){ try{ const v=JSON.parse(localStorage.getItem(LS_GOALS)); return Array.isArray(v)?v:SEED_GOALS; }catch(e){ return SEED_GOALS; } }
+// Goals minus the Trash. Every DISPLAY/MATH path uses this; save/lookup paths keep using loadGoals() so trashed goals survive round-trips.
+function goalsLive(){ return loadGoals().filter(g=>!g.deleted); }
 function saveGoals(g){ localStorage.setItem(LS_GOALS, JSON.stringify(g)); fbSyncPush(); }
 function fmtBy(by){ if(!by) return ''; const d=new Date(by+'T00:00:00'); return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
 function monthsUntil(by){ if(!by) return null; const d=new Date(by+'T00:00:00'), now=new Date(); let m=(d.getFullYear()-now.getFullYear())*12+(d.getMonth()-now.getMonth()); if(d.getDate()<now.getDate())m--; return m; }
@@ -1794,34 +2036,30 @@ function paceHint(x){ // "~N/day needed" to finish by deadline
   const per=(x.target-x.cur)/dl;
   return per>=1 ? `~${Math.ceil(per)}/day to finish` : `~${Math.ceil(per*7)}/wk to finish`;
 }
-function goalFormShow(on){ document.getElementById('goalModal').hidden=!on; document.body.style.overflow=on?'hidden':''; }
-function goalRecurUpdate(){
-  const on=document.getElementById('gRecurring').checked;
-  document.getElementById('gRecurRow').hidden=!on;
-  // recurring derives target/unit/mapping/section — hide those fields entirely
-  ['gUnitWrap','gTargetWrap','gMapWrap','gSecWrap'].forEach(id=>document.getElementById(id).style.display=on?'none':'');
-  document.getElementById('gCurLab').textContent=on?'Done so far (min)':'Current';
-  if(!on){ document.getElementById('gRecurCalc').textContent='—'; return; }
-  const pp=+document.getElementById('gPerPeriod').value||0;
-  const ex=goalEdit?loadGoals().find(x=>x.id===goalEdit):null;
-  const now=new Date(), pl=(ex&&ex.recurPeriods)?ex.recurPeriods:periodsLeft(now,now.getFullYear());
-  document.getElementById('gRecurCalc').textContent=`= ${pl} periods × ${pp} min = ${pp*pl} min total target`;
+// ≈ how many 10-day periods to finish AT THE OBSERVED PACE so far (cur over days since start).
+// null when there isn't enough signal (not started, no start date, already done).
+function goalPeriodsToFinish(x){
+  if(x.done || x.target<=0 || (+x.cur||0)<=0 || x.cur>=x.target || !x.start) return null;
+  const start=new Date(x.start+'T00:00:00'), now=new Date();
+  const days=(now-start)/86400000;
+  if(days<1) return null;
+  const perDay=(+x.cur||0)/days; if(perDay<=0) return null;
+  return Math.max(1, Math.ceil(((x.target-x.cur)/perDay)/10));
 }
-function goalFormReset(){ goalEdit=null; document.getElementById('goalForm').reset(); document.getElementById('gUnitLab').textContent='unit'; document.getElementById('goalFormTitle').textContent='Add a goal'; document.getElementById('gDelete').style.display='none'; document.getElementById('gDone').style.display='none'; goalRecurUpdate(); goalFormShow(false); }
+function goalFormShow(on){ document.getElementById('goalModal').hidden=!on; document.body.style.overflow=on?'hidden':''; }
+function goalFormReset(){ goalEdit=null; document.getElementById('goalForm').reset(); document.getElementById('gUnitLab').textContent='unit'; document.getElementById('goalFormTitle').textContent='Add a goal'; document.getElementById('gDelete').style.display='none'; document.getElementById('gDone').style.display='none'; goalFormShow(false); }
 function initGoals(){
   const gv=document.getElementById('viewGoals');
   gv.addEventListener('dragstart',goalDragStart);
   gv.addEventListener('dragend',goalDragEnd);
   gv.addEventListener('dragover',goalDragOver);
   gv.addEventListener('drop',goalDrop);
-  document.getElementById('gCat').innerHTML = ALLCATS.map(c=>`<option>${c}</option>`).join('');
-  document.getElementById('goalCreateBtn').onclick=()=>{ goalEdit=null; document.getElementById('goalForm').reset(); document.getElementById('gUnitLab').textContent='unit'; document.getElementById('goalFormTitle').textContent='Add a goal'; document.getElementById('gDelete').style.display='none'; document.getElementById('gDone').style.display='none'; document.getElementById('goalMsg').textContent=''; goalRecurUpdate(); goalFormShow(true); };
+  document.getElementById('gCat').innerHTML = ALLCATS.map(c=>`<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');
+  document.getElementById('goalCreateBtn').onclick=()=>{ goalEdit=null; document.getElementById('goalForm').reset(); document.getElementById('gUnitLab').textContent='unit'; document.getElementById('goalFormTitle').textContent='Add a goal'; document.getElementById('gDelete').style.display='none'; document.getElementById('gDone').style.display='none'; document.getElementById('goalMsg').textContent=''; goalFormShow(true); };
   document.getElementById('gCancel').onclick=()=>{ goalFormReset(); document.getElementById('goalMsg').textContent=''; };
   document.getElementById('gClose').onclick=()=>{ goalFormReset(); document.getElementById('goalMsg').textContent=''; };
   document.getElementById('goalModal').onclick=(e)=>{ if(e.target.id==='goalModal'){ goalFormReset(); document.getElementById('goalMsg').textContent=''; } };
   document.getElementById('gDelete').onclick=()=>{ if(goalEdit){ const id=goalEdit; goalFormReset(); window.goalDel(id); } };
-  document.getElementById('gRecurring').addEventListener('change', goalRecurUpdate);
-  document.getElementById('gPerPeriod').addEventListener('input', goalRecurUpdate);
   document.getElementById('gUnit').addEventListener('input', ()=>{
     const u=document.getElementById('gUnit').value.trim();
     document.getElementById('gUnitLab').textContent = u||'unit';
@@ -1840,33 +2078,17 @@ function initGoals(){
     const amt=Math.floor(+document.getElementById('aAmt').value||0); if(amt<=0) return;
     const d=document.getElementById('aDate').value||''; if(!d) return;
     const ym=d.slice(0,7), period=periodOfDay(+d.slice(8,10));
-    x.cur=(+x.cur||0)+amt;
-    // permanent per-goal history: amount added, which period, resulting total (never purged; gone only when goal deleted)
-    (x.logs=Array.isArray(x.logs)?x.logs:[]).push({d, ym, period, amt, total:x.cur});
-    saveGoals(g);
-    const mins=goalMins(x,amt);
-    if(mins>0){ const all=loadEntries(); all.push({id:eid(), ym, period, type:'goal', goalId:x.id, amt, task:x.name, cat:x.cat, mins}); saveEntries(all); logSel=`${ym}-${period}`; }
+    addGoalProgress(g, x, amt, ym, period, {d});
     addFormShow(false); renderGoals(); if(document.getElementById('entryTable')) renderLog();
   });
   document.getElementById('goalForm').addEventListener('submit', e=>{
     e.preventDefault();
     const name=document.getElementById('gName').value.trim(); if(!name) return;
     const mpRaw=document.getElementById('gMinPer').value;
-    const recurring=document.getElementById('gRecurring').checked;
     const o={ name, cat:document.getElementById('gCat').value,
       cur:+document.getElementById('gCur').value||0, target:+document.getElementById('gTarget').value||0,
       unit:document.getElementById('gUnit').value.trim(), start:document.getElementById('gStart').value, by:document.getElementById('gBy').value,
-      sec:document.getElementById('gSec').value, minPerUnit: mpRaw===''?null:(+mpRaw||0), recurring:false };
-    if(recurring){
-      const pp=+document.getElementById('gPerPeriod').value||0;
-      const now=new Date(), yr=now.getFullYear();
-      const existing=goalEdit?loadGoals().find(x=>x.id===goalEdit):null;
-      const pl=(existing&&existing.recurPeriods)?existing.recurPeriods:periodsLeft(now,yr);  // freeze period count at creation
-      o.recurring=true; o.perPeriod=pp; o.recurPeriods=pl; o.sec='active'; o.unit='mins'; o.minPerUnit=1;
-      o.target=+(pp*pl).toFixed(2);
-      if(!o.start) o.start=`${yr}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-      if(!o.by) o.by=`${yr}-12-31`;
-    }
+      sec:document.getElementById('gSec').value, minPerUnit: mpRaw===''?null:(+mpRaw||0) };
     const g=loadGoals();
     if(goalEdit){ const i=g.findIndex(x=>x.id===goalEdit); if(i>=0){ g[i]={...g[i],...o}; saveGoals(g); syncGoalEntries(g[i]); } }
     else { o.id='g'+Date.now(); g.push(o); saveGoals(g); }
@@ -1876,7 +2098,7 @@ function initGoals(){
 }
 function paceLabel(x){
   if(x.done) return 'Done';
-  if(x.target<=0) return x.sec==='dream'?'Dream':x.sec==='backlog'?'Later':'—';
+  if(x.target<=0) return (x.sec&&x.sec!=='active')?'Someday':'—';
   const af=x.cur/x.target; if(af>=1) return 'Done';
   const ef=expFrac(x); if(ef==null) return 'On track';
   const d=af-ef;
@@ -1907,10 +2129,11 @@ function goalCard(x){
   const hint = paceHint(x);
   const mp = goalMinPer(x);
   const doneM = Math.round((+x.cur||0)*mp), totM = Math.round((+x.target||0)*mp);
+  const ptf = goalPeriodsToFinish(x);
   const det = [
-    x.recurring ? `<div class="gd-row"><span>Per period</span><b>${x.perPeriod} min × ${x.recurPeriods||'?'} periods</b></div>` : '',
     mp>0 ? `<div class="gd-row"><span>Done</span><b>≈ ${fmtShort(doneM)} of ${fmtShort(totM)}</b></div>` : '',
     mp>0 ? `<div class="gd-row"><span>Left</span><b>≈ ${totM>doneM?fmtShort(totM-doneM)+' to go':'done 🎉'}</b></div>` : '',
+    ptf!=null ? `<div class="gd-row"><span>At this pace</span><b>≈ ${ptf} period${ptf>1?'s':''} to finish</b></div>` : '',
     hint ? `<div class="gd-row"><span>Pace</span><b>${hint}</b></div>` : ''
   ].filter(Boolean).join('');
   const logs = Array.isArray(x.logs) ? x.logs : [];
@@ -1924,22 +2147,22 @@ function goalCard(x){
       <div class="gring">
         <svg viewBox="0 0 76 76">
           <circle cx="38" cy="38" r="29" fill="#fff"/>
-          <circle cx="38" cy="38" r="37" fill="none" stroke="rgba(20,30,60,.16)" stroke-width="1.5"/>
-          <circle cx="38" cy="38" r="29.5" fill="none" stroke="rgba(20,30,60,.1)" stroke-width="1"/>
+          <circle cx="38" cy="38" r="37" fill="none" stroke="rgba(70,58,32,.16)" stroke-width="1.5"/>
+          <circle cx="38" cy="38" r="29.5" fill="none" stroke="rgba(70,58,32,.1)" stroke-width="1"/>
           <circle class="gring-bg" cx="38" cy="38" r="${r}"/>
           <circle class="gring-fg" cx="38" cy="38" r="${r}" style="stroke:${col}" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/>
         </svg>
         <div class="gring-txt">${raw}%</div>
       </div>
       <div class="gcard-head">
-        <div class="gcard-name" title="${x.name}">${x.recurring?'🔁 ':''}${x.name}</div>
-        <div class="gcard-sub"><b>${x.cur}</b>${x.target>0?` / ${x.target}`:''} ${x.unit||''}</div>
+        <div class="gcard-name" title="${escHtml(x.name)}">${escHtml(x.name)}</div>
+        <div class="gcard-sub"><b>${x.cur}</b>${x.target>0?` / ${x.target}`:''} ${escHtml(x.unit||'')}</div>
         <span class="gbadge" style="background:${col}">${badge}</span>
       </div>
     </div>
     ${det?`<div class="gcard-det">${det}</div>`:''}
     ${logHtml}
-    <div class="gcard-foot"><span class="gcat" title="${x.cat}">${iconFor(x.cat)}</span><span class="gwhen">${when}</span></div>
+    <div class="gcard-foot"><span class="gcat" title="${escHtml(x.cat)}">${iconFor(x.cat)}</span><span class="gwhen">${when}</span></div>
   </div>`;
 }
 // ---- drag-drop reordering of goal cards (within a section) ----
@@ -1963,7 +2186,7 @@ function goalDrop(e){ const dragging=document.querySelector('.gcard.dragging'); 
   const g=loadGoals(); ids.forEach((id,i)=>{ const x=g.find(o=>o.id===id); if(x) x.ord=i; }); saveGoals(g); renderGoals();
 }
 function renderSec(filterFn, el, attention){
-  const rows=loadGoals().filter(filterFn);
+  const rows=goalsLive().filter(filterFn);
   if(rows.some(r=>typeof r.ord==='number')) // user has dragged → manual order wins
     rows.sort((a,b)=>(a.ord==null?1e9:a.ord)-(b.ord==null?1e9:b.ord));
   else if(attention) rows.sort((a,b)=>{ // attention first: lagging, then nearest deadline
@@ -1977,7 +2200,7 @@ function renderSec(filterFn, el, attention){
     : '<div class="empty">Nothing here yet. Add one above.</div>';
 }
 function renderGoalStats(){
-  const a=loadGoals().filter(g=>!g.done&&g.sec==='active'&&g.target>0);
+  const a=goalsLive().filter(g=>!g.done&&g.sec==='active'&&g.target>0);
   const ahead=a.filter(g=>['Done','Ahead'].includes(paceLabel(g))).length;
   const onTrack=a.filter(g=>paceLabel(g)==='On track').length;
   const lagging=a.filter(g=>['Lagging','Behind'].includes(paceLabel(g))).length;
@@ -2003,12 +2226,27 @@ function renderGoalStats(){
     </div>`;
 }
 function renderGoals(){ renderGoalStats();
-  renderSec(g=>!g.done&&g.sec==='active'&&!g.recurring,'secActive',true);
-  renderSec(g=>!g.done&&g.sec==='active'&&g.recurring,'secRecurring',true);
-  renderSec(g=>!g.done&&g.sec==='backlog','secBacklog',false);
-  renderSec(g=>!g.done&&g.sec==='dream','secDream',false);
+  renderSec(g=>!g.done&&(g.sec||'active')==='active','secActive',true);
+  renderSec(g=>!g.done&&(g.sec||'active')!=='active','secSomeday',false);
   renderSec(g=>!!g.done,'secCompleted',false);
+  renderTrash();
+  renderRenounced();
   if(document.getElementById('fGoal')) refreshGoalOptions(); }
+function renderTrash(){
+  const el=document.getElementById('secTrash'); if(!el) return;
+  const rows=loadGoals().filter(g=>g.deleted);
+  const wrap=document.getElementById('secTrashWrap'); if(wrap) wrap.hidden = rows.length===0;
+  el.innerHTML = rows.map(g=>{
+    const when=g.deletedAt? String(g.deletedAt).slice(0,10) : '';
+    return `<div class="catrow" style="opacity:.75">
+      <span class="cdot" style="background:${colorFor(g.cat)}"></span>
+      <span class="nm">${iconFor(g.cat)} ${escHtml(g.name)}${when?` <span class="muted-sm">· deleted ${when}</span>`:''}</span>
+      <span style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn-sm" onclick="goalRestore('${g.id}')">↩ Restore</button>
+        <button class="btn-sm" style="color:#ef4d4d;border-color:#ef4d4d" onclick="goalPurge('${g.id}')">🗑️ Delete forever</button>
+      </span></div>`;
+  }).join('');
+}
 function goalMinPer(x){ if(x.minPerUnit!=null && x.minPerUnit!=='') return +x.minPerUnit||0; const u=(x.unit||'').toLowerCase(); if(/min/.test(u)) return 1; if(/hour|hr/.test(u)) return 60; return 0; }
 function goalMins(x,amt){ return Math.round(goalMinPer(x)*amt); }
 // Propagate a goal's name/category/mapping to all its linked time entries (so editing a goal updates the time tracker, incl. via Firebase).
@@ -2055,8 +2293,7 @@ window.goalEditStart=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x
   document.getElementById('gCur').value=x.cur; document.getElementById('gTarget').value=x.target;
   document.getElementById('gUnit').value=x.unit; document.getElementById('gStart').value=x.start||''; document.getElementById('gBy').value=x.by||'';
   document.getElementById('gMinPer').value=(x.minPerUnit==null?'':x.minPerUnit); document.getElementById('gUnitLab').textContent=x.unit||'unit';
-  document.getElementById('gSec').value=x.sec; document.getElementById('goalFormTitle').textContent='Edit goal';
-  document.getElementById('gRecurring').checked=!!x.recurring; document.getElementById('gPerPeriod').value=(x.perPeriod==null?'':x.perPeriod); goalRecurUpdate();
+  document.getElementById('gSec').value=(x.sec||'active')==='active'?'active':'someday'; document.getElementById('goalFormTitle').textContent='Edit goal';
   document.getElementById('gDelete').style.display='';
   const gd=document.getElementById('gDone'); gd.style.display=''; gd.style.background=x.done?'#64748b':'#16a34a';
   gd.textContent=x.done?'↩ Reopen goal':'✓ Mark complete';
@@ -2069,11 +2306,19 @@ window.goalLogShow=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x) 
   document.getElementById('glBody').innerHTML = logs.length ? logs.slice().reverse().map(l=>{
     const when=(l.ym?l.ym.slice(5)+'/'+l.ym.slice(2,4):'')+(l.period?' '+l.period:'');
     const prev=(+l.total||0)-(+l.amt||0);
-    return `<div class="glog-row"><span class="glog-when">${when}</span><span class="glog-mid"><span class="glog-prev">${prev}</span> <span class="glog-amt">+${l.amt}</span></span><span class="glog-tot">→ ${l.total}${x.unit?' '+x.unit:''}</span></div>`;
+    return `<div class="glog-row"><span class="glog-when">${when}</span><span class="glog-mid"><span class="glog-prev">${prev}</span> <span class="glog-amt">${(+l.amt||0)<0?'':'+'}${l.amt}</span></span><span class="glog-tot">→ ${l.total}${x.unit?' '+escHtml(x.unit):''}</span></div>`;
   }).join('') : '<div class="hint">No entries yet.</div>';
   document.getElementById('logModal').hidden=false; document.body.style.overflow='hidden'; };
 function logModalHide(){ document.getElementById('logModal').hidden=true; document.body.style.overflow=''; }
-window.goalDel=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x||!confirm(`Delete "${x.name}"? This also removes its tracked time entries.`)) return;
+// Soft-delete: move to Trash. Tracked time entries are KEPT so nothing is lost; restore or purge from the Trash section.
+window.goalDel=function(id){ const g=loadGoals(); const x=g.find(o=>o.id===id); if(!x||!confirm(`Move "${x.name}" to Trash? Its tracked time is kept — you can restore it or delete it forever from the Trash section.`)) return;
+  x.deleted=true; x.deletedAt=new Date().toISOString(); saveGoals(g);
+  renderGoals(); if(document.getElementById('entryTable')) renderLog(); };
+window.goalRestore=function(id){ const g=loadGoals(); const x=g.find(o=>o.id===id); if(!x) return;
+  delete x.deleted; delete x.deletedAt; saveGoals(g);
+  renderGoals(); if(document.getElementById('entryTable')) renderLog(); };
+// Permanent delete (the old hard-delete): removes the goal AND its tracked time entries.
+window.goalPurge=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x||!confirm(`Permanently delete "${x.name}" and its tracked time entries? This cannot be undone.`)) return;
   saveGoals(loadGoals().filter(o=>o.id!==id));
   const ents=loadEntries(), kept=ents.filter(e=>!(e.type==='goal'&&e.goalId===id)); if(kept.length!==ents.length) saveEntries(kept);
   renderGoals(); if(document.getElementById('entryTable')) renderLog(); };
@@ -2081,94 +2326,42 @@ window.goalDel=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x||!con
 // ---- view switch ----
 // ================= TIME PLANNING (daily fixed habits vs goal-based) =================
 // Fixed daily rituals/habits. Everything not listed here is goal-based (see Goals tab).
-const PLAN_WINDOW_DAYS=210; // fixed planning window for the year (21 periods × 10 days)
+const LS_PLANWIN='ptd_planwin_v1';
+// user-set planning window (days), snapped to whole 10-day periods, 30–360
+let PLAN_WINDOW_DAYS = clampWin(+localStorage.getItem(LS_PLANWIN) || 210);
+function clampWin(d){ return Math.min(360, Math.max(30, Math.round((+d||210)/10)*10)); }
+function setPlanWindow(d){ PLAN_WINDOW_DAYS=clampWin(d); localStorage.setItem(LS_PLANWIN,String(PLAN_WINDOW_DAYS)); fbSyncPush(); if(!document.getElementById('viewPlanning').hidden) renderPlanning(); }
 const LS_HABITS='ptd_habits_v1';
 const SEED_HABITS=[
-  {n:'Vishnu Sahasranāma', cat:'Spiritual', m:15},
-  {n:'Golden Jewel',       cat:'Spiritual', m:18},
-  {n:'Grah Maitree',       cat:'Spiritual', m:12},
-  {n:'Nurture',            cat:'Youth',     m:30},
-  {n:'Balayam',            cat:'Youth',     m:10},
-  {n:'SRM Study',          cat:'SRM Study', m:20},
-  {n:'Pranav',             cat:'Hobby',     m:6},
+  {n:'Morning walk', cat:'Health',     m:20},
+  {n:'Read',         cat:'Learning',   m:15},
+  {n:'Deep work',    cat:'Work',       m:60},
+  {n:'Journal',      cat:'Creativity', m:10},
 ];
 function loadHabits(){ try{ const v=JSON.parse(localStorage.getItem(LS_HABITS)); return Array.isArray(v)?v:SEED_HABITS; }catch(e){ return SEED_HABITS; } }
 function saveHabits(h){ localStorage.setItem(LS_HABITS, JSON.stringify(h)); fbSyncPush(); }
 function groupHabits(flat){ const o=[]; flat.forEach(i=>{ let g=o.find(x=>x.cat===i.cat); if(!g){g={cat:i.cat,items:[]};o.push(g);} g.items.push({n:i.n,m:i.m}); }); return o; }
-const HABIT_COL={Spiritual:'#4C6EF5',"Life's Big":'#E84393',Youth:'#8DC63F','SRM Study':'#F5A623','Career & Finance':'#5A49B8',Hobby:'#8B2FE0'};
 
-// ===== LIFE TIPS (text-heavy notes) =====
-const LS_TIPS='ptd_tips_v1';
-const TIP_SECTIONS=[
-  {key:'priorities', title:"Life's Big Priorities"},
-  {key:'spiritual',  title:'Spiritual'},
-  {key:'youth',      title:'Youth'},
-  {key:'katha',      title:'Katha'},
-];
-const SEED_TIPS={
-  priorities:"# Life's Big Priorities\n\n- Health first — body and mind.\n- Relationships that matter.\n- Meaningful work over busy work.\n- Keep learning.\n\n## Notes\nWrite freely here. Click Edit to begin.",
-  spiritual:"# Spiritual\n\nDaily practice keeps the mind steady.\n\n## Reminders\n- Consistency over intensity.\n- Gratitude.",
-  youth:"# Youth\n\nNotes for staying sharp and energetic.\n\n## Habits\n- Move every day.\n- Sleep well.",
-  katha:"# Katha\n\nStories, parables, and lessons worth remembering.",
-};
-function loadTips(){ try{ const v=JSON.parse(localStorage.getItem(LS_TIPS)); return (v&&typeof v==='object')?{...SEED_TIPS,...v}:{...SEED_TIPS}; }catch(e){ return {...SEED_TIPS}; } }
-function saveTips(t){ localStorage.setItem(LS_TIPS, JSON.stringify(t)); fbSyncPush(); }
-let tipSel='priorities', tipEditing=false;
-function tipMd(src){
-  const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  const lines=(src||'').split('\n'); let html='', inUl=false;
-  const closeUl=()=>{ if(inUl){ html+='</ul>'; inUl=false; } };
-  for(let raw of lines){
-    const l=raw.trimEnd();
-    if(/^#\s+/.test(l)){ closeUl(); html+='<h3>'+esc(l.replace(/^#\s+/,''))+'</h3>'; }
-    else if(/^##\s+/.test(l)){ closeUl(); html+='<h4>'+esc(l.replace(/^##\s+/,''))+'</h4>'; }
-    else if(/^[-*]\s+/.test(l)){ if(!inUl){ html+='<ul>'; inUl=true; } html+='<li>'+esc(l.replace(/^[-*]\s+/,''))+'</li>'; }
-    else if(l===''){ closeUl(); }
-    else { closeUl(); html+='<p>'+esc(l)+'</p>'; }
-  }
-  closeUl();
-  return html||'<div class="empty">Empty. Click Edit to add notes.</div>';
+// ---- Letter to future self (one object {text, writtenYm}) ----
+const LS_LETTER='ptd_letter_v1';
+function loadLetter(){ try{ const v=JSON.parse(localStorage.getItem(LS_LETTER)); return (v&&typeof v==='object'&&!Array.isArray(v))?v:{text:'',writtenYm:''}; }catch(e){ return {text:'',writtenYm:''}; } }
+function saveLetter(text){ localStorage.setItem(LS_LETTER, JSON.stringify({text:String(text||''), writtenYm:CUR_YM})); fbSyncPush(); }
+
+// ---- Renounced list (things deliberately given up) = array of {id, text} ----
+const LS_RENOUNCED='ptd_renounced_v1';
+function loadRenounced(){ try{ const v=JSON.parse(localStorage.getItem(LS_RENOUNCED)); return Array.isArray(v)?v:[]; }catch(e){ return []; } }
+function saveRenounced(a){ localStorage.setItem(LS_RENOUNCED, JSON.stringify(a)); fbSyncPush(); }
+function renAdd(text){ text=String(text||'').trim(); if(!text) return; const a=loadRenounced(); a.push({id:eid(), text}); saveRenounced(a); renderRenounced(); }
+function renDel(id){ saveRenounced(loadRenounced().filter(r=>r.id!==id)); renderRenounced(); }
+function renderRenounced(){
+  const el=document.getElementById('renList'); if(!el) return;
+  const a=loadRenounced();
+  el.innerHTML = a.length ? a.map(r=>`<div class="frow" style="align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)">
+    <span style="flex:1;text-decoration:line-through;color:var(--muted)">${escHtml(r.text)}</span>
+    <button type="button" class="btn ghost" title="Remove from the list" onclick="renDel('${r.id}')">✕</button>
+  </div>`).join('') : `<div class="hint">Nothing renounced yet. Naming one thing you'll stop doing frees the hours for the goals above.</div>`;
 }
-function renderTips(){
-  const side=document.getElementById('tipSide'); if(!side) return;
-  side.innerHTML=TIP_SECTIONS.map(s=>`<button data-k="${s.key}"${s.key===tipSel?' class="active"':''}>${s.title}</button>`).join('');
-  side.querySelectorAll('button').forEach(b=>b.onclick=()=>{ if(tipEditing) tipCancelEdit(); tipSel=b.dataset.k; renderTips(); });
-  const t=loadTips();
-  document.getElementById('tipBody').innerHTML=tipMd(t[tipSel]);
-}
-function tipStartEdit(){
-  tipEditing=true;
-  const t=loadTips();
-  const ta=document.getElementById('tipEdit'); ta.value=t[tipSel]||'';
-  ta.style.display=''; document.getElementById('tipBody').style.display='none';
-  document.getElementById('tipEditBtn').style.display='none';
-  document.getElementById('tipSaveBtn').style.display='';
-  document.getElementById('tipCancelBtn').style.display='';
-  ta.focus();
-}
-function tipFinishEdit(){
-  tipEditing=false;
-  document.getElementById('tipEdit').style.display='none';
-  document.getElementById('tipBody').style.display='';
-  document.getElementById('tipEditBtn').style.display='';
-  document.getElementById('tipSaveBtn').style.display='none';
-  document.getElementById('tipCancelBtn').style.display='none';
-}
-function tipSaveEdit(){
-  const t=loadTips(); t[tipSel]=document.getElementById('tipEdit').value; saveTips(t);
-  tipFinishEdit(); renderTips();
-  const m=document.getElementById('tipMsg'); m.textContent='Saved.'; setTimeout(()=>{ if(m) m.textContent=''; },1500);
-}
-function tipCancelEdit(){ tipFinishEdit(); renderTips(); }
-function exportTipsPdf(){
-  if(tipEditing) tipSaveEdit();
-  const t=loadTips();
-  const body=document.getElementById('tipBody');
-  const saved=body.innerHTML;
-  body.innerHTML=TIP_SECTIONS.map(s=>'<div style="page-break-inside:avoid">'+tipMd(t[s.key])+'</div>').join('<hr style="margin:18px 0;border:0;border-top:1px solid #ddd">');
-  window.print();
-  setTimeout(()=>{ body.innerHTML=saved; },300);
-}
+
 // ---- Reports → Export PDF: compose Planning, Overview, Goals, Pot into a hidden #pdfReport, then browser print-to-PDF ----
 function pdfClone(srcEl){            // deep-clone a rendered node, swapping each <canvas> for a static <img>
   if(!srcEl) return null;
@@ -2189,28 +2382,26 @@ function exportReportPdf(){
   // Source canvases live in [hidden] views (display:none → 0×0), so Chart.js would
   // render blank. Un-hide them for the capture (all synchronous → no repaint/flash),
   // force charts to their final frame (no animation), then re-hide in finally.
-  const views=['viewOverview','viewPlanning','viewGoals','viewPot'];
+  const views=['viewOverview','viewPlanning','viewGoals','ovPot'];
   const wasHidden=views.map(id=>document.getElementById(id)).filter(el=>el&&el.hasAttribute('hidden'));
   wasHidden.forEach(el=>el.removeAttribute('hidden'));
   try{
-    renderKPIs(); renderYearDonut(); renderTotalTrend(); renderPlanning(); renderGoals(); renderPot('potBox');
+    renderYearDonut(); renderTotalTrend(); renderPlanning(); renderGoals(); renderPot('potBox');
     [yearDonutChart,totalTrendChart].forEach(c=>{ try{ if(c){ c.options.animation=false; c.update('none'); } }catch(_){} });
   // 1) Planning — both tables
   const pSec=pdfSec('Planning'); const pc=pdfClone(document.getElementById('planning')); if(pc) pSec.appendChild(pc); rep.appendChild(pSec);
-  // 2) Overview — KPIs + year donut/trend (drop the tips insights block)
+  // 2) Overview — year donut/trend (drop the tips insights block)
   const oSec=pdfSec('Overview');
-  const k=pdfClone(document.getElementById('kpis')); if(k) oSec.appendChild(k);
   const y=pdfClone(document.getElementById('ovYear')); if(y){ y.querySelectorAll('.insights').forEach(n=>n.remove()); oSec.appendChild(y); }
   rep.appendChild(oSec);
-  // 3) Goals — active + recurring (their headings live in parent cards, so re-label)
+  // 3) Goals — active (their headings live in parent cards, so re-label)
   const gSec=pdfSec('Goals');
   const a=pdfClone(document.getElementById('secActive')); if(a){ gSec.appendChild(pdfSub('Active goals')); gSec.appendChild(a); }
-  const r=pdfClone(document.getElementById('secRecurring')); if(r){ gSec.appendChild(pdfSub('🔁 Recurring goals')); gSec.appendChild(r); }
   rep.appendChild(gSec);
-  // 4) The Pot — jar + the Shivling 1,000-block scene only (not the full Shiva journeys)
+  // 4) The Pot — jar + one journey scene per active goal
   const potSec=pdfSec('The Pot');
   const jar=pdfClone(document.getElementById('potBox')); if(jar) potSec.appendChild(jar);
-  const shiv=sjShivlingScene(); if(shiv){ const sd=document.createElement('div'); sd.style.marginTop='14px'; sd.innerHTML=shiv; potSec.appendChild(sd); }
+  const jsc=journeyScenesHTML(); if(jsc){ const sd=document.createElement('div'); sd.style.marginTop='14px'; sd.innerHTML=jsc; potSec.appendChild(sd); }
   rep.appendChild(potSec);
   } finally { wasHidden.forEach(el=>el.setAttribute('hidden','')); }
   document.body.classList.add('pdf-print');
@@ -2219,16 +2410,14 @@ function exportReportPdf(){
   setTimeout(()=>window.print(),60);
 }
 function habitIcon(cat){ return iconFor(cat); }
-// per-period activities (period = 10 days: 1-10, 11-20, 21-end of month). hours per period.
-const PERIOD_ITEMS={}; // migrated to recurring goals (sec:'active', recurring:true)
 // count 10-day periods still ahead in the year (current period included)
 function periodsLeft(now,yr){let n=0;for(let mo=now.getMonth();mo<12;mo++){const dim=new Date(yr,mo+1,0).getDate();[[1,10],[11,20],[21,dim]].forEach(([s,e])=>{if(mo>now.getMonth()||e>=now.getDate())n++;});}return n;}
-// Shared planning math — single source for Planning table, Pot capacity, Overview battery.
+// Shared planning math — single source for Planning table + Pot capacity.
 // Returns done (logged h), totH (to-do h over rest of year), yearH = done + totH, plus row data.
 function planYearTotals(){
   const fmtH=n=>Math.round(n).toLocaleString('en-US');
-  const HABITS=groupHabits(loadHabits());
-  const habitItems=HABITS.flatMap(g=>g.items.map(i=>({n:i.n,m:i.m,cat:g.cat,c:HABIT_COL[g.cat]||'#8a93a3'})));
+  const HABITS=groupHabits(loadHabits().filter(h=>!h.paused&&!h.done)); // paused/done habits drop out of planning
+  const habitItems=HABITS.flatMap(g=>g.items.map(i=>({n:i.n,m:i.m,cat:g.cat,c:colorFor(g.cat)})));
   const fixed=habitItems.reduce((a,i)=>a+i.m,0);
   const yr=(new Date()).getFullYear();
   const totalDays=((yr%4===0&&yr%100!==0)||yr%400===0)?366:365;
@@ -2237,44 +2426,42 @@ function planYearTotals(){
   const pend=Math.max(0, Math.ceil((end-now)/86400000));
   const pLeft=periodsLeft(now,yr);
   const mLeft=Math.max(1,pend/30.44);
-  const goals=loadGoals();
-  // build one reconciliation row for a category. targetH=null → no yearly battery target
-  // (e.g. "Life's Big"); we still show its active goals' hours-left + planned total.
+  const goals=goalsLive();
+  // build one reconciliation row for a category. targetH=null → no yearly target
+  // target; we still show its active goals' hours-left + planned total.
   const mkRow=(k, srcArr, color, targetH, leftFixed)=>{
     const doneH=srcArr.reduce((a,c)=>a+(agg[c]||0),0)/60;
     const hitems=(HABITS.find(h=>h.cat===k)?.items||[]);
     const habitH=hitems.reduce((a,i)=>a+i.m,0)*pend/60;
     const gs=goals.filter(g=>srcArr.includes(g.cat) && g.sec==='active' && !g.done).map(g=>{
-      if(g.recurring){ const pp=+g.perPeriod||0; return {name:g.name, h: pp/60*pLeft, leftU:0, unit:'mins', recurring:true}; } // perPeriod in minutes; flat forward commitment
       const mp=goalMinPer(g); const leftU=Math.max(0,(+g.target||0)-(+g.cur||0));
       return {name:g.name, h: mp>0? leftU*mp/60 : 0, leftU, unit:g.unit||''};
     });
-    const pitems=(PERIOD_ITEMS[k]||[]);
-    const periodH=pitems.reduce((a,i)=>a+i.h,0)*pLeft;
-    const allocated=habitH+gs.reduce((a,g)=>a+(g.h||0),0)+periodH;
+    const allocated=habitH+gs.reduce((a,g)=>a+(g.h||0),0);
     // new target = no slack: done + everything allocated (leftFixed cats keep their realistic remaining)
     const target=leftFixed!=null?(doneH+leftFixed):(doneH+allocated);
     const tasks=[
-      ...pitems.map(it=>({label:`${it.n} · ${it.lbl||it.h+'h'}/period`, h:it.h*pLeft})),
-      ...gs.map(g=>({label:(g.recurring?'🔁 ':'')+g.name, h:g.h, note:g.h?null:`${fmtH(g.leftU)} ${g.unit} left`})),
+      ...gs.map(g=>({label:g.name, h:g.h, note:g.h?null:`${fmtH(g.leftU)} ${g.unit} left`})),
     ];
     return {k,color,target,done:doneH,allocated,tasks};
   };
-  const usedCats=new Set(YTARGETS.flatMap(t=>t.src));
-  // every active-goal AND habit category that isn't already a YTARGETS row → its own row,
-  // so rowsData is the COMPLETE source: sum(allocated)==totH and the legend always reconciles with the lead.
+  // rows come straight from the user's Settings categories — nothing hardcoded.
+  const usedCats=new Set(ALLCATS);
+  // any logged / active-goal / habit category NOT in ALLCATS (e.g. deleted from Settings)
+  // still gets a row, so rowsData stays COMPLETE: sum(allocated)==totH and totals reconcile.
   const extraCats=[...new Set([
     ...goals.filter(g=>g.sec==='active' && !g.done).map(g=>g.cat),
     ...habitItems.map(i=>i.cat),
+    ...Object.keys(agg).filter(c=>agg[c]>0),
   ].filter(c=>!usedCats.has(c)))];
   const rowsData=[
-    ...YTARGETS.map(t=>mkRow(t.k, t.src, HABIT_COL[t.k]||'#8a93a3', null, t.leftFixed)),
-    ...extraCats.map(cat=>mkRow(cat, [cat], (typeof COLORS!=='undefined'&&COLORS[cat])||'#8a93a3', null)),
-  ];
+    ...ALLCATS.map(cat=>mkRow(cat, [cat], colorFor(cat), null)),
+    ...extraCats.map(cat=>mkRow(cat, [cat], colorFor(cat), null)),
+  ].filter(r=>r.done>0||r.allocated>0); // empty categories don't clutter Planning
   const tot={target:0,done:0,allocated:0};
   rowsData.forEach(r=>{tot.target+=r.target;tot.done+=r.done;tot.allocated+=r.allocated;});
   // daily habits as one group (each row keeps its own category field)
-  const habitRows=HABITS.flatMap(g=>g.items.map(i=>({cat:g.cat,color:HABIT_COL[g.cat]||'#8a93a3',h:i.m*pend/60,label:`${i.n} · ${i.m}m/day`})));
+  const habitRows=HABITS.flatMap(g=>g.items.map(i=>({cat:g.cat,color:colorFor(g.cat),h:i.m*pend/60,label:`${escHtml(i.n)} · ${i.m}m/day`})));
   // goals + period work grouped by category
   const goalRows=[];
   rowsData.forEach(r=>r.tasks.forEach(t=>goalRows.push({cat:r.k,color:r.color,h:t.h||0,label:t.label,note:t.note})));
@@ -2289,7 +2476,7 @@ function renderPlanning(){
   const cards=habitItems.map(i=>`<div class="card" style="border-top:3px solid ${i.c};padding:13px 15px">
       <div style="font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:${i.c};font-weight:700;margin-bottom:6px">${cIcon(i.cat)} ${i.cat}</div>
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
-        <span style="font-weight:600">${i.n}</span><b style="color:${i.c};white-space:nowrap">${i.m}m</b>
+        <span style="font-weight:600">${escHtml(i.n)}</span><b style="color:${i.c};white-space:nowrap">${i.m}m</b>
       </div></div>`).join('');
   const fmtH=n=>Math.round(n).toLocaleString('en-US');
   const fmtHM=h=>{const m=Math.round(h*60);if(m<=0)return '0';const H=Math.floor(m/60),M=m%60;return H?(M?`${H}h ${M}m`:`${H}h`):`${M}m`;};
@@ -2325,10 +2512,10 @@ function renderPlanning(){
     ${num('<b>'+fmtHM(totH/mLeft)+'</b>','padding:12px;white-space:nowrap;font-size:16px;color:var(--ink)')}
     ${num('<b>'+fmtHM(totH)+'</b>','padding:12px;white-space:nowrap;font-size:16px;color:var(--ink)')}
   </tr>`;
-  // battery built from the same table data so it always matches
+  // allocation bar built from the same table data so it always matches
   const catDay={};
   [...habitRows,...goalRows].forEach(r=>{catDay[r.cat]=(catDay[r.cat]||0)+(r.h||0);});
-  const segs=Object.entries(catDay).map(([k,h])=>({k,c:HABIT_COL[k]||(typeof COLORS!=='undefined'&&COLORS[k])||'#8a93a3',m:h*60})).filter(s=>s.m>0).sort((a,b)=>b.m-a.m);
+  const segs=Object.entries(catDay).map(([k,h])=>({k,c:colorFor(k),m:h*60})).filter(s=>s.m>0).sort((a,b)=>b.m-a.m);
   const dayMin=segs.reduce((a,s)=>a+s.m,0);
   const bar=segs.map(s=>`<div title="${s.k} · ${fmtM(s.m)}" style="flex:${s.m};background:${s.c}"></div>`).join('');
   const legend=segs.map(s=>`<span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;font-size:12px;color:var(--muted)"><i style="width:10px;height:10px;border-radius:3px;background:${s.c};display:inline-block"></i>${cIcon(s.k)} ${s.k} ${fmtM(s.m)} · <b style="color:var(--ink)">${dayMin>0?(s.m/dayMin*100).toFixed(0):0}%</b></span>`).join('');
@@ -2358,7 +2545,7 @@ function renderPlanning(){
       <thead><tr>${th('Task','left')}${th(`Per period<div style="text-transform:none;letter-spacing:0;font-weight:500;font-size:10px;margin-top:2px;color:var(--muted)">${pLeft} left</div>`)}${th(`Per month<div style="text-transform:none;letter-spacing:0;font-weight:500;font-size:10px;margin-top:2px;color:var(--muted)">${mLeft.toFixed(1)} left</div>`)}${th(`To do<div style="text-transform:none;letter-spacing:0;font-weight:500;font-size:10px;margin-top:2px;color:var(--muted)">${pend}d left</div>`)}</tr></thead>
       <tbody>${groupsP}${totRowP}</tbody>
     </table></div>`;
-  // ---- per-category year table (same rowsData as the Overview battery legend) ----
+  // ---- per-category year table (same rowsData as the Pot legend) ----
   const catRows=rowsData.filter(r=>r.target>0).sort((a,b)=>(b.target>0?b.done/b.target:0)-(a.target>0?a.done/a.target:0));
   const sumT=catRows.reduce((a,r)=>a+r.target,0), sumD=catRows.reduce((a,r)=>a+r.done,0);
   const dp=catRows.map(r=>Math.floor(sumT>0?r.target/sumT*100:0)); // integer %s summing to 100
@@ -2367,7 +2554,7 @@ function renderPlanning(){
   const pctDone=(t,d)=>t>0?Math.round(Math.min(d,t)/t*100):0;
   // pace check: of the year's periods, how many have elapsed → expected % done by now.
   // each period should add target/totPeriods, so by `passedP` periods you should be at `pacePct`.
-  const totPeriods=21, passedP=Math.max(0,totPeriods-pLeft); // 21 = planned periods we set (210-day window), not the full 36-period year
+  const totPeriods=Math.max(1,Math.round(PLAN_WINDOW_DAYS/10)), passedP=Math.max(0,totPeriods-pLeft); // planned periods = window ÷ 10 (not the full 36-period year)
   const pacePct=totPeriods>0?passedP/totPeriods*100:0;
   const paceCol=(t,d)=>(pctDone(t,d)>=Math.round(pacePct))?'#34a853':'#e84343'; // green on/ahead · red behind
   // colour-code each row by % done in 25% buckets: <25 red · 25-50 amber · 50-75 yellow · 75+ green
@@ -2405,38 +2592,64 @@ function renderPlanning(){
     +   `<div style="flex:none">${catHead}${catTableP}${catNote}</div>`
     + `</div>`;
 }
+function maybeShowOnboard(){ const el=document.getElementById('onboard'); if(!el) return;
+  // show only for a genuinely fresh install: not yet dismissed AND no saved data of any kind
+  const hasData = localStorage.getItem(LS_GOALS)!==null || localStorage.getItem(LS_KEY)!==null || localStorage.getItem(LS_ALLCATS)!==null;
+  el.hidden = localStorage.getItem(LS_ONBOARDED)==='1' || hasData; }
+function onboardDismiss(){ localStorage.setItem(LS_ONBOARDED,'1'); const el=document.getElementById('onboard'); if(el) el.hidden=true; }
+// Letter-to-future-self surfacing. Dismiss state is device-local & unsynced (key not prefixed LS_ so test.js ignores it).
+const LETTER_SEEN='ptd_letterseen_v1';
+function letterDismiss(){ localStorage.setItem(LETTER_SEEN, CUR_YM.slice(0,4)); const el=document.getElementById('letterCard'); if(el) el.hidden=true; }
+function renderLetterCard(){
+  const L=loadLetter();
+  const t=document.getElementById('letterText'); if(t) t.textContent=L.text||'';
+  const w=document.getElementById('letterWhen'); if(!w) return;
+  const wm=L.writtenYm||''; let when='';
+  if(/^\d{4}-\d{2}$/.test(wm)){ const p=wm.split('-'); when=`You wrote this in ${MONTH_NAMES[+p[1]-1]} ${p[0]}.`; }
+  w.textContent=when;
+}
+// Show the letter when one exists, not yet dismissed this year, AND either it's year-end or a caller nudge fired.
+function maybeShowLetter(nudge){
+  const el=document.getElementById('letterCard'); if(!el) return;
+  const L=loadLetter();
+  if(!L.text || !L.text.trim()){ el.hidden=true; return; }
+  if(localStorage.getItem(LETTER_SEEN)===CUR_YM.slice(0,4)){ el.hidden=true; return; }
+  const now=new Date(), yearEnd = now.getMonth()===11 && now.getDate()>=31;
+  if(nudge || yearEnd){ renderLetterCard(); el.hidden=false; }
+  else el.hidden=true;
+}
+// True when >half of active, targeted goals are Behind/Lagging — the "you're slipping" trigger.
+function mostGoalsBehind(){
+  const a=goalsLive().filter(g=>!g.done && g.sec==='active' && g.target>0);
+  if(a.length<2) return false;
+  const off=a.filter(g=>['Behind','Lagging'].includes(paceLabel(g))).length;
+  return off > a.length/2;
+}
 function setView(v){
-  if(!['overview','log','goals','planning','audit','pot','reports','tips','settings','faq'].includes(v)) v='overview';
+  if(v==='audit') v='log';   // Audit folded into Log Data
+  if(v==='faq') v='settings'; // FAQ folded into Settings sidebar
+  if(v==='pot'){ ovTab='pot'; v='overview'; } // Pot folded into Overview as a sub-tab
+  if(!['overview','log','goals','planning','reports','settings'].includes(v)) v='overview';
   document.getElementById('viewOverview').hidden = v!=='overview';
   document.getElementById('viewLog').hidden = v!=='log';
   document.getElementById('viewGoals').hidden = v!=='goals';
   document.getElementById('viewPlanning').hidden = v!=='planning';
-  document.getElementById('viewAudit').hidden = v!=='audit';
-  document.getElementById('viewPot').hidden = v!=='pot';
+  document.getElementById('viewAudit').hidden = v!=='log';
   document.getElementById('viewReports').hidden = v!=='reports';
-  document.getElementById('viewTips').hidden = v!=='tips';
   document.getElementById('viewSettings').hidden = v!=='settings';
-  document.getElementById('viewFaq').hidden = v!=='faq';
-  document.getElementById('lifeBar').hidden = v!=='overview';
+  document.getElementById('lifeBar').hidden = v!=='overview' || !SHOW_LIFEBAR;
   const subs={overview:'your finite hours, on purpose', log:'log time, goals & screen use · saved on this device',
     goals:'targets vs what you actually did', planning:'daily habits vs goal-based time',
-    audit:'recent entries & their exact effect',
-    pot:'your year as a pot — capacity vs filled',
     reports:'compare tracked hours across periods',
-    tips:'long-form notes & wisdom',
-    settings:'manage categories & preferences',
-    faq:'how every number is calculated'};
+    settings:'manage categories & preferences'};
   document.getElementById('sub').textContent = subs[v];
   document.getElementById('hdYr').textContent = '('+CUR_YM.slice(0,4)+')';
   document.querySelectorAll('#viewNav button').forEach(b=>b.classList.toggle('active', b.dataset.v===v));
-  if(v==='overview'){ setOv(ovTab); }
+  if(v==='overview'){ renderTabs(); setOv(ovTab); maybeShowLetter(mostGoalsBehind()); }
   if(v==='log') renderLog();
   if(v==='goals') renderGoals();
   if(v==='planning') renderPlanning();
-  if(v==='audit') renderAudit();
-  if(v==='pot'){ renderPot(); try{ renderShivaJourney(); }catch(e){} }
   if(v==='reports') renderReports();
-  if(v==='tips') renderTips();
   if(v==='settings') renderSettings();
   try{ localStorage.setItem(LS_VIEW, v); }catch(e){}
 }
@@ -2448,8 +2661,10 @@ function setOv(o){
   ovTab=o;
   document.getElementById('ovYear').hidden = o!=='year';
   document.getElementById('ovMonthly').hidden = o!=='monthly';
-  if(o==='year'){ renderKPIs(); renderYearDonut(); renderTotalTrend(); }
+  document.getElementById('ovPot').hidden = o!=='pot';
+  if(o==='year'){ renderYearDonut(); renderTotalTrend(); }
   if(o==='monthly') renderDonut(current);
+  if(o==='pot'){ renderPot(); try{ renderJourney(); }catch(e){} }
 }
 
 // ===== REPORTS =====
@@ -2489,7 +2704,7 @@ function repSubjects(){
     {key:'habitsAll',kind:'habitsAll',grp:'Overall', title:'All Habits', cat:null},
   ];
   ALLCATS.forEach(c=>out.push({key:'cat:'+c, kind:'cat', grp:'Categories', name:c, title:c, cat:c}));
-  loadGoals().forEach(g=>out.push({key:'goal:'+g.id, kind:'goal', grp:'Goals', id:g.id, title:g.name, cat:g.cat}));
+  goalsLive().forEach(g=>out.push({key:'goal:'+g.id, kind:'goal', grp:'Goals', id:g.id, title:g.name, cat:g.cat}));
   loadHabits().forEach(h=>out.push({key:'habit:'+h.n, kind:'habit', grp:'Habits', name:h.n, title:h.n, cat:h.cat}));
   return out;
 }
@@ -2510,7 +2725,7 @@ function renderReports(){
   const opts=order.map(grp=>{
     const items=subs.filter(s=>s.grp===grp); if(!items.length) return '';
     return `<div class="repgrp">${grp}</div>`+items.map(s=>
-      `<label class="repopt"><input type="checkbox" data-k="${s.key}" ${repSel.has(s.key)?'checked':''}>${s.cat?iconFor(s.cat)+' ':''}${s.title}</label>`).join('');
+      `<label class="repopt"><input type="checkbox" data-k="${escHtml(s.key)}" ${repSel.has(s.key)?'checked':''}>${s.cat?iconFor(s.cat)+' ':''}${escHtml(s.title)}</label>`).join('');
   }).join('');
   const subjDrop=`<details class="repdrop" ${repDropOpen?'open':''}><summary>Subjects · ${repSel.size} selected</summary><div class="repdrop-panel">${opts}</div></details>`;
   const periodNote = repGran==='period' && Object.keys(loadRollup()).length
@@ -2533,7 +2748,7 @@ function renderReports(){
   else if(!buckets.length){ grid.innerHTML=`<div class="card" style="color:var(--muted)">No data for this selection yet — log time in the Log Data tab.</div>`; }
   else {
     grid.innerHTML=chosen.map((s,i)=>
-      `<div class="card repcard"><h2 style="font-size:15px;margin:0">${s.cat?iconFor(s.cat)+' ':''}${s.title}</h2>`
+      `<div class="card repcard"><h2 style="font-size:15px;margin:0">${s.cat?iconFor(s.cat)+' ':''}${escHtml(s.title)}</h2>`
       +`<div class="hint" id="repSub${i}" style="margin-bottom:8px"></div><canvas id="repC${i}"></canvas></div>`).join('');
     chosen.forEach((s,i)=>{
       const rows=samplesByKey[s.key], byB={};
@@ -2546,7 +2761,7 @@ function renderReports(){
         data:{labels,datasets:[{data,backgroundColor:col,borderRadius:4,maxBarThickness:46}]},
         options:{animation:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.raw} h`}}},
           scales:{x:{grid:{display:false},ticks:{font:{size:10},autoSkip:false,maxRotation:60}},
-                  y:{beginAtZero:true,grid:{color:'#eef1f6'},ticks:{callback:v=>v+'h'}}}}}));
+                  y:{beginAtZero:true,grid:{color:'#e7ddc8'},ticks:{callback:v=>v+'h'}}}}}));
     });
   }
   // ---- cumulative progress table: total tracked time per bucket, with before / added / running total ----
@@ -2598,7 +2813,53 @@ function renderReports(){
 }
 
 // --- Firebase sync glue ---
-function fbBlob(){ return {version:1, months:MONTHS, colors:COLORS, icons:ICONS, allcats:ALLCATS, taskcat:TASK_CAT, entries:loadEntries(), rollup:loadRollup(), online:loadOnline(), goals:loadGoals(), habits:loadHabits(), tips:loadTips(), dob:loadDob(), name:loadName(), target:LIFE_TARGET, lockMig:localStorage.getItem('ptd_lockmig_v1')==='1', catMig:localStorage.getItem('ptd_catmig_v1')==='1'}; }
+// SYNC_FIELDS is THE registry of persisted state: [blobField, lsKey, liveGetter, mergeStrategy].
+// Register a new key here once and it syncs, restores, exports and imports automatically.
+// mergeStrategy is used ONLY on cloud pull (fb-data), so two devices don't clobber each
+// other: 'id' = union arrays by .id (cloud wins a shared id), 'map' = {...local,...cloud},
+// 'union' = dedupe-append string array, 'replace' = cloud wins wholesale. Tradeoff: a delete
+// on one device can reappear from the other (no per-record tombstones) — chosen over the old
+// whole-blob overwrite, which silently dropped a device's offline edits. File import always
+// replaces (a backup restore, not a merge).
+// (dob/name/target/planwin/lifebar are scalar specials handled inline in fbBlob/applyBlob.)
+const SYNC_FIELDS=[
+  ['months',  LS_MONTHS,  ()=>MONTHS,     'replace'],
+  ['colors',  LS_COLORS,  ()=>COLORS,     'map'],
+  ['icons',   LS_ICONS,   ()=>ICONS,      'map'],
+  ['allcats', LS_ALLCATS, ()=>ALLCATS,    'union'],
+  ['taskcat', LS_TASKCAT, ()=>TASK_CAT,   'map'],
+  ['entries', LS_KEY,     loadEntries,    'id'],
+  ['rollup',  LS_ROLLUP,  loadRollup,     'map'],
+  ['online',  LS_ONLINE,  loadOnline,     'map'],
+  ['goals',   LS_GOALS,   loadGoals,      'id'],
+  ['habits',  LS_HABITS,  loadHabits,     'replace'],
+  ['letter',  LS_LETTER,  loadLetter,     'replace'],
+  ['renounced', LS_RENOUNCED, loadRenounced, 'id'],
+];
+function mergeById(loc,cld){ const m=new Map(); (Array.isArray(loc)?loc:[]).forEach(x=>{ if(x&&x.id!=null) m.set(x.id,x); }); (Array.isArray(cld)?cld:[]).forEach(x=>{ if(x&&x.id!=null) m.set(x.id,x); }); return [...m.values()]; }
+function mergeMap(loc,cld){ return {...(loc&&typeof loc==='object'&&!Array.isArray(loc)?loc:{}), ...(cld&&typeof cld==='object'&&!Array.isArray(cld)?cld:{})}; }
+function unionArr(loc,cld){ const s=[...(Array.isArray(loc)?loc:[])]; (Array.isArray(cld)?cld:[]).forEach(v=>{ if(!s.includes(v)) s.push(v); }); return s; }
+function fbBlob(){
+  const o={version:1, dob:loadDob(), name:loadName(), target:LIFE_TARGET, planwin:PLAN_WINDOW_DAYS, lifebar:SHOW_LIFEBAR};
+  SYNC_FIELDS.forEach(([f,k,live])=>{ o[f]=live(); });
+  return o;
+}
+// write blob fields into localStorage — shared by cloud sync (fb-data, merge=true) and file import (replace).
+function applyBlob(d, merge){
+  let changed=false;
+  const set=(k,v)=>{ if(v===undefined||v===null) return; const s=JSON.stringify(v); if(localStorage.getItem(k)!==s){ localStorage.setItem(k,s); changed=true; } };
+  SYNC_FIELDS.forEach(([f,k,live,strat])=>{
+    let v=d[f]; if(v===undefined||v===null) return;
+    if(merge && strat && strat!=='replace'){ const cur=live(); v = strat==='id'?mergeById(cur,v) : strat==='union'?unionArr(cur,v) : mergeMap(cur,v); }
+    set(k,v);
+  });
+  if(typeof d.dob==='string' && d.dob && localStorage.getItem(LS_DOB)!==d.dob){ localStorage.setItem(LS_DOB,d.dob); changed=true; }
+  if(typeof d.name==='string' && localStorage.getItem(LS_NAME)!==d.name){ localStorage.setItem(LS_NAME,d.name); changed=true; }
+  if(d.target && +d.target!==LIFE_TARGET){ LIFE_TARGET=Math.min(150,Math.max(1,+d.target)); localStorage.setItem(LS_TARGET,String(LIFE_TARGET)); changed=true; }
+  if(d.planwin && clampWin(d.planwin)!==PLAN_WINDOW_DAYS){ PLAN_WINDOW_DAYS=clampWin(d.planwin); localStorage.setItem(LS_PLANWIN,String(PLAN_WINDOW_DAYS)); changed=true; }
+  if(typeof d.lifebar==='boolean' && d.lifebar!==SHOW_LIFEBAR){ SHOW_LIFEBAR=d.lifebar; localStorage.setItem(LS_LIFEBAR, SHOW_LIFEBAR?'1':'0'); changed=true; }
+  return changed;
+}
 function fbSyncPush(){ window.fbPushRaw && window.fbPushRaw(fbBlob()); }
 window.fbToggle = function(){ if(window.__fbIn){ window.fbSignOut(); } else { window.fbSignIn(); } };
 document.addEventListener('fb-auth', e=>{
@@ -2608,49 +2869,7 @@ document.addEventListener('fb-auth', e=>{
   else { btn.textContent='Sign in to sync'; who.textContent=''; }
 });
 document.addEventListener('fb-data', e=>{
-  const d=e.detail||{}; let changed=false;
-  const set=(k,v)=>{ if(v===undefined||v===null) return; const s=JSON.stringify(v); if(localStorage.getItem(k)!==s){ localStorage.setItem(k,s); changed=true; } };
-  set(LS_MONTHS,d.months); set(LS_COLORS,d.colors); set(LS_ICONS,d.icons); set(LS_ALLCATS,d.allcats); set(LS_TASKCAT,d.taskcat);
-  set(LS_KEY,d.entries); set(LS_ROLLUP,d.rollup); set(LS_ONLINE,d.online); set(LS_GOALS,d.goals); set(LS_HABITS,d.habits); set(LS_TIPS,d.tips);
-  if(typeof d.dob==='string' && d.dob && localStorage.getItem(LS_DOB)!==d.dob){ localStorage.setItem(LS_DOB,d.dob); changed=true; }
-  if(typeof d.name==='string' && localStorage.getItem(LS_NAME)!==d.name){ localStorage.setItem(LS_NAME,d.name); changed=true; }
-  if(d.target && +d.target!==LIFE_TARGET){ LIFE_TARGET=Math.min(150,Math.max(1,+d.target)); localStorage.setItem(LS_TARGET,String(LIFE_TARGET)); changed=true; }
-  // one-time backfill: lock goal-linked entries that already exist, so a later
-  // minutes-per-unit change never retroactively rewrites them. Flag is synced
-  // (d.lockMig) so this runs exactly once across all devices. New entries logged
-  // after this stay unlocked and DO recompute on mapping changes.
-  if(!d.lockMig){
-    const all=loadEntries(); let stamped=false;
-    all.forEach(e=>{ if(e.type==='goal' && e.goalId && !e.lock){ e.lock=true; stamped=true; } });
-    localStorage.setItem('ptd_lockmig_v1','1');
-    if(stamped){ saveEntries(all); changed=true; } else { fbSyncPush(); }
-  }
-  // one-time category rename: fold logged 'Family'/'Career' into their display
-  // names 'SRM Study'/'Career & Finance' so goals/habits/entries share one canonical
-  // category each (kills the duplicate By-category rows). Synced via d.catMig → runs once.
-  if(!d.catMig){
-    const REN={'Family':'SRM Study','Career':'Career & Finance'};
-    const rn=c=>REN[c]||c;
-    const renKeys=o=>{ if(!o||typeof o!=='object') return o; const out={}; Object.entries(o).forEach(([k,v])=>{ out[rn(k)]=v; }); return out; };
-    let did=false;
-    const ent=loadEntries(); ent.forEach(e=>{ if(REN[e.cat]){ e.cat=rn(e.cat); did=true; } });
-    const gls=loadGoals(); gls.forEach(g=>{ if(REN[g.cat]){ g.cat=rn(g.cat); did=true; } });
-    const hbs=loadHabits(); hbs.forEach(h=>{ if(REN[h.cat]){ h.cat=rn(h.cat); did=true; } });
-    const tc=loadObj(LS_TASKCAT,SEED_TASK_CAT); Object.keys(tc).forEach(k=>{ if(REN[tc[k]]){ tc[k]=rn(tc[k]); did=true; } });
-    const ac=loadArr(LS_ALLCATS,SEED_ALLCATS).map(rn).filter((c,i,a)=>a.indexOf(c)===i);
-    const col=renKeys(loadObj(LS_COLORS,{})), ico=renKeys(loadObj(LS_ICONS,{}));
-    const months=loadMonths(); months.forEach(M=>{ if(M.cats){ M.cats=renKeys(M.cats); } });
-    const roll=loadRollup(); Object.values(roll).forEach(r=>{ if(r&&r.c){ r.c=renKeys(r.c); } });
-    localStorage.setItem('ptd_catmig_v1','1');
-    localStorage.setItem(LS_ALLCATS,JSON.stringify(ac));
-    localStorage.setItem(LS_TASKCAT,JSON.stringify(tc));
-    localStorage.setItem(LS_COLORS,JSON.stringify(col));
-    localStorage.setItem(LS_ICONS,JSON.stringify(ico));
-    localStorage.setItem(LS_MONTHS,JSON.stringify(months.filter(x=>ymOf(x.m)!==CUR_YM)));
-    saveRollup(roll);
-    saveHabits(hbs); saveGoals(gls); saveEntries(ent); // last save pushes the migrated blob (incl. catMig)
-    changed=true;
-  }
+  const d=e.detail||{}; let changed=applyBlob(d, true);
   // one reload max per page load — prevents a flicker loop if remote/local never byte-match
   if(changed && !sessionStorage.getItem('fb_synced')){
     sessionStorage.setItem('fb_synced','1');
@@ -2659,9 +2878,36 @@ document.addEventListener('fb-data', e=>{
 });
 document.addEventListener('fb-empty', ()=>fbSyncPush());
 
+// --- Backup: export / import the same blob the cloud sync uses ---
+document.getElementById('expBtn').onclick=()=>{
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(fbBlob(),null,1)],{type:'application/json'}));
+  a.download=`time-dashboard-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+};
+document.getElementById('impBtn').onclick=()=>document.getElementById('impFile').click();
+document.getElementById('impFile').addEventListener('change', e=>{
+  const f=e.target.files[0]; e.target.value=''; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const d=JSON.parse(r.result);
+      if(!d || typeof d!=='object' || !('version' in d)) throw new Error('not a dashboard backup file');
+      if(!confirm('Replace ALL data on this device with this backup file? Current data will be overwritten.')) return;
+      applyBlob(d);
+      fbSyncPush(); // if signed in, cloud gets the imported data too
+      setTimeout(()=>location.reload(), 1200); // let the debounced push send before reload
+    }catch(err){ alert('Import failed: '+err.message); }
+  };
+  r.readAsText(f);
+});
+
 // init
+(function(){ const yr=CUR_YM.slice(0,4); document.title=`Project Time Distribution — ${yr}`; const h=document.getElementById('yearSplitH'); if(h) h.textContent=`${yr} — category split`; })();
 MONTHS = loadMonths(); current = MONTHS.length-1; // recompute now that entries (LS_KEY) are in scope — surfaces recent past months (e.g. June)
-renderLifeBar(); renderKPIs(); renderTabs(); renderTotalTrend(); renderMiniTips(); renderTips();
+renderLifeBar(); renderTabs(); renderTotalTrend(); renderMiniTips();
+maybeShowOnboard();
+maybeShowLetter(mostGoalsBehind());
 setOv('year');
 initLogForm(); initGoals();
 document.getElementById('catForm').addEventListener('submit', e=>{
@@ -2712,13 +2958,18 @@ document.getElementById('catEditForm').addEventListener('submit', e=>{
   const m=document.getElementById('catEditMsg');
   if(ok){ catModalShow(false); } else { m.textContent='Name empty or already exists'; m.style.color='#dc2626'; }
 });
-// ----- Life Tips wiring -----
-document.getElementById('tipEditBtn').onclick=tipStartEdit;
-document.getElementById('tipSaveBtn').onclick=tipSaveEdit;
-document.getElementById('tipCancelBtn').onclick=tipCancelEdit;
-document.getElementById('tipPdfBtn').onclick=exportTipsPdf;
 document.querySelectorAll('#setSide button').forEach(b=>b.onclick=()=>setSettab(b.dataset.s));
 document.getElementById('personalForm').addEventListener('submit', savePersonal);
+document.getElementById('renForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const inp=document.getElementById('renInput');
+  renAdd(inp.value); inp.value='';
+});
+document.getElementById('setLetterSave').onclick=()=>{
+  saveLetter(document.getElementById('setLetter').value);
+  const m=document.getElementById('letterMsg'); m.textContent='Saved ✓'; m.style.color='#34a853';
+  setTimeout(()=>{ m.textContent=''; }, 2000);
+};
 
 // ================= POT (year capacity vs filled, coloured by category) =================
 function renderPot(boxId){
@@ -2728,7 +2979,7 @@ function renderPot(boxId){
   const yr=P.yr;
   // zones from the SAME planning rows as Overview → legend targets/% reconcile across portals
   const zones=P.rowsData.filter(r=>r.target>0).map(r=>({k:r.k,c:r.color,targetH:r.target,doneH:r.done}));
-  // capacity = Planning year total (logged + to-do), NOT YBATT_DAILY×days
+  // capacity = Planning year total (logged + to-do), NOT a flat daily-hours × days figure
   const cap=P.yearH, totDone=zones.reduce((a,z)=>a+z.doneH,0), fr=Math.max(0,Math.min(1,totDone/cap));
   // ---------- ORB: layered multi-colour water, 10% grid, 5% side ticks ----------
   const cx=150,cy=140,r=108, yAt=f=>(cy+r)-2*r*Math.max(0,Math.min(1,f));
@@ -2785,36 +3036,31 @@ function renderPot(boxId){
     </div>
     <div style="text-align:center;color:var(--muted);font-size:12.5px;margin:14px 0 4px">${yr} · ${fmt(cap)}h capacity (planning year total: done + to-do) · <b>${fmt(Math.max(0,cap-totDone))}h</b> to fill</div>`;
 }
-// ---- Journey to Shiva: one wall-breaking scene per Life's Big goal ----
-// Walls scale to the goal's target (a "nice" step keeps the count sane). Person
-// starts at the right (dark walls) and walks left toward Shiva as each chunk is
-// completed and its wall falls to rubble. No goal is hardcoded — any goal filed
-// under the "Life's Big" category gets its own scene.
-const SJ_BIG_CAT="Life's Big";
+// ---- Journey: one wall-breaking scene per active goal ----
+// Walls scale to the goal's target (a "nice" step keeps the count sane). The
+// walker starts at the right (dark walls) and moves left toward the summit as
+// each chunk is completed and its wall falls to rubble. Fully data-driven —
+// every active goal with a target gets its own scene (journeyGoals()).
 function sjStep(target){ // pick units-per-wall so wall count lands in a readable range
   const steps=[1,2,5,10,20,25,50,100,200,250,500,1000,2000,2500,5000,10000,25000];
   for(const s of steps){ if(target/s<=140) return s; }
   return Math.ceil(target/140);
 }
-function renderShivaJourney(){
-  const box=document.getElementById('shivaBox'); if(!box) return;
+// Which goals get a journey scene: every active, not-done goal that has a target.
+// Data-driven — no hardcoded category, no goal singled out by name.
+function journeyGoals(){
   const goals=(typeof loadGoals==='function')?loadGoals():[];
-  const big=goals.filter(x=>((x.cat||'').trim().toLowerCase()===SJ_BIG_CAT.toLowerCase()) && x.sec!=='archived');
-  if(!big.length){ box.innerHTML=`<div class="hint" style="text-align:center;padding:18px 0">No Life's Big goals yet. Create a goal under the “${SJ_BIG_CAT}” category and its journey to Shiva appears here.</div>`; return; }
-  const scenes=[];
-  const shiv=sjShivlingScene(big);   // near-term rolling 1,000 block, above the full journeys
-  if(shiv) scenes.push(shiv);
-  big.forEach((g,gi)=>scenes.push(sjScene(g,gi)));
-  box.innerHTML = scenes.join('<div style="height:26px"></div>');
+  return goals.filter(x=>((x.sec||'active')==='active') && !x.done && !x.deleted && (+x.target>0));
 }
-// Near-term milestone scene: the current rolling 1,000-mala block — 100 walls of 10 — so progress stays visible; target is a Shivling.
-function sjShivlingScene(big){
-  if(!big){ const goals=(typeof loadGoals==='function')?loadGoals():[];
-    big=goals.filter(x=>((x.cat||'').trim().toLowerCase()===SJ_BIG_CAT.toLowerCase()) && x.sec!=='archived'); }
-  const ons=big.find(x=>/ons/i.test(x.name||''));
-  if(!ons) return '';
-  const c=Math.max(0,+ons.cur||0), block=Math.floor(c/1000)+1, cur=c%1000;
-  return sjScene(ons,'L',{per:10, N:100, cur, shrine:'shivling', shrineName:'Shivling', heading:`${ons.name} — milestone ${block} (this 1,000) → Shivling`, perLabel:`10 ${ons.unit||'units'}`});
+function journeyScenesHTML(){
+  const big=journeyGoals();
+  if(!big.length) return '';
+  return big.map((g,gi)=>sjScene(g,gi)).join('<div style="height:26px"></div>');
+}
+function renderJourney(){
+  const box=document.getElementById('journeyBox'); if(!box) return;
+  const html=journeyScenesHTML();
+  box.innerHTML = html || `<div class="hint" style="text-align:center;padding:18px 0">No active goals with a target yet. Add a goal with a target and its journey to the summit appears here.</div>`;
 }
 function sjScene(g,gi,opts){
   opts=opts||{};
@@ -2826,12 +3072,12 @@ function sjScene(g,gi,opts){
   const N=Math.max(1, opts.N||Math.round(target/per));
   const broken=Math.min(N, Math.floor(cur/per));
   const frac=Math.min(1, cur/target);
-  const shrineName=opts.shrineName||'Shiva';
+  const shrineName=opts.shrineName||'the summit';
   const W=1000, H=340, x0=178, x1=918, zoneW=x1-x0, slot=zoneW/N;
   const wallW=Math.max(2.4, Math.min(9, slot*0.6)), baseY=290, wallH=78;
   const groundBot=336;                          // blue walls extend down through the dark path strip
   const gTop=298, gH=groundBot-gTop;            // green cleared tiles live INSIDE the bottom strip only
-  const Lof=i=>{ const t=N>1?i/(N-1):0; return 64-t*36; };   // i=0 (left, near Shiva) light · i=N-1 (right, start) dark
+  const Lof=i=>{ const t=N>1?i/(N-1):0; return 64-t*36; };   // i=0 (left, near summit) light · i=N-1 (right, start) dark
   let walls='';
   for(let i=0;i<N;i++){
     const cx=x0+i*slot+(slot-wallW)/2, L=Lof(i), isBroken=i>=(N-broken);
@@ -2855,12 +3101,8 @@ function sjScene(g,gi,opts){
   const defs=`<defs>
     <linearGradient id="sjSky${u}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#141a40"/><stop offset=".55" stop-color="#3b4f8f"/><stop offset=".82" stop-color="#c98fae"/><stop offset="1" stop-color="#f3c08a"/></linearGradient>
     <linearGradient id="sjSnow${u}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#aebfdd"/></linearGradient>
-    <radialGradient id="sjSkin${u}" cx=".4" cy=".35"><stop offset="0" stop-color="#9fccf3"/><stop offset="1" stop-color="#4878b8"/></radialGradient>
     <radialGradient id="sjHalo${u}"><stop offset="0" stop-color="rgba(255,240,180,.95)"/><stop offset=".6" stop-color="rgba(255,224,150,.32)"/><stop offset="1" stop-color="rgba(255,224,150,0)"/></radialGradient>
     <linearGradient id="sjPath${u}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3a4f6e"/><stop offset="1" stop-color="#1a2233"/></linearGradient>
-    <radialGradient id="sjFire${u}" cx=".5" cy=".55" r=".6"><stop offset="0" stop-color="rgba(255,176,48,.95)"/><stop offset=".45" stop-color="rgba(220,92,20,.6)"/><stop offset="1" stop-color="rgba(120,30,0,0)"/></radialGradient>
-    <radialGradient id="sjStone${u}" cx=".38" cy=".28" r=".85"><stop offset="0" stop-color="#74747a"/><stop offset=".4" stop-color="#36363a"/><stop offset="1" stop-color="#0b0b0d"/></radialGradient>
-    <linearGradient id="sjBrass${u}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d6ad52"/><stop offset=".5" stop-color="#7a5a22"/><stop offset="1" stop-color="#241808"/></linearGradient>
   </defs>`;
   const mtns=`<g>
     <path d="M110,290 L255,150 L390,290 Z" fill="url(#sjSnow${u})"/>
@@ -2870,48 +3112,19 @@ function sjScene(g,gi,opts){
     <path d="M255,150 L274,182 L238,178 Z" fill="#ffffff"/>
     <path d="M760,150 L780,184 L742,180 Z" fill="#ffffff"/>
   </g>`;
-  const shiva=`<g transform="translate(86,0)">
-    <path d="M-72,290 L0,194 L72,290 Z" fill="url(#sjSnow${u})"/>
-    <path d="M-72,290 L0,194 L-10,290 Z" fill="#c2d2ee" opacity=".7"/>
-    <circle cx="0" cy="150" r="60" fill="url(#sjHalo${u})"/>
-    <ellipse cx="0" cy="252" rx="54" ry="20" fill="#3f73b8"/>
-    <ellipse cx="0" cy="247" rx="54" ry="16" fill="#5a8fd0"/>
-    <ellipse cx="-41" cy="245" rx="14" ry="10" fill="#6aa0dd"/>
-    <ellipse cx="41" cy="245" rx="14" ry="10" fill="#6aa0dd"/>
-    <path d="M-25,251 Q-31,196 0,187 Q31,196 25,251 Z" fill="url(#sjSkin${u})"/>
-    <path d="M-22,210 Q-45,229 -41,245" stroke="#5a8fd0" stroke-width="11" fill="none" stroke-linecap="round"/>
-    <path d="M22,210 Q45,229 41,245" stroke="#5a8fd0" stroke-width="11" fill="none" stroke-linecap="round"/>
-    <rect x="-7" y="167" width="14" height="21" rx="6" fill="#5a8fd0"/>
-    <circle cx="0" cy="150" r="22" fill="url(#sjSkin${u})"/>
-    <path d="M-15,134 Q0,106 15,134 Q0,127 -15,134 Z" fill="#26568f"/>
-    <circle cx="0" cy="119" r="9" fill="#2c5f9c"/>
-    <path d="M9,107 A7,7 0 1 1 9,121 A9,9 0 1 0 9,107 Z" fill="#fdf0bf"/>
-    <path d="M0,143 l3,9 l-3,3 l-3,-3 Z" fill="#e8c84a"/>
-    <path d="M-10,150 q5,3 9,0" stroke="#173a63" stroke-width="1.6" fill="none"/>
-    <path d="M1,150 q5,3 9,0" stroke="#173a63" stroke-width="1.6" fill="none"/>
-    <path d="M-16,167 Q0,181 16,167" stroke="#7a4a1f" stroke-width="3" fill="none" stroke-dasharray="1.5 2.5"/>
-    <g transform="translate(76,150)"><line x1="0" y1="-46" x2="0" y2="122" stroke="#cda14a" stroke-width="3.4"/>
-      <path d="M-12,-42 Q-12,-60 0,-60 Q12,-60 12,-42 M0,-60 l0,-15 M-12,-46 l0,-11 M12,-46 l0,-11" stroke="#d8b25a" stroke-width="3" fill="none"/></g>
+  // Destination = a snow summit with a planted flag (neutral "goal reached" marker).
+  const dest=`<g transform="translate(86,0)">
+    <circle cx="0" cy="150" r="64" fill="url(#sjHalo${u})"/>
+    <path d="M-86,290 L0,150 L86,290 Z" fill="url(#sjSnow${u})"/>
+    <path d="M-86,290 L0,150 L-12,290 Z" fill="#c2d2ee" opacity=".65"/>
+    <path d="M-26,206 L0,150 L26,206 L11,212 L0,196 L-11,212 Z" fill="#ffffff"/>
+    <line x1="0" y1="150" x2="0" y2="94" stroke="#8a6a2f" stroke-width="3.4" stroke-linecap="round"/>
+    <path d="M0,96 L46,110 L0,126 Z" fill="#e8b23a"/>
+    <path d="M0,96 L46,110 L0,112 Z" fill="#f4cf6a"/>
   </g>`;
-  const shivling=`<g transform="translate(86,0)">
-    <ellipse cx="0" cy="205" rx="118" ry="108" fill="url(#sjFire${u})"/>
-    <path d="M-72,290 L0,214 L72,290 Z" fill="url(#sjSnow${u})" opacity=".55"/>
-    <ellipse cx="0" cy="272" rx="66" ry="18" fill="#000" opacity=".5"/>
-    <path d="M40,254 q42,0 58,13 q-19,11 -58,6 Z" fill="url(#sjBrass${u})"/>
-    <ellipse cx="0" cy="258" rx="62" ry="16" fill="url(#sjBrass${u})"/>
-    <ellipse cx="0" cy="254" rx="52" ry="12" fill="#1c160c"/>
-    <ellipse cx="0" cy="252" rx="40" ry="9" fill="#050505"/>
-    <path d="M-27,254 Q-31,150 0,150 Q31,150 27,254 Z" fill="url(#sjStone${u})"/>
-    <ellipse cx="0" cy="150" rx="27" ry="15" fill="#2b2b2f"/>
-    <ellipse cx="-1" cy="147" rx="20" ry="10" fill="#52525a"/>
-    <path d="M-14,166 Q-21,202 -12,240" stroke="rgba(255,255,255,.26)" stroke-width="6" fill="none" stroke-linecap="round"/>
-    <path d="M-18,197 Q0,202 18,197" stroke="#ff8a1e" stroke-width="4.5" fill="none" stroke-linecap="round"/>
-    <path d="M-19,209 Q0,214 19,209" stroke="#ffb347" stroke-width="4.5" fill="none" stroke-linecap="round"/>
-    <path d="M-18,221 Q0,226 18,221" stroke="#ff8a1e" stroke-width="4.5" fill="none" stroke-linecap="round"/>
-  </g>`;
-  const shrine=opts.shrine==='shivling'?shivling:shiva;
+  const shrine=dest;
   const person=`<g transform="translate(${px.toFixed(1)},0)">
-    <ellipse cx="-4" cy="291" rx="14" ry="4" fill="rgba(20,30,60,.2)"/>
+    <ellipse cx="-4" cy="291" rx="14" ry="4" fill="rgba(70,58,32,.2)"/>
     <path d="M2,262 l8,28" stroke="#b5651d" stroke-width="6" stroke-linecap="round" fill="none"/>
     <path d="M-2,262 l-10,27" stroke="#cf7320" stroke-width="6.5" stroke-linecap="round" fill="none"/>
     <path d="M-9,224 Q-2,211 6,221 L9,261 L-7,263 Z" fill="#e8862e"/>
@@ -2937,7 +3150,7 @@ function sjScene(g,gi,opts){
     ${walls}${crack}${shrine}${person}${overlay}
   </svg>`;
   const by=g.by?` · by ${esc(g.by)}`:'';
-  const head=opts.heading?esc(opts.heading):(esc(g.name)||'Life’s Big goal');
+  const head=opts.heading?esc(opts.heading):(esc(g.name)||'Your goal');
   return `<div style="text-align:center;font-size:15px;font-weight:700;color:var(--ink);margin-bottom:8px">${head}<span style="font-weight:500;color:var(--muted)">${opts.heading?'':by}</span></div>`
     + svg;
 }
@@ -2976,7 +3189,7 @@ function renderAudit(){
     else if(e.type==='screen'){ name=e.task||'Screen'; added='screen'; }
     else { name=e.task||'—'; added=`→ ${e.cat||''}`.trim(); }
     return `${hdr}<tr>
-      ${cell(`<div style="font-weight:600">${icon} ${name}</div><div style="color:var(--muted);font-size:11px">${fmtDt(ts)}</div>`)}
+      ${cell(`<div style="font-weight:600">${icon} ${escHtml(name)}</div><div style="color:var(--muted);font-size:11px">${fmtDt(ts)}</div>`)}
       ${cell(prev,'white-space:nowrap;color:var(--muted)')}
       ${cell(added,'white-space:nowrap')}
       ${cell(fmtShort(e.mins),'white-space:nowrap')}
@@ -3018,15 +3231,15 @@ function archiveOldEntries(){
 }
 try{ archiveOldEntries(); }catch(e){}
 (function(){ try{ const sv=localStorage.getItem(LS_VIEW); if(sv&&sv!=='overview') setView(sv); }catch(e){} })();
-// ---- daily Pot popup (shown once per day on first open) ----
+// ---- Pot popup (shown once per 10-day period on first open — matches the once-per-period ritual, not daily nagging) ----
 function closePotPopup(){ const p=document.getElementById('potPopup'); if(p) p.hidden=true; }
 function showPotPopup(){ const p=document.getElementById('potPopup'); if(!p) return; try{ renderPot('potPopupBox'); }catch(e){ return; } p.hidden=false; }
 (function(){ try{
   const c=document.getElementById('potPopupClose'); if(c) c.onclick=closePotPopup;
   const ov=document.getElementById('potPopup'); if(ov) ov.addEventListener('click',e=>{ if(e.target===ov) closePotPopup(); });
   document.addEventListener('keydown',e=>{ if(e.key==='Escape') closePotPopup(); });
-  const today=new Date().toISOString().slice(0,10);
-  if(localStorage.getItem('potPopupShown')!==today){ localStorage.setItem('potPopupShown',today); setTimeout(showPotPopup,350); }
+  const curPeriod = CUR_YM + '-' + periodOfDay(new Date().getDate());
+  if(localStorage.getItem('potPopupShown')!==curPeriod){ localStorage.setItem('potPopupShown',curPeriod); setTimeout(showPotPopup,350); }
 }catch(e){} })();
 </script>
 <div id="potPopup" hidden style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:32px 14px">

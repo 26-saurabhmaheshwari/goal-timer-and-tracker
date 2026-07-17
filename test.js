@@ -21,6 +21,15 @@ fs.writeFileSync(tmp, js);
 try { cp.execSync(`node --check ${tmp}`, { stdio: 'pipe' }); ok('JS syntax'); }
 catch (e) { bad('JS syntax:\n' + e.stderr.toString()); }
 
+// --- 1b. syntax check the <script type="module"> block (Firebase) as ESM ---
+const modBlocks = [...html.matchAll(/<script type="module">([\s\S]*?)<\/script>/g)].map(m => m[1]);
+if (modBlocks.length) {
+  const tmpM = path.join(require('os').tmpdir(), 'td_check.mjs');
+  fs.writeFileSync(tmpM, modBlocks.join('\n;\n'));
+  try { cp.execSync(`node --check ${tmpM}`, { stdio: 'pipe' }); ok('module JS syntax'); }
+  catch (e) { bad('module JS syntax:\n' + e.stderr.toString()); }
+}
+
 // --- 2. merge precedence: SEED must come before loadObj so saved values win ---
 for (const v of ['COLORS', 'ICONS']) {
   const re = new RegExp(`let\\s+${v}\\s*=\\s*\\{\\s*\\.\\.\\.SEED_${v}\\s*,\\s*\\.\\.\\.loadObj\\(`);
@@ -28,19 +37,26 @@ for (const v of ['COLORS', 'ICONS']) {
   else bad(`${v} merge precedence wrong — must be {...SEED_${v}, ...loadObj(LS_${v}, {})} or saved values revert on load`);
 }
 
-// --- 3. every fbBlob field is restored by the fb-data listener ---
-const blobM = html.match(/function fbBlob\(\)\s*\{\s*return\s*\{([\s\S]*?)\}\s*;\s*\}/);
-const listM = html.match(/addEventListener\('fb-data'[\s\S]*?\n\}\)/);
-if (!blobM) bad('could not locate fbBlob()');
-else if (!listM) bad('could not locate fb-data listener');
+// --- 3. every persisted LS_* key is registered in SYNC_FIELDS (or exempt) ---
+// SYNC_FIELDS drives fbBlob + applyBlob (sync, export, import) in one loop, so an
+// unregistered key silently never syncs/exports. Exempt: dob/name/target are
+// string/number specials handled inline in applyBlob; LS_VIEW is device-local UI state.
+const regM = html.match(/const SYNC_FIELDS\s*=\s*\[([\s\S]*?)\n\];/);
+if (!regM) bad('could not locate SYNC_FIELDS registry');
 else {
-  const blobKeys = [...blobM[1].matchAll(/(\w+)\s*:/g)].map(m => m[1]);
-  const restored = new Set([...listM[0].matchAll(/d\.(\w+)/g)].map(m => m[1]));
-  const exempt = new Set(['version']); // version is a schema marker, not restored
-  for (const k of blobKeys) {
-    if (restored.has(k) || exempt.has(k)) ok(`sync: ${k} restored`);
-    else bad(`sync: fbBlob has '${k}' but fb-data listener never reads d.${k} — it will sync out but never sync back`);
+  const reg = new Set([...regM[1].matchAll(/LS_\w+/g)].map(m => m[0]));
+  const exempt = new Set(['LS_DOB', 'LS_NAME', 'LS_TARGET', 'LS_PLANWIN', 'LS_LIFEBAR', 'LS_VIEW', 'LS_ONBOARDED']);
+  const declared = new Set([...html.matchAll(/(LS_\w+)\s*=\s*'/g)].map(m => m[1]));
+  for (const k of declared) {
+    if (reg.has(k) || exempt.has(k)) ok(`sync registry: ${k}`);
+    else bad(`sync registry: ${k} declared but not in SYNC_FIELDS — it will never sync/export/import`);
   }
+  for (const f of ['dob', 'name', 'target', 'planwin', 'lifebar']) {
+    if (new RegExp(`d\\.${f}`).test(html)) ok(`applyBlob restores ${f}`);
+    else bad(`applyBlob never reads d.${f} — special field will sync out but never back`);
+  }
+  if (/function applyBlob\(/.test(html)) ok('applyBlob exists (shared by fb-data + import)');
+  else bad('applyBlob missing — fb-data and import must share one restore path');
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
