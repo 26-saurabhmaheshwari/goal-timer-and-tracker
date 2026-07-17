@@ -309,6 +309,8 @@ if(!window.Chart){
   .gmini button.gmini-ok:hover{color:#16a34a;border-color:#16a34a}
   .gmini-done .gmini-name{text-decoration:line-through;color:var(--muted)}
   .gmini-check{color:#16a34a;font-weight:800;flex:none}
+  .gmini-someday{opacity:.62}
+  .gmini-tag{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:0 4px;margin-left:5px}
   @media(max-width:980px){.gcards{grid-template-columns:repeat(3,1fr)}}
   @media(max-width:720px){.gcards{grid-template-columns:repeat(2,1fr)}}
   @media(max-width:460px){.gcards{grid-template-columns:1fr}}
@@ -555,14 +557,10 @@ if(!window.Chart){
     </div>
     <div id="peBody"></div>
     <div class="frow noprint" style="margin-top:12px;gap:8px;flex-wrap:wrap;align-items:center">
-      <details class="repdrop" id="peShare"><summary>🖨 Print &amp; share</summary>
-        <div class="repdrop-panel" style="display:flex;flex-direction:column;gap:6px;min-width:200px">
-          <button type="button" id="pePrint" class="btn ghost" title="Print a blank sheet to fill in by hand over the 10 days">🖨️ Paper sheet</button>
-          <button type="button" id="pePoster" class="btn ghost" title="Print a one-page year grid of all 36 periods for the wall — colour each cell as you go">🎨 Wall poster</button>
-          <button type="button" id="peIcs" class="btn ghost" title="Add a calendar reminder to log this period">📅 Reminder</button>
-          <button type="button" id="peWitness" class="btn ghost" title="Copy a 3-line summary of this period to send to an accountability partner">📋 Witness note</button>
-        </div>
-      </details>
+      <button type="button" id="pePrint" class="btn ghost" title="Print a blank sheet to fill in by hand over the 10 days">🖨️ Paper sheet</button>
+      <button type="button" id="pePoster" class="btn ghost" title="Print a one-page year grid of all 36 periods for the wall — colour each cell as you go">🎨 Wall poster</button>
+      <button type="button" id="peIcs" class="btn ghost" title="Add a calendar reminder to log this period">📅 Reminder</button>
+      <button type="button" id="peWitness" class="btn ghost" title="Copy a 3-line summary of this period to send to an accountability partner">📋 Witness note</button>
       <button type="button" id="peSave" class="btn" style="margin-left:auto">Save period</button>
     </div>
     <span id="peMsg" class="fmsg"></span>
@@ -1215,12 +1213,10 @@ function initLogForm(){
   document.getElementById('periodEntryBtn').onclick = openPeriodEntry;
   document.getElementById('peClose').onclick = ()=>peShow(false);
   document.getElementById('peSave').onclick = savePeriodEntry;
-  // Print & share dropdown: close the menu, then run the action
-  const peAct=(id,fn)=>{ document.getElementById(id).onclick=()=>{ document.getElementById('peShare').open=false; fn(); }; };
-  peAct('pePrint', printPeriodSheet);
-  peAct('pePoster', printYearPoster);
-  peAct('peIcs', downloadPeriodIcs);
-  peAct('peWitness', ()=>copyWitness(document.getElementById('peMonth').value, document.getElementById('pePeriod').value, document.getElementById('peMsg')));
+  document.getElementById('pePrint').onclick = printPeriodSheet;
+  document.getElementById('pePoster').onclick = printYearPoster;
+  document.getElementById('peIcs').onclick = downloadPeriodIcs;
+  document.getElementById('peWitness').onclick = ()=>copyWitness(document.getElementById('peMonth').value, document.getElementById('pePeriod').value, document.getElementById('peMsg'));
   document.getElementById('cmtClose').onclick = ()=>cmtShow(false);
   document.getElementById('cmtSkip').onclick = ()=>cmtShow(false);
   document.getElementById('cmtSave').onclick = saveCommits;
@@ -2130,7 +2126,7 @@ window.startMiniCreate=function(pid){
   document.getElementById('gUnit').value=p.unit||''; document.getElementById('gUnitLab').textContent=p.unit||'unit';
   document.getElementById('gMinPer').value=(p.minPerUnit==null?'':p.minPerUnit);
   document.getElementById('gCat').disabled=true; document.getElementById('gUnit').disabled=true; // inherited from the parent
-  document.getElementById('gSecWrap').style.display='none'; // minis are always active
+  document.getElementById('gSecWrap').style.display=''; document.getElementById('gSec').value='active'; // section editable; defaults active
   document.getElementById('goalMsg').textContent='';
   goalFormShow(true); document.getElementById('gName').focus();
 };
@@ -2179,7 +2175,7 @@ function initGoals(){
     const g=loadGoals();
     if(goalEdit){ const i=g.findIndex(x=>x.id===goalEdit); if(i>=0){ g[i]={...g[i],...o}; saveGoals(g); syncGoalEntries(g[i]); } }
     else { o.id='g'+Date.now();
-      if(goalMiniParent){ const p=g.find(q=>q.id===goalMiniParent); if(p){ o.parentId=p.id; o.cat=p.cat; o.unit=p.unit; o.sec='active'; if(o.minPerUnit==null) o.minPerUnit=p.minPerUnit; } }
+      if(goalMiniParent){ const p=g.find(q=>q.id===goalMiniParent); if(p){ o.parentId=p.id; o.cat=p.cat; o.unit=p.unit; if(o.minPerUnit==null) o.minPerUnit=p.minPerUnit; } } // o.sec comes from the section dropdown
       g.push(o); saveGoals(g); }
     document.getElementById('goalMsg').textContent='Saved ✓'; goalFormReset(); renderGoals();
     if(document.getElementById('entryTable')) renderLog();
@@ -2233,8 +2229,9 @@ function goalCard(x){
     <div class="gminis-head">🏅 ${mDone}/${minis.length} mini goal${minis.length>1?'s':''} accomplished</div>
     ${minis.map(m=>{
       const mpct=m.target>0?Math.min(100,Math.round((+m.cur||0)/m.target*100)):0;
-      return `<div class="gmini${m.done?' gmini-done':''}">
-        <span class="gmini-name" title="${escHtml(m.name)}">${escHtml(m.name)}</span>
+      const someday=!m.done && (m.sec||'active')!=='active';
+      return `<div class="gmini${m.done?' gmini-done':''}${someday?' gmini-someday':''}">
+        <span class="gmini-name" title="${escHtml(m.name)}">${escHtml(m.name)}${someday?' <span class="gmini-tag">someday</span>':''}</span>
         <span class="gmini-bar"><i style="width:${mpct}%"></i></span>
         <span class="gmini-sub">${m.cur}${m.target>0?`/${m.target}`:''}</span>
         ${m.done?'<span class="gmini-check" title="Accomplished">✓</span>'
@@ -2403,10 +2400,10 @@ window.goalEditStart=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x
   document.getElementById('gUnit').value=x.unit; document.getElementById('gStart').value=x.start||''; document.getElementById('gBy').value=x.by||'';
   document.getElementById('gMinPer').value=(x.minPerUnit==null?'':x.minPerUnit); document.getElementById('gUnitLab').textContent=x.unit||'unit';
   document.getElementById('gSec').value=(x.sec||'active')==='active'?'active':'someday';
-  const mini=!!x.parentId; // minis: cat/unit locked to the parent, no section, no sub-minis
+  const mini=!!x.parentId; // minis: cat/unit locked to the parent, but section IS editable, no sub-minis
   document.getElementById('goalFormTitle').textContent=mini?'Edit mini goal':'Edit goal';
   document.getElementById('gCat').disabled=mini; document.getElementById('gUnit').disabled=mini;
-  document.getElementById('gSecWrap').style.display=mini?'none':'';
+  document.getElementById('gSecWrap').style.display='';
   document.getElementById('gMini').style.display=mini?'none':'';
   document.getElementById('gDelete').style.display='';
   const gd=document.getElementById('gDone'); gd.style.display=''; gd.style.background=x.done?'#64748b':'#16a34a';
