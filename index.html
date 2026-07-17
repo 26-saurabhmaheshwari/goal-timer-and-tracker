@@ -14,7 +14,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tenfold</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap"><!-- goal rows + page title; offline falls back to Segoe UI -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap"><!-- goal rows + page title (app is always used online) -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
 // Offline / CDN-blocked fallback: if Chart.js didn't load, stub it so `new Chart(...)`
@@ -2400,7 +2400,7 @@ function goalCard(x){
     <div class="grow-line">
       <span class="grow-st" title="${badge}">${stBadge(stKind)}</span>
       <div class="grow-main">
-        <div class="gcard-name" title="${escHtml(x.name)}">${iconFor(x.cat)} ${escHtml(x.name)}</div>
+        <div class="gcard-name" title="${escHtml(x.name)}">${escHtml(x.name)}</div>
         <div class="grow-sub">${subBits}</div>
       </div>
       <div class="grow-bar">${barFits?`<i style="width:${pct}%"><span class="grow-val">${barTxt}</span></i>`:`<i style="width:${pct}%"></i><span class="grow-val grow-val-out">${barTxt}</span>`}</div>
