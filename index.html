@@ -157,7 +157,8 @@ if(!window.Chart){
   .gmap-row input{width:110px}
   .gmap-row b{color:var(--accent)}
   .gform-sec{max-width:240px}
-  .gform-foot{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:2px}
+  .gform-foot{display:flex;gap:6px;align-items:center;flex-wrap:nowrap;margin-top:2px;overflow-x:auto}
+  .gform-foot .btn{white-space:nowrap;flex:0 0 auto}
 .catlist{display:flex;flex-direction:column;gap:8px}
 .catrow{display:flex;align-items:center;gap:10px;padding:8px 12px;background:#f2ecdd;border:1px solid #e3dccb;border-radius:10px}
 .catrow .nm{flex:1;font-weight:600;color:var(--ink)}
@@ -205,12 +206,11 @@ if(!window.Chart){
   .gstats{display:flex;gap:14px;flex-wrap:wrap;margin:4px 0 18px}
   .goals-head{display:flex;align-items:stretch;gap:14px;margin-bottom:16px}
   .goals-head .gstats{margin:0;flex:1}
-  .goals-head #goalCreateBtn{flex:0 0 auto;align-self:stretch;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:0 18px;border-radius:16px;background:linear-gradient(150deg,#4f46e5,#7c3aed);color:#fff;box-shadow:0 6px 16px rgba(79,70,229,.4);transition:.15s}
-  .goals-head #goalCreateBtn .gc-plus{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.2);font-size:26px;font-weight:400;line-height:1}
-  .goals-head #goalCreateBtn .gc-arc{width:112px;height:34px;margin-top:6px;overflow:visible}
-  .goals-head #goalCreateBtn .gc-arc text{fill:#fff;font-size:14px;font-weight:800;letter-spacing:.4px}
-  .goals-head #goalCreateBtn:hover{transform:translateY(-3px);box-shadow:0 10px 24px rgba(79,70,229,.5)}
-  .goals-head #goalCreateBtn:active{transform:translateY(0);box-shadow:0 3px 8px rgba(79,70,229,.45)}
+  .goals-head #goalCreateBtn{flex:0 0 auto;align-self:stretch;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding:0 24px;min-width:124px;border:1px solid var(--accent);border-radius:14px;background:var(--accent);color:#fff;box-shadow:0 2px 6px rgba(61,82,102,.22);transition:.15s}
+  .goals-head #goalCreateBtn .gc-plus{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.14);border:1.5px solid rgba(255,255,255,.55);font-size:26px;font-weight:400;line-height:1}
+  .goals-head #goalCreateBtn .gc-lab{font-size:12px;font-weight:800;letter-spacing:.6px;text-transform:uppercase}
+  .goals-head #goalCreateBtn:hover{transform:translateY(-2px);background:#33475a;box-shadow:0 7px 16px rgba(61,82,102,.32)}
+  .goals-head #goalCreateBtn:active{transform:translateY(0);box-shadow:0 2px 5px rgba(61,82,102,.3)}
   .gstat-cap{flex:1;min-width:220px;display:flex;align-items:center;justify-content:flex-start;gap:16px;background:linear-gradient(120deg,#7e3ff2,#e84393 50%,#f6b93b 100%);border:0;box-shadow:0 6px 18px rgba(126,63,242,.2);border-radius:16px;padding:14px 22px;color:#fff}
   .gstat-main{display:flex;flex-direction:column;line-height:1.05}
   .gstat-main b{font-size:30px;font-weight:800;letter-spacing:-1px;color:#fff}
@@ -686,10 +686,7 @@ if(!window.Chart){
     <div class="gstats" id="goalStats"></div>
     <button id="goalCreateBtn" class="btn" title="Create goal" aria-label="Create goal">
       <span class="gc-plus">＋</span>
-      <svg class="gc-arc" viewBox="0 0 100 30" aria-hidden="true">
-        <path id="gcArc" d="M6,4 A62,62 0 0 0 94,4" fill="none"/>
-        <text text-anchor="middle"><textPath href="#gcArc" startOffset="50%">Create goal</textPath></text>
-      </svg>
+      <span class="gc-lab">New goal</span>
     </button>
   </div>
   <div id="goalModal" class="modal-ov" hidden>
@@ -718,8 +715,10 @@ if(!window.Chart){
       </div>
       <label class="gform-sec" id="gSecWrap">Section <select id="gSec">
         <option value="active">Active goal</option>
+        <option value="progress">In progress</option>
         <option value="someday">Someday</option>
       </select></label>
+      <label class="gform-sec" id="gParentWrap" style="display:none">Parent goal <select id="gParent"></select><span class="hint" style="margin:0">Pick a parent to make this a mini of it (inherits its category &amp; unit); choose “Top-level goal” to detach.</span></label>
       <div class="gform-foot">
         <button type="button" id="gDelete" class="btn" style="background:#ef4444;margin-right:auto;display:none">Delete goal</button>
         <button type="button" id="gDone" class="btn" style="background:#16a34a;display:none">✓ Mark complete</button>
@@ -760,6 +759,7 @@ if(!window.Chart){
    </div>
   </div>
   <div class="card gsec"><h2>Active goals</h2><div id="secActive"></div></div>
+  <div class="card gsec"><h2>In progress</h2><div class="hint">You're chipping away at these, but they don't count toward your daily/period target. Logged time still adds to your total.</div><div id="secProgress"></div></div>
   <div class="card gsec"><h2>Someday</h2><div class="hint">Not started yet — things to begin later and big no-deadline aspirations.</div><div id="secSomeday"></div></div>
   <div class="card gsec"><h2>✅ Completed</h2><div class="hint">Marked done. Logged time is kept; reopen any time to keep going.</div><div id="secCompleted"></div></div>
   <div class="card gsec" id="secTrashWrap" hidden><h2>🗑️ Trash</h2><div class="hint">Deleted goals. Their tracked time is kept until you delete forever. Restore any time.</div><div id="secTrash"></div></div>
@@ -1512,11 +1512,13 @@ function goalIcon(cat){ return iconFor(cat); }
 function refreshGoalOptions(){
   const cur=document.getElementById('fGoal').value;
   const opt=x=>`<option value="${x.id}" ${x.id===cur?'selected':''}>${goalIcon(x.cat)} ${escHtml(goalLabel(x))}</option>`;
-  // Active = the loggable set (minis replace their parent); Someday = non-mini someday goals.
+  // Active = the loggable set (minis replace their parent); In progress + Someday = non-mini goals in those sections.
   const active=loggableGoals();
-  const someday=goalsLive().filter(x=>(x.sec||'active')!=='active' && !x.parentId);
+  const progress=goalsLive().filter(x=>x.sec==='progress' && !x.parentId);
+  const someday=goalsLive().filter(x=>(x.sec||'active')!=='active' && x.sec!=='progress' && !x.parentId);
   document.getElementById('fGoal').innerHTML =
     (active.length?`<optgroup label="Active">${active.map(opt).join('')}</optgroup>`:'')+
+    (progress.length?`<optgroup label="In progress">${progress.map(opt).join('')}</optgroup>`:'')+
     (someday.length?`<optgroup label="Someday">${someday.map(opt).join('')}</optgroup>`:'');
   syncGoalFields();
 }
@@ -2115,6 +2117,7 @@ function goalFormShow(on){ document.getElementById('goalModal').hidden=!on; docu
 let goalMiniParent=null; // set while the form is creating a mini goal (holds the parent's id)
 function goalFormReset(){ goalEdit=null; goalMiniParent=null; document.getElementById('goalForm').reset();
   document.getElementById('gCat').disabled=false; document.getElementById('gUnit').disabled=false; document.getElementById('gSecWrap').style.display='';
+  document.getElementById('gParentWrap').style.display='none';
   document.getElementById('gUnitLab').textContent='unit'; document.getElementById('goalFormTitle').textContent='Add a goal';
   document.getElementById('gDelete').style.display='none'; document.getElementById('gDone').style.display='none'; document.getElementById('gMini').style.display='none'; goalFormShow(false); }
 // Open the goal form pre-locked to carve a mini out of parent pid (cat/unit/mapping inherited, always active).
@@ -2139,6 +2142,7 @@ function initGoals(){
   document.getElementById('gCat').innerHTML = ALLCATS.map(c=>`<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');
   document.getElementById('goalCreateBtn').onclick=()=>{ goalFormReset(); document.getElementById('goalMsg').textContent=''; goalFormShow(true); };
   document.getElementById('gMini').onclick=()=>{ if(goalEdit) startMiniCreate(goalEdit); };
+  document.getElementById('gParent').onchange=function(){ const p=!!this.value; document.getElementById('gCat').disabled=p; document.getElementById('gUnit').disabled=p; };
   document.getElementById('gCancel').onclick=()=>{ goalFormReset(); document.getElementById('goalMsg').textContent=''; };
   document.getElementById('gClose').onclick=()=>{ goalFormReset(); document.getElementById('goalMsg').textContent=''; };
   document.getElementById('goalModal').onclick=(e)=>{ if(e.target.id==='goalModal'){ goalFormReset(); document.getElementById('goalMsg').textContent=''; } };
@@ -2173,6 +2177,13 @@ function initGoals(){
       unit:document.getElementById('gUnit').value.trim(), start:document.getElementById('gStart').value, by:document.getElementById('gBy').value,
       sec:document.getElementById('gSec').value, minPerUnit: mpRaw===''?null:(+mpRaw||0) };
     const g=loadGoals();
+    // Convert mini↔top-level via the parent picker (only when it's shown, i.e. editing a goal that can be re-parented).
+    const pw=document.getElementById('gParentWrap');
+    if(goalEdit && pw.style.display!=='none'){
+      const pv=document.getElementById('gParent').value;
+      if(pv){ const par=g.find(q=>q.id===pv); if(par){ o.parentId=par.id; o.cat=par.cat; o.unit=par.unit; if(par.minPerUnit!=null) o.minPerUnit=par.minPerUnit; } }
+      else o.parentId=null; // detach → top-level
+    }
     if(goalEdit){ const i=g.findIndex(x=>x.id===goalEdit); if(i>=0){ g[i]={...g[i],...o}; saveGoals(g); syncGoalEntries(g[i]); } }
     else { o.id='g'+Date.now();
       if(goalMiniParent){ const p=g.find(q=>q.id===goalMiniParent); if(p){ o.parentId=p.id; o.cat=p.cat; o.unit=p.unit; if(o.minPerUnit==null) o.minPerUnit=p.minPerUnit; } } // o.sec comes from the section dropdown
@@ -2183,7 +2194,7 @@ function initGoals(){
 }
 function paceLabel(x){
   if(x.done) return 'Done';
-  if(x.target<=0) return (x.sec&&x.sec!=='active')?'Someday':'—';
+  if(x.target<=0) return x.sec==='progress'?'In progress':(x.sec&&x.sec!=='active')?'Someday':'—';
   const af=x.cur/x.target; if(af>=1) return 'Done';
   const ef=expFrac(x); if(ef==null) return 'On track';
   const d=af-ef;
@@ -2229,9 +2240,9 @@ function goalCard(x){
     <div class="gminis-head">🏅 ${mDone}/${minis.length} mini goal${minis.length>1?'s':''} accomplished</div>
     ${minis.map(m=>{
       const mpct=m.target>0?Math.min(100,Math.round((+m.cur||0)/m.target*100)):0;
-      const someday=!m.done && (m.sec||'active')!=='active';
-      return `<div class="gmini${m.done?' gmini-done':''}${someday?' gmini-someday':''}">
-        <span class="gmini-name" title="${escHtml(m.name)}">${escHtml(m.name)}${someday?' <span class="gmini-tag">someday</span>':''}</span>
+      const msec=(m.sec||'active'); const off=!m.done && msec!=='active'; const offLab=msec==='progress'?'in progress':'someday';
+      return `<div class="gmini${m.done?' gmini-done':''}${off?' gmini-someday':''}">
+        <span class="gmini-name" title="${escHtml(m.name)}">${escHtml(m.name)}${off?` <span class="gmini-tag">${offLab}</span>`:''}</span>
         <span class="gmini-bar"><i style="width:${mpct}%"></i></span>
         <span class="gmini-sub">${m.cur}${m.target>0?`/${m.target}`:''}</span>
         ${m.done?'<span class="gmini-check" title="Accomplished">✓</span>'
@@ -2330,7 +2341,8 @@ function renderGoalStats(){
 }
 function renderGoals(){ renderGoalStats();
   renderSec(g=>!g.done&&(g.sec||'active')==='active'&&!g.parentId,'secActive',true);
-  renderSec(g=>!g.done&&(g.sec||'active')!=='active'&&!g.parentId,'secSomeday',false);
+  renderSec(g=>!g.done&&g.sec==='progress'&&!g.parentId,'secProgress',false);
+  renderSec(g=>!g.done&&(g.sec||'active')!=='active'&&g.sec!=='progress'&&!g.parentId,'secSomeday',false);
   renderSec(g=>!!g.done&&!g.parentId,'secCompleted',false);
   renderTrash();
   renderRenounced();
@@ -2399,11 +2411,18 @@ window.goalEditStart=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x
   document.getElementById('gCur').value=x.cur; document.getElementById('gTarget').value=x.target;
   document.getElementById('gUnit').value=x.unit; document.getElementById('gStart').value=x.start||''; document.getElementById('gBy').value=x.by||'';
   document.getElementById('gMinPer').value=(x.minPerUnit==null?'':x.minPerUnit); document.getElementById('gUnitLab').textContent=x.unit||'unit';
-  document.getElementById('gSec').value=(x.sec||'active')==='active'?'active':'someday';
+  document.getElementById('gSec').value=x.sec==='progress'?'progress':((x.sec||'active')==='active'?'active':'someday');
   const mini=!!x.parentId; // minis: cat/unit locked to the parent, but section IS editable, no sub-minis
   document.getElementById('goalFormTitle').textContent=mini?'Edit mini goal':'Edit goal';
   document.getElementById('gCat').disabled=mini; document.getElementById('gUnit').disabled=mini;
   document.getElementById('gSecWrap').style.display='';
+  // Parent-goal picker (convert mini↔top-level). Hidden for a top-level goal that already has minis — can't nest 2 levels.
+  const hasKids=!mini && minisOf(x.id).length>0;
+  const pw=document.getElementById('gParentWrap'), ps=document.getElementById('gParent');
+  if(hasKids){ pw.style.display='none'; }
+  else { const cand=loadGoals().filter(o=>!o.deleted && !o.parentId && !o.done && o.id!==x.id);
+    ps.innerHTML=`<option value="">— Top-level goal —</option>`+cand.map(o=>`<option value="${o.id}">${escHtml(o.name)}</option>`).join('');
+    ps.value=x.parentId||''; pw.style.display=''; }
   document.getElementById('gMini').style.display=mini?'none':'';
   document.getElementById('gDelete').style.display='';
   const gd=document.getElementById('gDone'); gd.style.display=''; gd.style.background=x.done?'#64748b':'#16a34a';
