@@ -60,9 +60,9 @@ if(!window.Chart){
   .sb-brand h1{font-size:17px;line-height:1.25;color:#f2f2f2}
   .sb-yr{font-size:12px;color:#a7b1c2;margin-top:3px}
   #viewNav{display:flex;flex-direction:column;gap:2px;padding:14px 10px;flex:1;overflow-y:auto}
-  #viewNav button{display:flex;align-items:center;gap:10px;border:0;background:transparent;padding:11px 11px 11px 15px;border-radius:8px;font-size:11.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:#a7b1c2;cursor:pointer;text-align:left;transition:.12s}
+  #viewNav button{display:flex;align-items:center;gap:10px;border:0;background:transparent;padding:14px 14px 14px 18px;border-radius:8px;font-family:"Open Sans","Segoe UI",Arial,sans-serif;font-size:13px;line-height:20px;font-weight:600;text-transform:uppercase;color:#a7b1c2;cursor:pointer;text-align:left;transition:.12s}
   #viewNav button:hover{color:#fff;background:rgba(255,255,255,.06)}
-  #viewNav button.active{color:#2f3031;background:#f2f2f2}
+  #viewNav button.active{color:#000;background:#f2f2f2}
   .sb-ic{font-size:15px;width:19px;text-align:center;flex:0 0 auto}
   /* ---- page header strip ---- */
   header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:12px;padding-bottom:16px;border-bottom:1px solid var(--line)}
@@ -253,12 +253,13 @@ if(!window.Chart){
   .gside{flex:0 0 172px;position:sticky;top:14px;display:flex;flex-direction:column;gap:16px}
   .gmain{flex:1;min-width:0}
   .gmain .gsec:first-child{margin-top:0}
-  .gf-lab{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;padding-left:10px}
-  .gf-btn{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;padding:6px 10px;border:0;border-radius:8px;background:transparent;font-size:12.5px;font-weight:600;color:var(--ink);cursor:pointer;text-align:left;font-family:inherit}
+  .gside{font-family:"Open Sans","Segoe UI",Arial,sans-serif}
+  .gf-lab{font-size:13px;font-weight:600;text-transform:uppercase;color:#676a6c;margin-bottom:6px;padding-left:10px}
+  .gf-btn{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;padding:8px 10px;border:0;border-radius:8px;background:transparent;font-size:14px;line-height:20px;font-weight:400;color:#676a6c;cursor:pointer;text-align:left;font-family:inherit}
   .gf-btn span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .gf-btn:hover{background:var(--panel)}
-  .gf-btn.active{background:var(--panel);color:var(--ink2);box-shadow:inset 3px 0 0 var(--accent)}
-  .gf-n{color:var(--muted);font-size:11px;font-weight:700}
+  .gf-btn:hover{background:rgba(0,0,0,.04)}
+  .gf-btn.active{background:#f2f2f2;color:#000;font-weight:600}
+  .gf-n{color:#a7b1c2;font-size:12px;font-weight:600}
   @media(max-width:860px){.gwrap{flex-direction:column}.gside{position:static;width:100%;flex-direction:row;flex-wrap:wrap;gap:12px}.gside .gf-grp{flex:1 1 45%}}
   /* header primary actions (#45): create-goal + per-view delegates, pinned top-right */
   #goalCreateBtn{display:inline-flex;align-items:center;gap:9px;padding:9px 18px;border:1px solid var(--accent);border-radius:10px;background:var(--accent);color:#fff;box-shadow:0 2px 6px rgba(61,82,102,.22);transition:.15s}
@@ -2392,7 +2393,7 @@ function goalCard(x){
   </div>` : '';
   const byD = x.by ? new Date(x.by+'T00:00') : null;
   const byTxt = (byD && !isNaN(byD)) ? ` by ${byD.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}` : '';
-  const subBits=[x.target>0?`Target: ${x.target} ${escHtml(x.unit||'')}${byTxt} (${when})`:when, badge].filter(Boolean).join(' · ');
+  const subBits=x.target>0?`Target: ${x.target} ${escHtml(x.unit||'')}${byTxt} (${when})`:when; // pace word lives only in the badge tooltip (GoT shows no status text)
   const barTxt=`${x.cur} ${escHtml(x.unit||'')}`.trim();
   const barFits=(pct/100)*210 >= barTxt.length*6.8+12; // white label inside fill only when it fits (GoT look); else grey at left
   return `<div class="gcard${overdue?' gcard-overdue':''}${x.done?' gcard-done':''}" draggable="true" data-id="${x.id}" style="--gcol:${col}">
