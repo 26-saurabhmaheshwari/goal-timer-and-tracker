@@ -12,7 +12,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Project Time Distribution — 2026</title>
+<title>Tenfold</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap"><!-- goal rows + page title; offline falls back to Segoe UI -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
 // Offline / CDN-blocked fallback: if Chart.js didn't load, stub it so `new Chart(...)`
@@ -46,7 +48,7 @@ if(!window.Chart){
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);padding:28px 28px 28px 218px;-webkit-font-smoothing:antialiased}
   h1{font-size:22px;font-weight:700;letter-spacing:-.3px;font-family:var(--serif)}
-  #pgTitle{font-family:"Segoe UI Light","Segoe UI",-apple-system,sans-serif;font-size:24px;font-weight:200;letter-spacing:0}
+  #pgTitle{font-family:"Open Sans","Segoe UI Light","Segoe UI",-apple-system,sans-serif;font-size:24px;font-weight:300;letter-spacing:0}
   .sub{color:var(--muted);font-size:13px;margin-top:2px}
   .wrap{max-width:1100px;margin:0 auto}
   /* #50: reading-width columns for row-based views (Overview untouched) */
@@ -279,21 +281,22 @@ if(!window.Chart){
   /* goal ledger rows (#46) — calm one-per-line, colour only on status chip + bar */
   .gcards{display:flex;flex-direction:column;gap:0}
   .gcards .gcard:last-child{border-bottom:0}
-  .gcard{display:flex;flex-direction:column;gap:8px;padding:10px 6px;position:relative;transition:.12s;text-align:left;background:transparent;border-bottom:1px solid #eee;cursor:grab}
+  .gcard{display:flex;flex-direction:column;gap:8px;padding:10px;position:relative;transition:.12s;text-align:left;background:transparent;border-bottom:.625px solid #eee;cursor:grab}
   .gcard:active{cursor:grabbing}
   .gcard.dragging{opacity:.4;outline:2px dashed var(--gcol,#8a93a3);outline-offset:2px}
   .gcard .gcard-acts button{cursor:pointer}
   .gcard:hover{background:rgba(255,255,255,.55)}
-  .grow-line{display:flex;align-items:center;gap:12px;min-height:43px}
+  .grow-line{display:flex;align-items:center;gap:12px;min-height:43px;font-family:"Open Sans","Segoe UI",Arial,sans-serif}
   .grow-st{flex:0 0 30px;width:30px;height:30px;line-height:0}
-  .grow-st svg{display:block}
+  .grow-st svg{display:block;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.35))}
   .grow-main{flex:1 1 230px;min-width:0}
-  .gcard-name{font-size:16px;font-weight:600;color:#337ab7;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .grow-sub{font-size:13px;color:#676a6c;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .grow-bar{position:relative;flex:0 0 210px;height:20px;border-radius:4px;background:#f5f5f5;border:1px solid var(--gcol,#8a93a3);box-shadow:1px 1px 2px 0 rgba(0,0,0,.75);overflow:hidden}
-  .grow-bar i{position:absolute;top:0;bottom:0;left:0;background-color:var(--gcol,#8a93a3);background-image:linear-gradient(45deg,rgba(255,255,255,.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.15) 50%,rgba(255,255,255,.15) 75%,transparent 75%,transparent);background-size:40px 40px;transition:width .5s}
-  .grow-val{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--ink2);text-shadow:0 0 3px rgba(255,255,255,.75)}
-  .grow-pct{flex:0 0 48px;text-align:right;font-size:14px;font-weight:700;color:#111}
+  .gcard-name{font-size:16px;font-weight:600;color:#337ab7;line-height:1.43;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .grow-sub{font-size:14px;line-height:20px;color:#676a6c;margin-top:2px}
+  .grow-bar{position:relative;flex:0 0 210px;height:20px;border-radius:4px;background:#f5f5f5;border:.625px solid var(--gcol,#8a93a3);box-shadow:1px 1px 2px 0 rgba(0,0,0,.75);overflow:hidden}
+  .grow-bar i{position:absolute;top:0;bottom:0;left:0;background-color:var(--gcol,#8a93a3);background-image:linear-gradient(45deg,rgba(255,255,255,.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.15) 50%,rgba(255,255,255,.15) 75%,transparent 75%,transparent);background-size:40px 40px;transition:width .5s;text-align:center;overflow:hidden}
+  .grow-val{display:block;font-size:12px;font-weight:400;line-height:19px;color:#fff;white-space:nowrap}
+  .grow-val-out{position:absolute;top:0;bottom:0;left:8px;display:flex;align-items:center;font-size:12px;font-weight:400;color:#676a6c;white-space:nowrap}
+  .grow-pct{flex:0 0 56px;text-align:right;font-size:14px;font-weight:400;color:#676a6c;padding-left:10px}
   .gcard-det{background:var(--panel);border-radius:10px;padding:8px 11px;display:flex;flex-direction:column;gap:4px;transform-origin:top;animation:gdetflip .22s ease;margin-left:42px}
   @keyframes gdetflip{from{transform:perspective(500px) rotateX(-65deg);opacity:0}to{transform:perspective(500px) rotateX(0);opacity:1}}
   .gdet-btn{cursor:pointer;font-size:11px;font-weight:700;color:var(--muted);background:transparent;border:1px solid rgba(70,58,32,.14);border-radius:999px;padding:2px 9px}
@@ -507,7 +510,7 @@ if(!window.Chart){
 <body>
 <aside id="sidebar">
   <div class="sb-brand">
-    <h1>Make It Count</h1>
+    <h1>Tenfold</h1>
     <div class="sb-yr" id="hdYr"></div>
   </div>
   <nav id="viewNav">
@@ -2338,13 +2341,13 @@ function paceColor(label){
 function stBadge(kind){
   const G={up:['#8dd52f','#62af14'],warn:['#efa615','#c98b00'],down:['#d14137','#ae1715'],ok:['#8dd52f','#62af14'],na:['#b8bfc9','#98a1ad']};
   const [a,b]=G[kind]||G.na;
-  const grad=`<defs><linearGradient id="stg-${kind}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs>`;
+  const grad=`<defs><linearGradient id="stg-${kind}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient><linearGradient id="stgl-${kind}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".5"/><stop offset="1" stop-color="#fff" stop-opacity=".06"/></linearGradient></defs>`;
   let inner;
   if(kind==='ok') inner='<path d="M8 15.5 L13 20.5 L22 9.5" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>';
   else if(kind==='na') inner='<rect x="8" y="13.4" width="14" height="3.2" rx="1.6" fill="#fff"/>';
   else if(kind==='down') inner='<path d="M15 24 L7 15 H12 V7 H18 V15 H23 Z" fill="#fff"/>';
   else inner='<path d="M15 6 L23 15 H18 V23 H12 V15 H7 Z" fill="#fff"/>';
-  return `<svg viewBox="0 0 30 30" width="30" height="30" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${grad}<rect width="30" height="30" rx="8" fill="url(#stg-${kind})"/>${inner}</svg>`;
+  return `<svg viewBox="0 0 30 30" width="30" height="30" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${grad}<rect width="30" height="30" rx="8" fill="url(#stg-${kind})"/><rect x="1.5" y="1.5" width="27" height="13" rx="6.5" fill="url(#stgl-${kind})"/>${inner}</svg>`;
 }
 function goalCard(x){
   const raw = x.target>0 ? Math.round(x.cur/x.target*100) : 0;
@@ -2390,6 +2393,8 @@ function goalCard(x){
   const byD = x.by ? new Date(x.by+'T00:00') : null;
   const byTxt = (byD && !isNaN(byD)) ? ` by ${byD.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}` : '';
   const subBits=[x.target>0?`Target: ${x.target} ${escHtml(x.unit||'')}${byTxt} (${when})`:when, badge].filter(Boolean).join(' · ');
+  const barTxt=`${x.cur} ${escHtml(x.unit||'')}`.trim();
+  const barFits=(pct/100)*210 >= barTxt.length*6.8+12; // white label inside fill only when it fits (GoT look); else grey at left
   return `<div class="gcard${overdue?' gcard-overdue':''}${x.done?' gcard-done':''}" draggable="true" data-id="${x.id}" style="--gcol:${col}">
     <div class="grow-line">
       <span class="grow-st" title="${badge}">${stBadge(stKind)}</span>
@@ -2397,7 +2402,7 @@ function goalCard(x){
         <div class="gcard-name" title="${escHtml(x.name)}">${iconFor(x.cat)} ${escHtml(x.name)}</div>
         <div class="grow-sub">${subBits}</div>
       </div>
-      <div class="grow-bar"><i style="width:${pct}%"></i><span class="grow-val">${x.cur}${x.target>0?` / ${x.target}`:''} ${escHtml(x.unit||'')}</span></div>
+      <div class="grow-bar">${barFits?`<i style="width:${pct}%"><span class="grow-val">${barTxt}</span></i>`:`<i style="width:${pct}%"></i><span class="grow-val grow-val-out">${barTxt}</span>`}</div>
       <span class="grow-pct">${x.target>0?raw+'%':''}</span>
       <div class="gcard-acts">
         ${x.target>0&&!x.done?`<button title="Add progress" onclick="goalAdd('${x.id}')">+</button>`:''}
