@@ -2407,7 +2407,7 @@ function goalFormReset(){ goalEdit=null; goalMiniParent=null; document.getElemen
 window.startMiniCreate=function(pid){
   const p=loadGoals().find(o=>o.id===pid); if(!p) return;
   goalFormReset(); goalMiniParent=pid;
-  document.getElementById('goalFormTitle').textContent=`🏅 Carve nugget from “${p.name}”`;
+  document.getElementById('goalFormTitle').textContent=`💎 Carve nugget from “${p.name}”`;
   document.getElementById('gCat').value=p.cat;
   document.getElementById('gUnit').value=p.unit||''; document.getElementById('gUnitLab').textContent=p.unit||'unit';
   document.getElementById('gMinPer').value=(p.minPerUnit==null?'':p.minPerUnit);
@@ -2572,7 +2572,7 @@ function goalCard(x){
   const minis = x.parentId ? [] : minisOf(x.id);
   const mDone = minis.filter(m=>m.done).length;
   const minisHtml = minis.length ? `<div class="gminis">
-    <div class="gminis-head">🏅 ${mDone}/${minis.length} mini goal${minis.length>1?'s':''} accomplished</div>
+    <div class="gminis-head">💎 ${mDone}/${minis.length} mini goal${minis.length>1?'s':''} accomplished</div>
     ${minis.map(m=>{
       const mpct=m.target>0?Math.min(100,Math.round((+m.cur||0)/m.target*100)):0;
       const msec=(m.sec||'active'); const off=!m.done && msec!=='active'; const offLab=msec==='progress'?'this quarter':msec==='yearly'?'yearly':'someday';
@@ -2602,7 +2602,7 @@ function goalCard(x){
       <div class="grow-bar">${barFits?`<i style="width:${pct}%"><span class="grow-val">${barTxt}</span></i>`:`<i style="width:${pct}%"></i><span class="grow-val grow-val-out">${barTxt}</span>`}</div>
       <span class="grow-pct">${x.target>0?raw+'%':''}</span>
       <div class="gcard-acts">
-        ${!x.done?(x.parentId?`<button title="Log entry" onclick="goalAdd('${x.id}')">＋</button>`:`<button title="Carve nugget" onclick="startMiniCreate('${x.id}')">🏅</button>`):''}
+        ${!x.done?(x.parentId?`<button title="Log entry" onclick="goalAdd('${x.id}')">＋</button>`:`<button title="Carve nugget" onclick="startMiniCreate('${x.id}')">💎</button>`):''}
         ${logs.length?`<button title="Log (${logs.length})" onclick="goalLogShow('${x.id}')">📜</button>`:''}
         <button title="Edit" onclick="goalEditStart('${x.id}')">✎</button>
         ${det?`<button type="button" class="gdet-btn" title="Details" onclick="goalFlip('${x.id}')">▾</button>`:''}
