@@ -245,6 +245,8 @@ if(!window.Chart){
   .gacts button{border:1px solid #dfe4ee;background:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;color:#6b7280;font-size:13px;line-height:1;padding:0}
   .gacts button:hover{color:#2d6cdf;border-color:#2d6cdf}
   .gsec{margin-top:16px}
+  .subsec{margin-top:18px;padding-top:14px;border-top:1px dashed var(--line)}
+  .subsec h3{margin:0 0 2px;font-size:15px}
   .seccap{font-size:12px;font-weight:600;color:#98a0ab;margin-left:2px}
   .quotaline{display:inline-block;margin-left:2px;font-weight:600;color:#8a93a3}
   .quotaline.quota-warn{color:#c98b00}
@@ -786,6 +788,7 @@ if(!window.Chart){
         <div class="hint" style="margin:0">How one unit converts to tracked minutes (decimals ok). Leave blank if this goal isn't time-based.</div>
       </div>
       <label class="gform-sec" id="gSecWrap"><input id="gNug" type="checkbox" style="width:auto;margin:0 6px 0 0;vertical-align:middle"><b>Live Nugget</b> — a focus goal for the current period. No deadline; the only tier that counts toward your daily/period target.</label>
+      <label class="gform-sec" id="gRecurWrap"><input id="gRecur" type="checkbox" style="width:auto;margin:0 6px 0 0;vertical-align:middle"><b>Recurring</b> — an ongoing habit-style goal. Lives in Yearly, shown in its own Recurring card.</label>
       <div class="hint" id="gTierHint" style="margin:-4px 0 0"></div>
       <label class="gform-sec" id="gParentWrap" style="display:none">Parent goal <select id="gParent"></select><span class="hint" style="margin:0">Pick a parent to make this a mini of it (inherits its category &amp; unit); choose “Top-level goal” to detach.</span></label>
       <div class="gform-foot">
@@ -832,7 +835,9 @@ if(!window.Chart){
   <div class="gmain">
   <div class="card gsec"><h2>Live Nuggets <span id="nugCount" class="seccap"></span></h2><div class="hint">Your top few focus goals — the <b>only</b> ones that count toward your daily/period target. <span id="nugQuota"></span></div><div id="nugBar"></div><div id="secActive"></div></div>
   <div class="card gsec"><h2>Quarterly <span id="qCount" class="seccap"></span></h2><div class="hint">This quarter's work. Loggable — time still adds to your total — but they don't count toward your daily/period target.</div><div id="qBar"></div><div id="secProgress"></div></div>
-  <div class="card gsec"><h2>Yearly <span id="yCount" class="seccap"></span></h2><div class="hint">This year's aims. Loggable, but not counted in daily/period pace.</div><div id="yBar"></div><div id="secYearly"></div></div>
+  <div class="card gsec"><h2>Yearly <span id="yCount" class="seccap"></span></h2><div class="hint">This year's aims. Loggable, but not counted in daily/period pace.</div><div id="yBar"></div><div id="secYearly"></div>
+    <div id="secRecurringWrap" class="subsec" hidden><h3>🔁 Recurring</h3><div class="hint">Ongoing habit-style goals — no real finish line.</div><div id="secRecurring"></div></div>
+  </div>
   <div class="card gsec"><h2>Someday</h2><div class="hint">Not started yet — things to begin later and big no-deadline aspirations.</div><div id="secSomeday"></div></div>
   <div class="card gsec"><h2>✅ Completed</h2><div class="hint">Marked done. Logged time is kept; reopen any time to keep going.</div><div id="secCompleted"></div></div>
   <div class="card gsec" id="secTrashWrap" hidden><h2>🗑️ Trash</h2><div class="hint">Deleted goals. Their tracked time is kept until you delete forever. Restore any time.</div><div id="secTrash"></div></div>
@@ -2328,9 +2333,10 @@ function fillGoalPeriods(selISO){
   el.value=want;
 }
 // Live preview under the form: show which tier the deadline maps to, or hide the deadline for a nugget.
-function updGoalTier(){ const nug=document.getElementById('gNug').checked;
+function updGoalTier(){ const nug=document.getElementById('gNug').checked, recur=document.getElementById('gRecur').checked;
   document.getElementById('gByWrap').style.display=nug?'none':'';
   const h=document.getElementById('gTierHint');
+  if(recur){ h.textContent='→ Recurring · Yearly · ongoing'; return; }
   if(nug){ h.textContent='→ Live Nugget · current period · no deadline'; return; }
   const by=document.getElementById('gBy').value;
   h.textContent='→ '+SEC_LAB[tierFromDeadline(by)]+(by?'':' (set a deadline to auto-sort)'); }
@@ -2355,7 +2361,7 @@ function goalPeriodsToFinish(x){
 function goalFormShow(on){ document.getElementById('goalModal').hidden=!on; document.body.style.overflow=on?'hidden':''; }
 let goalMiniParent=null; // set while the form is creating a mini goal (holds the parent's id)
 function goalFormReset(){ goalEdit=null; goalMiniParent=null; document.getElementById('goalForm').reset();
-  document.getElementById('gCat').disabled=false; document.getElementById('gUnit').disabled=false; document.getElementById('gMinPer').disabled=false; document.getElementById('gSecWrap').style.display='';
+  document.getElementById('gCat').disabled=false; document.getElementById('gUnit').disabled=false; document.getElementById('gMinPer').disabled=false; document.getElementById('gSecWrap').style.display=''; document.getElementById('gRecurWrap').style.display='';
   document.getElementById('gParentWrap').style.display='none';
   document.getElementById('gCurWrap').style.display=''; document.getElementById('gTagWrap').style.display='';
   document.getElementById('gDatesWrap').style.display=''; document.getElementById('gPeriodWrap').style.display='none';
@@ -2372,7 +2378,7 @@ window.startMiniCreate=function(pid){
   document.getElementById('gMinPer').value=(p.minPerUnit==null?'':p.minPerUnit);
   document.getElementById('gCat').disabled=true; document.getElementById('gUnit').disabled=true; document.getElementById('gMinPer').disabled=true; // inherited from the parent
   document.getElementById('gNameWrap').style.display='none'; document.getElementById('gName').value=''; // minis aren't named — label is "mini · parent : target"
-  document.getElementById('gSecWrap').style.display='none'; document.getElementById('gNug').checked=true; // minis are always Live Nuggets — no section picker
+  document.getElementById('gSecWrap').style.display='none'; document.getElementById('gRecurWrap').style.display='none'; document.getElementById('gNug').checked=true; // minis are always Live Nuggets — no section picker
   document.getElementById('gDatesWrap').style.display='none'; document.getElementById('gPeriodWrap').style.display=''; fillGoalPeriods(); // minis pick a period, not dates
   document.getElementById('gCurWrap').style.display='none'; document.getElementById('gTagWrap').style.display='none'; // minis: only target + period
   document.getElementById('goalMsg').textContent='';
@@ -2388,7 +2394,9 @@ function initGoals(){
   document.getElementById('goalCreateBtn').onclick=()=>{ goalFormReset(); document.getElementById('goalMsg').textContent=''; goalFormShow(true); };
   document.getElementById('gMini').onclick=()=>{ if(goalEdit) startMiniCreate(goalEdit); };
   document.getElementById('gParent').onchange=function(){ const p=!!this.value; document.getElementById('gCat').disabled=p; document.getElementById('gUnit').disabled=p; };
-  document.getElementById('gBy').addEventListener('input',updGoalTier); document.getElementById('gNug').addEventListener('change',updGoalTier);
+  document.getElementById('gBy').addEventListener('input',updGoalTier);
+  document.getElementById('gNug').addEventListener('change',function(){ if(this.checked) document.getElementById('gRecur').checked=false; updGoalTier(); });
+  document.getElementById('gRecur').addEventListener('change',function(){ if(this.checked) document.getElementById('gNug').checked=false; updGoalTier(); });
   document.getElementById('gCancel').onclick=()=>{ goalFormReset(); document.getElementById('goalMsg').textContent=''; };
   document.getElementById('gClose').onclick=()=>{ goalFormReset(); document.getElementById('goalMsg').textContent=''; };
   document.getElementById('goalModal').onclick=(e)=>{ if(e.target.id==='goalModal'){ goalFormReset(); document.getElementById('goalMsg').textContent=''; } };
@@ -2424,8 +2432,9 @@ function initGoals(){
       unit:document.getElementById('gUnit').value.trim(), start:document.getElementById('gStart').value, by:document.getElementById('gBy').value,
       minPerUnit: mpRaw===''?null:(+mpRaw||0), tag:document.getElementById('gTag').value.trim() };
     const isNug=document.getElementById('gNug').checked;
-    o.sec = isNug ? 'active' : tierFromDeadline(o.by); // tier is auto: nugget toggle, else derived from the deadline
-    if(isNug){ o.by=''; if(!o.start) o.start=periodStartISO(); } // nuggets: no deadline, current-period window
+    o.recur=document.getElementById('gRecur').checked; // recurring flag — lives in Yearly, shown in its own card
+    o.sec = o.recur ? 'yearly' : isNug ? 'active' : tierFromDeadline(o.by); // recurring→Yearly; else nugget toggle or deadline
+    if(isNug && !o.recur){ o.by=''; if(!o.start) o.start=periodStartISO(); } // nuggets: no deadline, current-period window
     const g=loadGoals();
     // Convert mini↔top-level via the parent picker (only when it's shown, i.e. editing a goal that can be re-parented).
     const pw=document.getElementById('gParentWrap');
@@ -2436,7 +2445,7 @@ function initGoals(){
     }
     // Tier caps (top-level goals only; minis ride a parent and don't occupy a slot).
     const willMini = goalEdit ? ('parentId' in o ? !!o.parentId : !!(g.find(x=>x.id===goalEdit)||{}).parentId) : !!goalMiniParent;
-    if(willMini) o.sec='active'; // minis are always Live Nuggets, regardless of any stale section value
+    if(willMini){ o.sec='active'; o.recur=false; } // minis are always Live Nuggets, never recurring
     if(willMini && document.getElementById('gPeriodWrap').style.display!=='none'){ o.start=document.getElementById('gPeriod').value||periodStartISO(); o.by=''; } // minis: window = the picked period
     // Nuggets must be time-based so they count toward the hours budget (minis inherit their parent's mapping).
     if(!willMini && (o.sec||'active')==='active' && goalMinPer(o)<=0){
@@ -2663,14 +2672,23 @@ function tierBarHTML(sec, grey){
   return `<div style="margin:8px 0 2px">
     <div class="hint" style="margin:0 0 5px;font-style:italic">${grey}</div>
     <div style="height:8px;border-radius:5px;background:var(--line);overflow:hidden"><i style="display:block;height:100%;width:${pct}%;background:#34a853"></i></div>
-    <div style="display:flex;gap:16px;margin-top:5px;font-size:12px;color:var(--muted)"><span>target <b>${f(h.t)}h</b></span><span>done <b>${f(h.d)}h</b></span><span>left <b>${f(h.l)}h</b></span></div>
+    <div style="display:flex;gap:16px;margin-top:5px;font-size:12px;color:var(--muted)"><span style="font-weight:600;opacity:.8">Goal hours:</span><span>need <b>${f(h.t)}h</b></span><span>done <b>${f(h.d)}h</b></span><span>left <b>${f(h.l)}h</b></span></div>
   </div>`;
+}
+// Whole 10-day periods still left in the current quarter/year (includes the current, partly-spent one).
+function periodsLeft(scope){
+  const d=new Date(), m=d.getMonth(), day=d.getDate();
+  const pOfMonth = day<=10?1:day<=20?2:3;                 // which 10-day period of the month (1..3)
+  const total = scope==='year'?36:9, startMonth = scope==='year'?0:Math.floor(m/3)*3;
+  const elapsed = (m-startMonth)*3 + (pOfMonth-1);        // whole periods already finished
+  return Math.max(1, total-elapsed);
 }
 function renderTierBars(){
   const set=(id,sec,grey)=>{ const el=document.getElementById(id); if(el) el.innerHTML=tierBarHTML(sec,grey); };
+  const qL=periodsLeft('quarter'), yL=periodsLeft('year');
   set('nugBar','active',`Plan ~${NUGGET_BUDGET} hrs per period across your ${SEC_CAP.active} nuggets`);
-  set('qBar','progress','Quarter ≈ 9 periods × 12h goal-time ≈ 108 hrs — plan within this');
-  set('yBar','yearly','Year ≈ 36 periods × 12h goal-time ≈ 432 hrs — plan within this');
+  set('qBar','progress',`≈ ${qL*12}h left this quarter · ${qL} period${qL>1?'s':''} × 12h`);
+  set('yBar','yearly',`≈ ${yL*12}h left this year · ${yL} period${yL>1?'s':''} × 12h`);
 }
 function renderSecCaps(){
   const set=(id,sec)=>{ const el=document.getElementById(id); if(el) el.textContent=`${secCount(sec)}/${SEC_CAP[sec]}`; };
@@ -2683,7 +2701,10 @@ function renderGoals(){ renderGoalStats(); renderGoalFilter();
   const nug=new Set(loggableGoals().map(g=>g.id)); // Live Nuggets = the loggable set: active minis replace their parent
   renderSec(g=>nug.has(g.id)&&cf(g),'secActive',true);
   renderSec(g=>!g.done&&g.sec==='progress'&&!g.parentId&&cf(g),'secProgress',false);
-  renderSec(g=>!g.done&&g.sec==='yearly'&&!g.parentId&&cf(g),'secYearly',false);
+  renderSec(g=>!g.done&&g.sec==='yearly'&&!g.recur&&!g.parentId&&cf(g),'secYearly',false);
+  const recurN=goalsLive().filter(g=>!g.done&&g.sec==='yearly'&&g.recur&&!g.parentId&&cf(g)).length;
+  renderSec(g=>!g.done&&g.sec==='yearly'&&g.recur&&!g.parentId&&cf(g),'secRecurring',false);
+  { const rw=document.getElementById('secRecurringWrap'); if(rw) rw.hidden=recurN===0; } // subcard shows only when it has goals
   renderSec(g=>!g.done&&(g.sec||'active')!=='active'&&g.sec!=='progress'&&g.sec!=='yearly'&&!g.parentId&&cf(g),'secSomeday',false);
   renderSec(g=>!!g.done&&!g.parentId&&cf(g),'secCompleted',false);
   renderSecCaps();
@@ -2761,11 +2782,12 @@ window.goalEditStart=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x
   document.getElementById('gMinPer').value=(x.minPerUnit==null?'':x.minPerUnit); document.getElementById('gUnitLab').textContent=x.unit||'unit';
   document.getElementById('gTag').value=x.tag||'';
   document.getElementById('gNug').checked=((x.sec||'active')==='active');
+  document.getElementById('gRecur').checked=!!x.recur;
   const mini=!!x.parentId; // minis: cat/unit/mapping/section all locked to Live Nuggets, no sub-minis
   document.getElementById('goalFormTitle').textContent=mini?'Edit mini goal':'Edit goal';
   document.getElementById('gCat').disabled=mini; document.getElementById('gUnit').disabled=mini; document.getElementById('gMinPer').disabled=mini;
   document.getElementById('gNameWrap').style.display=mini?'none':''; // minis aren't named
-  document.getElementById('gSecWrap').style.display=mini?'none':''; // minis are always Live Nuggets — no section picker
+  document.getElementById('gSecWrap').style.display=mini?'none':''; document.getElementById('gRecurWrap').style.display=mini?'none':''; // minis are always Live Nuggets — no section picker
   document.getElementById('gDatesWrap').style.display=mini?'none':''; document.getElementById('gPeriodWrap').style.display=mini?'':'none'; if(mini) fillGoalPeriods(x.start); // minis pick a period, not dates
   document.getElementById('gCurWrap').style.display=mini?'none':''; document.getElementById('gTagWrap').style.display=mini?'none':''; // minis: only target + period editable
   // Parent-goal picker (convert mini↔top-level). Hidden for minis and for a top-level goal that already has minis — can't nest 2 levels.
