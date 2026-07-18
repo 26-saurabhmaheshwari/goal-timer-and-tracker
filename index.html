@@ -2844,7 +2844,7 @@ window.goalEditStart=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x
   document.getElementById('gNug').checked=((x.sec||'active')==='active');
   document.getElementById('gRecur').checked=!!x.recur;
   const mini=!!x.parentId; // minis: cat/unit/mapping/section all locked to Live Nuggets, no sub-minis
-  document.getElementById('goalFormTitle').textContent=mini?'Edit mini goal':'Edit goal';
+  document.getElementById('goalFormTitle').textContent=mini?'💎 Carve nugget':'Edit goal';
   document.getElementById('gCat').disabled=mini; document.getElementById('gUnit').disabled=mini; document.getElementById('gMinPer').disabled=mini;
   document.getElementById('gNameWrap').style.display=mini?'none':''; // minis aren't named
   document.getElementById('gSecWrap').style.display='none'; document.getElementById('gRecurWrap').style.display=mini?'none':''; // tier is fixed once created — no Live Nugget toggle when editing
