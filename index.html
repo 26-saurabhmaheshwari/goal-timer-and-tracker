@@ -3146,7 +3146,11 @@ function repSubjSamples(s, es, roll){
 function tagsIndex(){
   const idx={};
   const add=(t,kind,val)=>{ t=String(t||'').trim(); if(!t) return; (idx[t]||(idx[t]={goalIds:new Set(),habitNames:new Set()}))[kind].add(val); };
-  loadGoals().forEach(g=>add(g.tag,'goalIds',g.id));
+  const goals=loadGoals();
+  const tagOf={}; goals.forEach(g=>{ const t=String(g.tag||'').trim(); if(t) tagOf[g.id]=t; });
+  // A mini's time entries carry the mini's own goalId, and minis don't inherit the parent's tag field.
+  // So a mini falls back to its parent's tag — otherwise time logged through a mini is missed from the tag's lifetime total.
+  goals.forEach(g=>add(tagOf[g.id] || (g.parentId ? tagOf[g.parentId] : ''), 'goalIds', g.id));
   loadHabits().forEach(h=>add(h.tag,'habitNames',h.n));
   return idx;
 }
