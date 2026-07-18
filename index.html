@@ -380,6 +380,7 @@ if(!window.Chart){
   .gmini-check{color:#16a34a;font-weight:800;flex:none}
   .gmini-someday{opacity:.62}
   .gmini-tag{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:0 4px;margin-left:5px}
+  .par-tag{font-size:10px;font-weight:600;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:0 5px;margin-left:6px;white-space:nowrap}
   @media(max-width:720px){
     .grow-line{flex-wrap:wrap}
     .grow-bar{flex:1 1 100%;order:5}
@@ -781,7 +782,7 @@ if(!window.Chart){
     <h2 id="goalFormTitle">Add a goal</h2>
     <div class="hint">Named goal with its own unit, target and deadline. Progress = current ÷ target.</div>
     <form id="goalForm" class="form">
-      <label>Name <input id="gName" placeholder="e.g. Read 12 books"></label>
+      <label id="gNameWrap">Name <input id="gName" placeholder="e.g. Read 12 books"></label>
       <div class="frow">
         <label>Category <select id="gCat"></select></label>
         <label id="gUnitWrap">Unit <input id="gUnit" placeholder="books / sessions / Minutes"></label>
@@ -1370,7 +1371,7 @@ function renderPeriodEntry(){
       pledge=` <span class="muted-sm" title="You pledged this at the last period save" style="color:${hit?'#16a34a':'var(--muted)'}">🎯 pledged ${+c.amt} ${escHtml(g.unit||'')}${mark?` · ${mark}`:''}</span>`;
     }
     return `<div class="perow${i%2?' pe-z':''}">
-      <span class="penm" title="${escHtml(goalLabel(g))}">${goalIcon(g.cat)} ${escHtml(goalLabel(g))} ${already>0?`<span class="muted-sm">+${already} ${escHtml(g.unit||'')} logged</span>`:''}${pledge}</span>
+      <span class="penm" title="${escHtml(goalLabel(g))}">${goalIcon(g.cat)} ${goalLabelHtml(g)} ${already>0?`<span class="muted-sm">+${already} ${escHtml(g.unit||'')} logged</span>`:''}${pledge}</span>
       <span class="peamt"><input class="pein" type="number" min="0" step="0.1" data-pe-g="${g.id}"> <span class="unitlab">${escHtml(g.unit||'')}</span></span>
     </div>`;
   }).join('') || '<div class="hint">No active goals.</div>';
@@ -1432,7 +1433,7 @@ function openCommitStep(savedYm, savedPeriod){
     const c=g.commit;
     const pre=(c&&c.ym===nx.ym&&c.period===nx.period)?(+c.amt||''):'';
     return `<div class="perow${i%2?' pe-z':''}">
-      <span class="penm" title="${escHtml(goalLabel(g))}">${goalIcon(g.cat)} ${escHtml(goalLabel(g))}</span>
+      <span class="penm" title="${escHtml(goalLabel(g))}">${goalIcon(g.cat)} ${goalLabelHtml(g)}</span>
       <span class="peamt"><input class="pein" type="number" min="0" step="0.1" data-cmt-g="${g.id}" value="${pre}"> <span class="unitlab">${escHtml(g.unit||'')}</span></span>
     </div>`;
   }).join('');
@@ -2252,7 +2253,10 @@ function goalsLive(){ return loadGoals().filter(g=>!g.deleted); }
 // parent that has live minis; aggregates skip minis (the parent already counts them).
 function isMini(g){ return !!g.parentId; }
 function minisOf(id){ return goalsLive().filter(g=>g.parentId===id); }
-function goalLabel(g){ if(!g.parentId) return g.name; const p=loadGoals().find(o=>o.id===g.parentId); return p?`${p.name} ▸ ${g.name}`:g.name; }
+// Minis aren't named — their label reads "<target> closer to <parent>".
+function goalMiniTgt(g){ return (+g.target>0)?`${g.target} ${g.unit||''}`.trimEnd()+' ':''; }
+function goalLabel(g){ if(!g.parentId) return g.name; const p=loadGoals().find(o=>o.id===g.parentId); return p?`${goalMiniTgt(g)}closer to ${p.name}`:g.name; }
+function goalLabelHtml(g){ if(!g.parentId) return escHtml(g.name); const p=loadGoals().find(o=>o.id===g.parentId); if(!p) return escHtml(g.name); return `${escHtml(goalMiniTgt(g))}closer to <span class="par-tag">${escHtml(p.name)}</span>`; }
 // What the log lists (Log Data dropdown, period entry, pledge) offer: active not-done
 // goals, but a parent with ≥1 live active mini is REPLACED by those minis. Orphan minis
 // (parent done/someday) stand alone so they stay loggable.
@@ -2300,6 +2304,7 @@ function goalFormReset(){ goalEdit=null; goalMiniParent=null; document.getElemen
   document.getElementById('gCat').disabled=false; document.getElementById('gUnit').disabled=false; document.getElementById('gSecWrap').style.display='';
   document.getElementById('gParentWrap').style.display='none';
   document.getElementById('gUnitLab').textContent='unit'; document.getElementById('goalFormTitle').textContent='Add a goal';
+  document.getElementById('gNameWrap').style.display=''; // minis hide it; default state = shown
   document.getElementById('gDelete').style.display='none'; document.getElementById('gDone').style.display='none'; document.getElementById('gMini').style.display='none'; goalFormShow(false); }
 // Open the goal form pre-locked to carve a mini out of parent pid (cat/unit/mapping inherited, always active).
 window.startMiniCreate=function(pid){
@@ -2310,9 +2315,10 @@ window.startMiniCreate=function(pid){
   document.getElementById('gUnit').value=p.unit||''; document.getElementById('gUnitLab').textContent=p.unit||'unit';
   document.getElementById('gMinPer').value=(p.minPerUnit==null?'':p.minPerUnit);
   document.getElementById('gCat').disabled=true; document.getElementById('gUnit').disabled=true; // inherited from the parent
+  document.getElementById('gNameWrap').style.display='none'; document.getElementById('gName').value=''; // minis aren't named — label is "mini · parent : target"
   document.getElementById('gSecWrap').style.display=''; document.getElementById('gSec').value='active'; // section editable; defaults active
   document.getElementById('goalMsg').textContent='';
-  goalFormShow(true); document.getElementById('gName').focus();
+  goalFormShow(true); document.getElementById('gTarget').focus();
 };
 function initGoals(){
   const gv=document.getElementById('viewGoals');
@@ -2351,7 +2357,8 @@ function initGoals(){
   });
   document.getElementById('goalForm').addEventListener('submit', e=>{
     e.preventDefault();
-    const name=document.getElementById('gName').value.trim(); if(!name) return;
+    const nameHidden=document.getElementById('gNameWrap').style.display==='none'; // minis aren't named
+    const name=nameHidden?'mini':document.getElementById('gName').value.trim(); if(!name) return;
     const mpRaw=document.getElementById('gMinPer').value;
     const o={ name, cat:document.getElementById('gCat').value,
       cur:+document.getElementById('gCur').value||0, target:+document.getElementById('gTarget').value||0,
@@ -2445,7 +2452,7 @@ function goalCard(x){
       const mpct=m.target>0?Math.min(100,Math.round((+m.cur||0)/m.target*100)):0;
       const msec=(m.sec||'active'); const off=!m.done && msec!=='active'; const offLab=msec==='progress'?'quarterly':msec==='yearly'?'yearly':'someday';
       return `<div class="gmini${m.done?' gmini-done':''}${off?' gmini-someday':''}">
-        <span class="gmini-name" title="${escHtml(m.name)}">${escHtml(m.name)}${off?` <span class="gmini-tag">${offLab}</span>`:''}</span>
+        <span class="gmini-name" title="${escHtml(goalMiniTgt(m))}closer">${escHtml(goalMiniTgt(m))}closer${off?` <span class="gmini-tag">${offLab}</span>`:''}</span>
         <span class="gmini-bar"><i style="width:${mpct}%"></i></span>
         <span class="gmini-sub">${m.cur}${m.target>0?`/${m.target}`:''}</span>
         ${m.done?'<span class="gmini-check" title="Accomplished">✓</span>'
@@ -2686,6 +2693,7 @@ window.goalEditStart=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x
   const mini=!!x.parentId; // minis: cat/unit locked to the parent, but section IS editable, no sub-minis
   document.getElementById('goalFormTitle').textContent=mini?'Edit mini goal':'Edit goal';
   document.getElementById('gCat').disabled=mini; document.getElementById('gUnit').disabled=mini;
+  document.getElementById('gNameWrap').style.display=mini?'none':''; // minis aren't named
   document.getElementById('gSecWrap').style.display='';
   // Parent-goal picker (convert mini↔top-level). Hidden for a top-level goal that already has minis — can't nest 2 levels.
   const hasKids=!mini && minisOf(x.id).length>0;
