@@ -244,6 +244,9 @@ if(!window.Chart){
   .gacts button{border:1px solid #dfe4ee;background:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;color:#6b7280;font-size:13px;line-height:1;padding:0}
   .gacts button:hover{color:#2d6cdf;border-color:#2d6cdf}
   .gsec{margin-top:16px}
+  .seccap{font-size:12px;font-weight:600;color:#98a0ab;margin-left:2px}
+  .quotaline{display:inline-block;margin-left:2px;font-weight:600;color:#8a93a3}
+  .quotaline.quota-warn{color:#c98b00}
   /* goal cards (redesign) */
   .gstats{display:flex;gap:14px;flex-wrap:wrap;margin:4px 0 18px}
   .goals-head{display:flex;align-items:stretch;gap:14px;margin-bottom:16px}
@@ -293,6 +296,7 @@ if(!window.Chart){
   .grow-main{flex:1 1 auto;min-width:0}
   .gcard-name{font-size:16px;font-weight:600;color:#337ab7;line-height:1.43;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .grow-sub{font-size:14px;line-height:20px;color:#676a6c;margin-top:2px}
+  .grow-when{font-size:13px;line-height:18px;color:#98a0ab;margin-top:1px}
   .grow-bar{position:relative;order:3;flex:0 0 20.5%;min-width:120px;height:20px;margin-top:1px;border-radius:4px;background:#f5f5f5;border:.625px solid var(--gcol,#8a93a3);box-shadow:1px 1px 2px 0 rgba(0,0,0,.75);overflow:hidden}
   .grow-bar i{position:absolute;top:0;bottom:0;left:0;font-style:normal;background-color:var(--gcol,#8a93a3);background-image:linear-gradient(45deg,rgba(255,255,255,.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.15) 50%,rgba(255,255,255,.15) 75%,transparent 75%,transparent);background-size:40px 40px;transition:width .5s;text-align:center;overflow:hidden}
   .grow-val{display:block;font-style:normal;font-size:14px;font-weight:400;line-height:19px;color:#fff;white-space:nowrap}
@@ -795,8 +799,9 @@ if(!window.Chart){
         <div class="hint" style="margin:0">How one unit converts to tracked minutes (decimals ok). Leave blank if this goal isn't time-based.</div>
       </div>
       <label class="gform-sec" id="gSecWrap">Section <select id="gSec">
-        <option value="active">Active goal</option>
-        <option value="progress">In progress</option>
+        <option value="active">Live Nugget</option>
+        <option value="progress">Quarterly</option>
+        <option value="yearly">Yearly</option>
         <option value="someday">Someday</option>
       </select></label>
       <label class="gform-sec" id="gParentWrap" style="display:none">Parent goal <select id="gParent"></select><span class="hint" style="margin:0">Pick a parent to make this a mini of it (inherits its category &amp; unit); choose “Top-level goal” to detach.</span></label>
@@ -842,8 +847,9 @@ if(!window.Chart){
   <div class="gwrap">
   <aside class="gside" id="gFilter"></aside>
   <div class="gmain">
-  <div class="card gsec"><h2>Active goals</h2><div id="secActive"></div></div>
-  <div class="card gsec"><h2>In progress</h2><div class="hint">You're chipping away at these, but they don't count toward your daily/period target. Logged time still adds to your total.</div><div id="secProgress"></div></div>
+  <div class="card gsec"><h2>Live Nuggets <span id="nugCount" class="seccap"></span></h2><div class="hint">Your top few focus goals — the <b>only</b> ones that count toward your daily/period target. <span id="nugQuota"></span></div><div id="secActive"></div></div>
+  <div class="card gsec"><h2>Quarterly <span id="qCount" class="seccap"></span></h2><div class="hint">This quarter's work. Loggable — time still adds to your total — but they don't count toward your daily/period target.</div><div id="secProgress"></div></div>
+  <div class="card gsec"><h2>Yearly <span id="yCount" class="seccap"></span></h2><div class="hint">This year's aims. Loggable, but not counted in daily/period pace.</div><div id="secYearly"></div></div>
   <div class="card gsec"><h2>Someday</h2><div class="hint">Not started yet — things to begin later and big no-deadline aspirations.</div><div id="secSomeday"></div></div>
   <div class="card gsec"><h2>✅ Completed</h2><div class="hint">Marked done. Logged time is kept; reopen any time to keep going.</div><div id="secCompleted"></div></div>
   <div class="card gsec" id="secTrashWrap" hidden><h2>🗑️ Trash</h2><div class="hint">Deleted goals. Their tracked time is kept until you delete forever. Restore any time.</div><div id="secTrash"></div></div>
@@ -916,6 +922,16 @@ if(!window.Chart){
         <span id="personalMsg" class="fmsg"></span>
       </div>
     </form>
+    <h2 style="margin-top:26px">Live Nuggets mix</h2>
+    <div class="hint">Live Nuggets are capped at 5 — the only goals that count toward your daily/period pace. Optionally reserve slots by category (e.g. 2 Spiritual, 1 Youth). The rest stay open. This is a gentle guide: the shelf shows a warning if you drift off your mix, but never blocks you.</div>
+    <div class="form" style="margin-top:12px">
+      <div id="quotaRows"></div>
+      <div style="margin-top:8px"><button type="button" id="quotaAdd" class="btn ghost">＋ Reserve a category</button></div>
+      <div class="gform-foot" style="margin-top:8px">
+        <button type="button" id="quotaSave" class="btn">Save mix</button>
+        <span id="quotaMsg" class="fmsg"></span>
+      </div>
+    </div>
     <h2 style="margin-top:26px">Letter to your future self</h2>
     <div class="hint">Write once a year, in plain words: what you hope this year adds up to, why it matters. It surfaces on the Overview when you're slipping, and again at year end — a nudge from past you.</div>
     <div class="form" style="margin-top:12px">
@@ -986,7 +1002,7 @@ if(!window.Chart){
     <h3 style="margin:18px 0 6px">To do (a.k.a. "left")</h3>
     <p>The forward commitment for the rest of the year:</p>
     <ul>
-      <li><b>Active goals only</b> (someday and completed goals excluded). A goal's remaining = <code>(target − current) × minutes-per-unit</code>.</li>
+      <li><b>Live Nuggets only</b> (Quarterly, Yearly, Someday and completed goals excluded). A goal's remaining = <code>(target − current) × minutes-per-unit</code>.</li>
       <li><b>Daily habits</b> = <code>sum(habit minutes/day) × days left</code> in the year.</li>
     </ul>
 
@@ -1599,13 +1615,15 @@ function goalIcon(cat){ return iconFor(cat); }
 function refreshGoalOptions(){
   const cur=document.getElementById('fGoal').value;
   const opt=x=>`<option value="${x.id}" ${x.id===cur?'selected':''}>${goalIcon(x.cat)} ${escHtml(goalLabel(x))}</option>`;
-  // Active = the loggable set (minis replace their parent); In progress + Someday = non-mini goals in those sections.
+  // Live Nuggets = the loggable set (minis replace their parent); Quarterly + Yearly + Someday = non-mini goals in those sections.
   const active=loggableGoals();
   const progress=goalsLive().filter(x=>x.sec==='progress' && !x.parentId);
-  const someday=goalsLive().filter(x=>(x.sec||'active')!=='active' && x.sec!=='progress' && !x.parentId);
+  const yearly=goalsLive().filter(x=>x.sec==='yearly' && !x.parentId);
+  const someday=goalsLive().filter(x=>(x.sec||'active')!=='active' && x.sec!=='progress' && x.sec!=='yearly' && !x.parentId);
   document.getElementById('fGoal').innerHTML =
-    (active.length?`<optgroup label="Active">${active.map(opt).join('')}</optgroup>`:'')+
-    (progress.length?`<optgroup label="In progress">${progress.map(opt).join('')}</optgroup>`:'')+
+    (active.length?`<optgroup label="Live Nuggets">${active.map(opt).join('')}</optgroup>`:'')+
+    (progress.length?`<optgroup label="Quarterly">${progress.map(opt).join('')}</optgroup>`:'')+
+    (yearly.length?`<optgroup label="Yearly">${yearly.map(opt).join('')}</optgroup>`:'')+
     (someday.length?`<optgroup label="Someday">${someday.map(opt).join('')}</optgroup>`:'');
   syncGoalFields();
 }
@@ -2172,6 +2190,7 @@ function renderPersonalSettings(){
   const f=loadFeatures();
   const fs=document.getElementById('setFeatScreen'); if(fs) fs.checked=!!f.screen;
   const fp=document.getElementById('setFeatPlanning'); if(fp) fp.checked=!!f.planning;
+  renderQuotaEditor();
 }
 function savePersonal(e){
   e.preventDefault();
@@ -2323,17 +2342,22 @@ function initGoals(){
       if(pv){ const par=g.find(q=>q.id===pv); if(par){ o.parentId=par.id; o.cat=par.cat; o.unit=par.unit; if(par.minPerUnit!=null) o.minPerUnit=par.minPerUnit; } }
       else o.parentId=null; // detach → top-level
     }
+    // Tier caps (top-level goals only; minis ride a parent and don't occupy a slot).
+    const willMini = goalEdit ? ('parentId' in o ? !!o.parentId : !!(g.find(x=>x.id===goalEdit)||{}).parentId) : !!goalMiniParent;
+    if(!willMini && SEC_CAP[o.sec] && secCount(o.sec, goalEdit)>=SEC_CAP[o.sec]){
+      const m=document.getElementById('goalMsg'); m.textContent=secCapMsg(o.sec); m.style.color='#ef4444'; return;
+    }
     if(goalEdit){ const i=g.findIndex(x=>x.id===goalEdit); if(i>=0){ g[i]={...g[i],...o}; saveGoals(g); syncGoalEntries(g[i]); } }
     else { o.id='g'+Date.now();
       if(goalMiniParent){ const p=g.find(q=>q.id===goalMiniParent); if(p){ o.parentId=p.id; o.cat=p.cat; o.unit=p.unit; if(o.minPerUnit==null) o.minPerUnit=p.minPerUnit; } } // o.sec comes from the section dropdown
       g.push(o); saveGoals(g); }
-    document.getElementById('goalMsg').textContent='Saved ✓'; goalFormReset(); renderGoals();
+    { const m=document.getElementById('goalMsg'); m.textContent='Saved ✓'; m.style.color=''; } goalFormReset(); renderGoals();
     if(document.getElementById('entryTable')) renderLog();
   });
 }
 function paceLabel(x){
   if(x.done) return 'Done';
-  if(x.target<=0) return x.sec==='progress'?'In progress':(x.sec&&x.sec!=='active')?'Someday':'—';
+  if(x.target<=0) return x.sec==='progress'?'Quarterly':x.sec==='yearly'?'Yearly':(x.sec&&x.sec!=='active')?'Someday':'—';
   const af=x.cur/x.target; if(af>=1) return 'Done';
   const ef=expFrac(x); if(ef==null) return 'On track';
   const d=af-ef;
@@ -2392,7 +2416,7 @@ function goalCard(x){
     <div class="gminis-head">🏅 ${mDone}/${minis.length} mini goal${minis.length>1?'s':''} accomplished</div>
     ${minis.map(m=>{
       const mpct=m.target>0?Math.min(100,Math.round((+m.cur||0)/m.target*100)):0;
-      const msec=(m.sec||'active'); const off=!m.done && msec!=='active'; const offLab=msec==='progress'?'in progress':'someday';
+      const msec=(m.sec||'active'); const off=!m.done && msec!=='active'; const offLab=msec==='progress'?'quarterly':msec==='yearly'?'yearly':'someday';
       return `<div class="gmini${m.done?' gmini-done':''}${off?' gmini-someday':''}">
         <span class="gmini-name" title="${escHtml(m.name)}">${escHtml(m.name)}${off?` <span class="gmini-tag">${offLab}</span>`:''}</span>
         <span class="gmini-bar"><i style="width:${mpct}%"></i></span>
@@ -2405,7 +2429,7 @@ function goalCard(x){
   </div>` : '';
   const byD = x.by ? new Date(x.by+'T00:00') : null;
   const byTxt = (byD && !isNaN(byD)) ? ` by ${byD.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}` : '';
-  const subBits=x.target>0?`Target: ${x.target} ${escHtml(x.unit||'')}${byTxt} (${when})`:when; // pace word lives only in the badge tooltip (GoT shows no status text)
+  const subMain=x.target>0?`Target: ${x.target} ${escHtml(x.unit||'')}${byTxt}`:''; // line 1 (pace word lives only in the badge tooltip — GoT shows no status text)
   const barTxt=`${x.cur} ${escHtml(x.unit||'')}`.trim();
   const barFits=(pct/100)*210 >= barTxt.length*6.8+12; // white label inside fill only when it fits (GoT look); else grey at left
   return `<div class="gcard${overdue?' gcard-overdue':''}${x.done?' gcard-done':''}" draggable="true" data-id="${x.id}" style="--gcol:${col}">
@@ -2413,7 +2437,8 @@ function goalCard(x){
       <span class="grow-st" title="${badge}">${stBadge(stKind)}</span>
       <div class="grow-main">
         <div class="gcard-name" title="${escHtml(x.name)}">${escHtml(x.name)}</div>
-        <div class="grow-sub">${subBits}</div>
+        ${subMain?`<div class="grow-sub">${subMain}</div>`:''}
+        <div class="grow-when">${when}</div>
       </div>
       <div class="grow-bar">${barFits?`<i style="width:${pct}%"><span class="grow-val">${barTxt}</span></i>`:`<i style="width:${pct}%"></i><span class="grow-val grow-val-out">${barTxt}</span>`}</div>
       <span class="grow-pct">${x.target>0?raw+'%':''}</span>
@@ -2491,26 +2516,51 @@ function renderGoalStats(){
 // #47: goals filter panel — module-level UI state (never persisted)
 let gfSec='all', gfCat='all', GF_CATS=[];
 function gfSet(k,v){ if(k==='sec') gfSec=v; else gfCat=v; renderGoals(); }
-function gfSecOf(g){ return g.done?'completed' : g.sec==='progress'?'progress' : (g.sec||'active')==='active'?'active':'someday'; }
+function gfSecOf(g){ return g.done?'completed' : g.sec==='progress'?'progress' : g.sec==='yearly'?'yearly' : (g.sec||'active')==='active'?'active':'someday'; }
 function renderGoalFilter(){
   const el=document.getElementById('gFilter'); if(!el) return;
   const live=goalsLive().filter(g=>!g.parentId);
   const inCat=g=>gfCat==='all'||(g.cat||'—')===gfCat, inSec=g=>gfSec==='all'||gfSecOf(g)===gfSec;
-  const secs=[['all','All'],['active','Active'],['progress','In progress'],['someday','Someday'],['completed','Completed']];
+  const secs=[['all','All'],['active','Live Nuggets'],['progress','Quarterly'],['yearly','Yearly'],['someday','Someday'],['completed','Completed']];
   const secBtns=secs.map(([v,l])=>`<button type="button" class="gf-btn${gfSec===v?' active':''}" onclick="gfSet('sec','${v}')"><span>${l}</span><span class="gf-n">${live.filter(g=>inCat(g)&&(v==='all'||gfSecOf(g)===v)).length}</span></button>`).join('');
   GF_CATS=[...new Set(live.map(g=>g.cat||'—'))];
   const catBtns=[`<button type="button" class="gf-btn${gfCat==='all'?' active':''}" onclick="gfSet('cat','all')"><span>All</span><span class="gf-n">${live.filter(inSec).length}</span></button>`]
     .concat(GF_CATS.map((c,i)=>`<button type="button" class="gf-btn${gfCat===c?' active':''}" onclick="gfSet('cat',GF_CATS[${i}])"><span>${iconFor(c)} ${escHtml(c)}</span><span class="gf-n">${live.filter(g=>inSec(g)&&(g.cat||'—')===c).length}</span></button>`)).join('');
   el.innerHTML=`<div class="gf-grp"><div class="gf-lab">Sections</div>${secBtns}</div><div class="gf-grp"><div class="gf-lab">Categories</div>${catBtns}</div>`;
 }
+// --- Tier caps: Live Nuggets 5 / Quarterly 11 / Yearly 21 (top-level goals only; minis ride a parent) ---
+const SEC_CAP={active:5, progress:11, yearly:21};
+const SEC_LAB={active:'Live Nuggets', progress:'Quarterly', yearly:'Yearly', someday:'Someday'};
+function secOfGoal(g){ const s=(g.sec||'active'); return (s==='active'||s==='progress'||s==='yearly')?s:'someday'; }
+function secCount(sec, exceptId){ return goalsLive().filter(g=>!g.done && !g.parentId && g.id!==exceptId && secOfGoal(g)===sec).length; }
+function secCapMsg(sec){ const c=SEC_CAP[sec]; return c?`${SEC_LAB[sec]} is capped at ${c}. Remove or move one before adding another.`:''; }
+// Live Nuggets composition tracker (configurable per-category quota; soft warning only).
+function nuggetQuotaHTML(){
+  const cap=SEC_CAP.active, q=loadQuota();
+  const nug=goalsLive().filter(g=>!g.done&&!g.parentId&&(g.sec||'active')==='active');
+  if(!q.length) return '';
+  const named=q.map(r=>r.cat); let warn=false;
+  const parts=q.map(r=>{ const f=nug.filter(g=>(g.cat||'—')===r.cat).length; if(f>r.n) warn=true; return `${escHtml(r.cat)} ${f}/${r.n}`; });
+  const namedSlots=q.reduce((s,r)=>s+(+r.n||0),0), openN=Math.max(0,cap-namedSlots);
+  const openFilled=nug.filter(g=>!named.includes(g.cat||'—')).length; if(openFilled>openN) warn=true;
+  parts.push(`open ${openFilled}/${openN}`);
+  return `<span class="quotaline${warn?' quota-warn':''}">Mix: ${parts.join(' · ')}</span>`;
+}
+function renderSecCaps(){
+  const set=(id,sec)=>{ const el=document.getElementById(id); if(el) el.textContent=`${secCount(sec)}/${SEC_CAP[sec]}`; };
+  set('nugCount','active'); set('qCount','progress'); set('yCount','yearly');
+  const nq=document.getElementById('nugQuota'); if(nq) nq.innerHTML=nuggetQuotaHTML();
+}
 function renderGoals(){ renderGoalStats(); renderGoalFilter();
   const cf=g=>gfCat==='all'||(g.cat||'—')===gfCat;
   renderSec(g=>!g.done&&(g.sec||'active')==='active'&&!g.parentId&&cf(g),'secActive',true);
   renderSec(g=>!g.done&&g.sec==='progress'&&!g.parentId&&cf(g),'secProgress',false);
-  renderSec(g=>!g.done&&(g.sec||'active')!=='active'&&g.sec!=='progress'&&!g.parentId&&cf(g),'secSomeday',false);
+  renderSec(g=>!g.done&&g.sec==='yearly'&&!g.parentId&&cf(g),'secYearly',false);
+  renderSec(g=>!g.done&&(g.sec||'active')!=='active'&&g.sec!=='progress'&&g.sec!=='yearly'&&!g.parentId&&cf(g),'secSomeday',false);
   renderSec(g=>!!g.done&&!g.parentId&&cf(g),'secCompleted',false);
+  renderSecCaps();
   // section-card visibility per the filter (trash + renounced only on 'all')
-  const secCards={active:'secActive',progress:'secProgress',someday:'secSomeday',completed:'secCompleted'};
+  const secCards={active:'secActive',progress:'secProgress',yearly:'secYearly',someday:'secSomeday',completed:'secCompleted'};
   for(const k in secCards){ const c=document.getElementById(secCards[k]).closest('.card'); if(c) c.hidden = gfSec!=='all'&&gfSec!==k; }
   renderTrash();
   renderRenounced();
@@ -2581,7 +2631,7 @@ window.goalEditStart=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x
   document.getElementById('gCur').value=x.cur; document.getElementById('gTarget').value=x.target;
   document.getElementById('gUnit').value=x.unit; document.getElementById('gStart').value=x.start||''; document.getElementById('gBy').value=x.by||'';
   document.getElementById('gMinPer').value=(x.minPerUnit==null?'':x.minPerUnit); document.getElementById('gUnitLab').textContent=x.unit||'unit';
-  document.getElementById('gSec').value=x.sec==='progress'?'progress':((x.sec||'active')==='active'?'active':'someday');
+  document.getElementById('gSec').value=x.sec==='progress'?'progress':x.sec==='yearly'?'yearly':((x.sec||'active')==='active'?'active':'someday');
   const mini=!!x.parentId; // minis: cat/unit locked to the parent, but section IS editable, no sub-minis
   document.getElementById('goalFormTitle').textContent=mini?'Edit mini goal':'Edit goal';
   document.getElementById('gCat').disabled=mini; document.getElementById('gUnit').disabled=mini;
@@ -2674,6 +2724,11 @@ const LS_LETTER='ptd_letter_v1';
 function loadLetter(){ try{ const v=JSON.parse(localStorage.getItem(LS_LETTER)); return (v&&typeof v==='object'&&!Array.isArray(v))?v:{text:'',writtenYm:''}; }catch(e){ return {text:'',writtenYm:''}; } }
 function saveLetter(text){ localStorage.setItem(LS_LETTER, JSON.stringify({text:String(text||''), writtenYm:CUR_YM})); fbSyncPush(); }
 
+// ---- Live Nuggets composition quota (array of {cat, n}; open slots = 5 − Σn). Soft warning only. ----
+const LS_QUOTA='ptd_quota_v1';
+function loadQuota(){ try{ const v=JSON.parse(localStorage.getItem(LS_QUOTA)); return Array.isArray(v)?v.filter(r=>r&&r.cat&&+r.n>0):[]; }catch(e){ return []; } }
+function saveQuota(q){ localStorage.setItem(LS_QUOTA, JSON.stringify(q)); fbSyncPush(); }
+
 // ---- Renounced list (things deliberately given up) = array of {id, text} ----
 const LS_RENOUNCED='ptd_renounced_v1';
 function loadRenounced(){ try{ const v=JSON.parse(localStorage.getItem(LS_RENOUNCED)); return Array.isArray(v)?v:[]; }catch(e){ return []; } }
@@ -2723,7 +2778,9 @@ function exportReportPdf(){
   rep.appendChild(oSec);
   // 3) Goals — active (their headings live in parent cards, so re-label)
   const gSec=pdfSec('Goals');
-  const a=pdfClone(document.getElementById('secActive')); if(a){ gSec.appendChild(pdfSub('Active goals')); gSec.appendChild(a); }
+  const a=pdfClone(document.getElementById('secActive')); if(a){ gSec.appendChild(pdfSub('Live Nuggets')); gSec.appendChild(a); }
+  const qc=pdfClone(document.getElementById('secProgress')); if(qc&&qc.children.length){ gSec.appendChild(pdfSub('Quarterly')); gSec.appendChild(qc); }
+  const yc=pdfClone(document.getElementById('secYearly')); if(yc&&yc.children.length){ gSec.appendChild(pdfSub('Yearly')); gSec.appendChild(yc); }
   rep.appendChild(gSec);
   // 4) The Pot — jar + one journey scene per active goal
   const potSec=pdfSec('The Pot');
@@ -3181,6 +3238,7 @@ const SYNC_FIELDS=[
   ['letter',  LS_LETTER,  loadLetter,     'replace'],
   ['renounced', LS_RENOUNCED, loadRenounced, 'id'],
   ['features', LS_FEATURES, loadFeatures,   'replace'],
+  ['quota',    LS_QUOTA,    loadQuota,      'replace'],
 ];
 function mergeById(loc,cld){ const m=new Map(); (Array.isArray(loc)?loc:[]).forEach(x=>{ if(x&&x.id!=null) m.set(x.id,x); }); (Array.isArray(cld)?cld:[]).forEach(x=>{ if(x&&x.id!=null) m.set(x.id,x); }); return [...m.values()]; }
 function mergeMap(loc,cld){ return {...(loc&&typeof loc==='object'&&!Array.isArray(loc)?loc:{}), ...(cld&&typeof cld==='object'&&!Array.isArray(cld)?cld:{})}; }
@@ -3316,6 +3374,38 @@ document.getElementById('setLetterSave').onclick=()=>{
   const m=document.getElementById('letterMsg'); m.textContent='Saved ✓'; m.style.color='#34a853';
   setTimeout(()=>{ m.textContent=''; }, 2000);
 };
+// ---- Live Nuggets mix editor (Settings→Personal) ----
+function quotaRowHTML(cat, n){
+  const opts=ALLCATS.map(c=>`<option value="${escHtml(c)}"${c===cat?' selected':''}>${escHtml(c)}</option>`).join('');
+  return `<div class="qrow" style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+    <select class="qcat" style="flex:1;min-width:0">${opts}</select>
+    <input class="qn" type="number" min="1" max="5" step="1" value="${Math.min(5,Math.max(1,+n||1))}" style="width:64px">
+    <span class="hint" style="margin:0">slots</span>
+    <button type="button" class="qdel btn ghost" title="Remove">✕</button></div>`;
+}
+function renderQuotaEditor(){
+  const box=document.getElementById('quotaRows'); if(!box) return;
+  const q=loadQuota();
+  box.innerHTML = q.length ? q.map(r=>quotaRowHTML(r.cat,r.n)).join('') : '<div class="hint" style="margin:0">No reserved categories — all 5 slots open.</div>';
+}
+(function initQuotaEditor(){
+  const box=document.getElementById('quotaRows'), add=document.getElementById('quotaAdd'), save=document.getElementById('quotaSave');
+  if(!box||!add||!save) return;
+  add.onclick=()=>{ if(!box.querySelector('.qrow')) box.innerHTML=''; box.insertAdjacentHTML('beforeend', quotaRowHTML(ALLCATS[0]||'', 1)); };
+  box.addEventListener('click', e=>{ const d=e.target.closest('.qdel'); if(!d) return; d.closest('.qrow').remove();
+    if(!box.querySelector('.qrow')) box.innerHTML='<div class="hint" style="margin:0">No reserved categories — all 5 slots open.</div>'; });
+  save.onclick=()=>{
+    const rows=[...box.querySelectorAll('.qrow')].map(r=>({cat:r.querySelector('.qcat').value, n:Math.min(5,Math.max(1,Math.round(+r.querySelector('.qn').value||1)))}));
+    const m=document.getElementById('quotaMsg');
+    const total=rows.reduce((s,r)=>s+r.n,0);
+    if(total>SEC_CAP.active){ m.textContent=`Reserved slots (${total}) exceed the ${SEC_CAP.active} Live Nuggets.`; m.style.color='#ef4444'; return; }
+    // merge duplicate categories (sum slots), re-cap
+    const merged=[]; rows.forEach(r=>{ const e=merged.find(x=>x.cat===r.cat); if(e) e.n=Math.min(5,e.n+r.n); else merged.push({...r}); });
+    saveQuota(merged); renderQuotaEditor();
+    if(document.getElementById('secActive')) renderGoals();
+    m.textContent='Saved ✓'; m.style.color='#34a853'; setTimeout(()=>{ m.textContent=''; }, 2000);
+  };
+})();
 
 // ================= POT (year capacity vs filled, coloured by category) =================
 // ---- Battery: GoalsOnTrack-style 20-cell recent-activity gauge, one per active goal ----
@@ -3333,7 +3423,7 @@ function batteryPeriods(){
 // active or in-progress top-level goals (both are "chipping away" — momentum applies to both)
 function batteryGoals(){
   return loadGoals().filter(g=>{ const s=g.sec||'active';
-    return (s==='active'||s==='progress') && !g.done && !g.deleted && !g.parentId; });
+    return (s==='active'||s==='progress'||s==='yearly') && !g.done && !g.deleted && !g.parentId; });
 }
 // per-goal {periodKey: amount} — logs first, else fall back to that goal's time entries
 function batteryBuckets(g, ents){
