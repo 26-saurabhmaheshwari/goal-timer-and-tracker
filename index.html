@@ -652,6 +652,7 @@ if(!window.Chart){
     <div class="frow noprint" style="margin-top:12px;gap:8px;flex-wrap:wrap;align-items:center">
       <button type="button" id="pePrint" class="btn ghost" title="Print a blank sheet to fill in by hand over the 10 days">🖨️ Paper sheet</button>
       <button type="button" id="pePoster" class="btn ghost" title="Print a one-page year grid of all 36 periods for the wall — colour each cell as you go">🎨 Wall poster</button>
+      <button type="button" id="peCard" class="btn ghost" title="Print a tiny black-and-white card listing what's planned this period — habits + nuggets, nothing else">🃏 Plan card</button>
       <button type="button" id="peIcs" class="btn ghost" title="Add a calendar reminder to log this period">📅 Reminder</button>
       <button type="button" id="peWitness" class="btn ghost" title="Copy a 3-line summary of this period to send to an accountability partner">📋 Witness note</button>
       <button type="button" id="peSave" class="btn" style="margin-left:auto">Save period</button>
@@ -1331,6 +1332,7 @@ function initLogForm(){
   document.getElementById('peClose').onclick = ()=>peShow(false);
   document.getElementById('peSave').onclick = savePeriodEntry;
   document.getElementById('pePrint').onclick = printPeriodSheet;
+  document.getElementById('peCard').onclick = printPlanCard;
   document.getElementById('pePoster').onclick = printYearPoster;
   document.getElementById('peIcs').onclick = downloadPeriodIcs;
   document.getElementById('peWitness').onclick = ()=>copyWitness(document.getElementById('peMonth').value, document.getElementById('pePeriod').value, document.getElementById('peMsg'));
@@ -1503,6 +1505,46 @@ function printPeriodSheet(){
   </body></html>`;
   const w=window.open('','_blank');
   if(!w){ const msg=document.getElementById('peMsg'); msg.style.color='#dc2626'; msg.textContent='Pop-up blocked — allow pop-ups to print the sheet.'; return; }
+  w.document.write(html); w.document.close();
+}
+// Tiny B&W "what's planned" card: habits (m/day) + nuggets (period pledge, else target).
+// No day grid, no ticks, no logging — just the plan, small enough to pocket.
+function printPlanCard(){
+  const ym=document.getElementById('peMonth').value, period=document.getElementById('pePeriod').value;
+  const pd=periodDays(ym,period);
+  const habits=loadHabits().filter(h=>!h.paused&&!h.done);
+  const goals=loggableGoals();
+  const hRows=habits.map(h=>`<tr><td>${escHtml(h.n)}</td><td class="r">${h.m}m/day</td></tr>`).join('')
+    || `<tr><td class="empty" colspan="2">No habits.</td></tr>`;
+  const gRows=goals.map(g=>{
+    const c=g.commit, plan=(c&&c.ym===ym&&c.period===period&&+c.amt>0)?`${+c.amt} ${g.unit||''}`.trim()
+      :(g.target>0?`${g.target} ${g.unit||''}`.trim():'—');
+    return `<tr><td>${escHtml(goalLabel(g))}</td><td class="r">${escHtml(plan)}</td></tr>`;
+  }).join('') || `<tr><td class="empty" colspan="2">No nuggets.</td></tr>`;
+  const title=`${ymLabel(ym)} · Days ${pd.start}–${pd.end}`;
+  const html=`<!doctype html><html><head><meta charset="utf-8"><title>${title} — plan card</title>
+  <style>
+   *{box-sizing:border-box} body{font:12px/1.35 -apple-system,Segoe UI,Arial,sans-serif;color:#000;margin:0;background:#fff}
+   .card{width:320px;margin:20px auto;border:1.5px solid #000;padding:14px 16px}
+   h1{font-size:14px;margin:0} .sub{font-size:11px;color:#333;margin:1px 0 10px}
+   h2{font-size:10px;margin:12px 0 4px;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid #000;padding-bottom:2px}
+   table{border-collapse:collapse;width:100%} td{padding:3px 0;vertical-align:top;border-bottom:1px dotted #bbb}
+   td.r{text-align:right;white-space:nowrap;padding-left:10px;color:#000} td.empty{color:#666;font-style:italic}
+   @media print{ .noprint{display:none} @page{margin:8mm} }
+  </style></head><body>
+   <button class="noprint" onclick="window.print()" style="display:block;margin:10px auto 0;padding:6px 14px;cursor:pointer">Print</button>
+   <div class="card">
+    <h1>Plan card</h1>
+    <p class="sub">${title}</p>
+    <h2>Habits</h2>
+    <table><tbody>${hRows}</tbody></table>
+    <h2>Nuggets</h2>
+    <table><tbody>${gRows}</tbody></table>
+   </div>
+   <script>window.onload=function(){setTimeout(function(){try{window.print()}catch(e){}},250)}<\/script>
+  </body></html>`;
+  const w=window.open('','_blank');
+  if(!w){ const msg=document.getElementById('peMsg'); msg.style.color='#dc2626'; msg.textContent='Pop-up blocked — allow pop-ups to print the card.'; return; }
   w.document.write(html); w.document.close();
 }
 // Verdict for one period vs the fixed-habit plan. Returns hit/partial/miss for
