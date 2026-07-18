@@ -923,7 +923,7 @@ if(!window.Chart){
       </div>
     </form>
     <h2 style="margin-top:26px">Live Nuggets mix</h2>
-    <div class="hint">Live Nuggets are capped at 5 — the only goals that count toward your daily/period pace. Optionally reserve slots by category (e.g. 2 Spiritual, 1 Youth). The rest stay open. This is a gentle guide: the shelf shows a warning if you drift off your mix, but never blocks you.</div>
+    <div class="hint">Live Nuggets are capped at 7 — the only goals that count toward your daily/period pace. Optionally reserve slots by category (e.g. 2 Spiritual, 1 Youth). The rest stay open. This is a gentle guide: the shelf shows a warning if you drift off your mix, but never blocks you.</div>
     <div class="form" style="margin-top:12px">
       <div id="quotaRows"></div>
       <div style="margin-top:8px"><button type="button" id="quotaAdd" class="btn ghost">＋ Reserve a category</button></div>
@@ -2528,8 +2528,8 @@ function renderGoalFilter(){
     .concat(GF_CATS.map((c,i)=>`<button type="button" class="gf-btn${gfCat===c?' active':''}" onclick="gfSet('cat',GF_CATS[${i}])"><span>${iconFor(c)} ${escHtml(c)}</span><span class="gf-n">${live.filter(g=>inSec(g)&&(g.cat||'—')===c).length}</span></button>`)).join('');
   el.innerHTML=`<div class="gf-grp"><div class="gf-lab">Sections</div>${secBtns}</div><div class="gf-grp"><div class="gf-lab">Categories</div>${catBtns}</div>`;
 }
-// --- Tier caps: Live Nuggets 5 / Quarterly 11 / Yearly 21 (top-level goals only; minis ride a parent) ---
-const SEC_CAP={active:5, progress:11, yearly:21};
+// --- Tier caps: Live Nuggets 7 / Quarterly 11 / Yearly 21 (top-level goals only; minis ride a parent) ---
+const SEC_CAP={active:7, progress:11, yearly:21};
 const SEC_LAB={active:'Live Nuggets', progress:'Quarterly', yearly:'Yearly', someday:'Someday'};
 function secOfGoal(g){ const s=(g.sec||'active'); return (s==='active'||s==='progress'||s==='yearly')?s:'someday'; }
 function secCount(sec, exceptId){ return goalsLive().filter(g=>!g.done && !g.parentId && g.id!==exceptId && secOfGoal(g)===sec).length; }
@@ -2724,7 +2724,7 @@ const LS_LETTER='ptd_letter_v1';
 function loadLetter(){ try{ const v=JSON.parse(localStorage.getItem(LS_LETTER)); return (v&&typeof v==='object'&&!Array.isArray(v))?v:{text:'',writtenYm:''}; }catch(e){ return {text:'',writtenYm:''}; } }
 function saveLetter(text){ localStorage.setItem(LS_LETTER, JSON.stringify({text:String(text||''), writtenYm:CUR_YM})); fbSyncPush(); }
 
-// ---- Live Nuggets composition quota (array of {cat, n}; open slots = 5 − Σn). Soft warning only. ----
+// ---- Live Nuggets composition quota (array of {cat, n}; open slots = 7 − Σn). Soft warning only. ----
 const LS_QUOTA='ptd_quota_v1';
 function loadQuota(){ try{ const v=JSON.parse(localStorage.getItem(LS_QUOTA)); return Array.isArray(v)?v.filter(r=>r&&r.cat&&+r.n>0):[]; }catch(e){ return []; } }
 function saveQuota(q){ localStorage.setItem(LS_QUOTA, JSON.stringify(q)); fbSyncPush(); }
@@ -3264,7 +3264,34 @@ function applyBlob(d, merge){
   if(typeof d.lifebar==='boolean' && d.lifebar!==SHOW_LIFEBAR){ SHOW_LIFEBAR=d.lifebar; localStorage.setItem(LS_LIFEBAR, SHOW_LIFEBAR?'1':'0'); changed=true; }
   return changed;
 }
-function fbSyncPush(){ window.fbPushRaw && window.fbPushRaw(fbBlob()); }
+function fbSyncPush(){ window.fbPushRaw && window.fbPushRaw(fbBlob()); if(window.__dumpLive) window.dump(window.__dumpLive===true?null:window.__dumpLive); }
+// ---- DUMP: greppable live dump of the whole data + all live calculations (browser console) ----
+// dump()          → print everything     dump("goal") → print only lines containing "goal"
+// dumpLive()      → re-print on every save (live)   dumpLive("calc") → live, grepped   dumpLive(false) → off
+window.dump = function(q){
+  const lines=[], add=(k,v)=>lines.push('DUMP '+k+' = '+(v&&typeof v==='object'?JSON.stringify(v):v));
+  const r2=n=>Math.round((+n||0)*100)/100;
+  // ---- whole data (same blob used for cloud sync + backup export) ----
+  const blob=fbBlob();
+  Object.keys(blob).forEach(f=>{ const v=blob[f]; if(Array.isArray(v)) add('data.'+f+'.count', v.length); add('data.'+f, v); });
+  // ---- live calculations (planning / pace math) ----
+  try{
+    const P=planYearTotals();
+    ['yr','pend','pLeft','mLeft','fixed','totH','yearH'].forEach(k=>add('calc.'+k, r2(P[k])));
+    add('calc.tot', {target:r2(P.tot.target),done:r2(P.tot.done),allocated:r2(P.tot.allocated)});
+    P.rowsData.forEach(r=>add('calc.row.'+r.k, {done:r2(r.done),allocated:r2(r.allocated),target:r2(r.target)}));
+  }catch(e){ add('calc.ERROR', e.message); }
+  // ---- per active-nugget pace ----
+  goalsLive().filter(g=>g.sec==='active'&&!g.done&&!g.parentId).forEach(g=>{
+    const mp=goalMinPer(g), left=Math.max(0,(+g.target||0)-(+g.cur||0));
+    add('calc.goal.'+(g.name||g.id), {cur:+g.cur||0,target:+g.target||0,unit:g.unit||'',minPer:r2(mp),hoursLeft:r2(mp>0?left*mp/60:0)});
+  });
+  const out = q ? lines.filter(l=>l.toLowerCase().includes(String(q).toLowerCase())) : lines;
+  out.forEach(l=>console.log(l));
+  console.log('DUMP — '+out.length+'/'+lines.length+' lines'+(q?(' matching "'+q+'"'):'')+'. Usage: dump("goal") to grep · dumpLive() for live.');
+  return out.length;
+};
+window.dumpLive = function(q){ window.__dumpLive = q===false?false:(q||true); console.log('DUMP live '+(window.__dumpLive?('ON'+(q&&q!==true?(' (grep "'+q+'")'):'')):'OFF')); if(window.__dumpLive) window.dump(q===true?null:q); };
 window.fbToggle = function(){ if(window.__fbIn){ window.fbSignOut(); } else { window.fbSignIn(); } };
 document.addEventListener('fb-auth', e=>{
   window.__fbIn = !!e.detail.signedIn;
