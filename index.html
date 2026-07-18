@@ -988,6 +988,12 @@ if(!window.Chart){
     </form>
   </div>
 
+  <div class="card" id="setHabitsDone" hidden>
+    <h2>Completed habits</h2>
+    <div class="hint">Habits you've marked done. Reopen (↺) to move one back to the active list.</div>
+    <div id="habitDoneList" class="catlist"></div>
+  </div>
+
   <div class="card" id="setFaq" hidden style="line-height:1.55">
     <h2>How the numbers work</h2>
     <div class="hint">Plain-English definition of every figure on Overview (its year and Pot views) and Time Planning. All figures recompute live each time you open a page.</div>
@@ -1818,9 +1824,11 @@ function setSettab(s){
   document.getElementById('setPersonal').hidden = s!=='personal';
   document.getElementById('setCats').hidden = s!=='cats';
   document.getElementById('setHabits').hidden = s!=='habits';
+  document.getElementById('setHabitsDone').hidden = true;
   document.getElementById('setFaq').hidden = s!=='faq';
   document.querySelectorAll('#setSide button').forEach(b=>b.classList.toggle('active', b.dataset.s===s));
   if(s==='personal') renderPersonalSettings();
+  if(s==='habits') renderHabitsSettings();
 }
 function habitCatOpts(c){ return ALLCATS.map(x=>`<option value="${escHtml(x)}"${x===c?' selected':''}>${escHtml(x)}</option>`).join(''); }
 // --- habit adherence: "hit plan N of last M periods" (pure derived, no new state) ---
@@ -1870,7 +1878,7 @@ function habitAdhereBadge(it){
 function renderHabitsSettings(){
   const el=document.getElementById('habitList'); if(!el) return;
   const h=loadHabits();
-  el.innerHTML = h.map((it,i)=>{
+  const row=(it,i)=>{
     const off=it.done||it.paused, badge=it.done?' <span class="muted-sm">✓ done</span>':(it.paused?' <span class="muted-sm">⏸ paused</span>':'');
     return `<div class="catrow"${off?' style="opacity:.5"':''}>
       <span class="cdot" style="background:${colorFor(it.cat)}"></span>
@@ -1879,7 +1887,12 @@ function renderHabitsSettings(){
       <button class="cedit" title="${it.paused?'Resume':'Pause'}" onclick="habitTogglePause(${i})">${it.paused?'▶':'⏸'}</button>
       <button class="cedit" title="${it.done?'Reopen':'Mark done'}" onclick="habitToggleDone(${i})">${it.done?'↺':'✓'}</button>
       <button class="cedit" title="Edit" onclick="habitEditStart(${i})">✎</button>
-    </div>`;}).join('') || '<div class="empty">No habits. Add one below.</div>';
+    </div>`;};
+  const active=[], done=[];
+  h.forEach((it,i)=>{ (it.done?done:active).push(row(it,i)); });
+  el.innerHTML = active.join('') || '<div class="empty">No habits. Add one below.</div>';
+  const dEl=document.getElementById('habitDoneList'); if(dEl) dEl.innerHTML=done.join('');
+  const dCard=document.getElementById('setHabitsDone'); if(dCard) dCard.hidden = !(setSel==='habits' && done.length);
   const sel=document.getElementById('newHabitCat'); if(sel) sel.innerHTML=habitCatOpts(sel.value||ALLCATS[0]);
 }
 let habitEditIdx=null;
