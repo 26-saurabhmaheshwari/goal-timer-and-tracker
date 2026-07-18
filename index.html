@@ -201,6 +201,7 @@ if(!window.Chart){
   .gform-sec{max-width:240px}
   .gform-foot{display:flex;gap:6px;align-items:center;flex-wrap:nowrap;margin-top:2px;overflow-x:auto}
   .gform-foot .btn{white-space:nowrap;flex:0 0 auto}
+  #goalForm .gform-foot{flex-wrap:wrap;overflow-x:visible}
 .catlist{display:flex;flex-direction:column;gap:8px}
 .catrow{display:flex;align-items:center;gap:10px;padding:8px 12px;background:#f2ecdd;border:1px solid #e3dccb;border-radius:10px}
 .catrow .nm{flex:1;font-weight:600;color:var(--ink)}
@@ -1467,14 +1468,14 @@ function printPeriodSheet(){
   const ym=document.getElementById('peMonth').value, period=document.getElementById('pePeriod').value;
   const pd=periodDays(ym,period);
   const habits=loadHabits().filter(h=>!h.paused&&!h.done);
-  const goals=goalsLive().filter(g=>(g.sec||'active')==='active'&&!g.done);
+  const goals=loggableGoals();
   const days=[]; for(let d=pd.start;d<=pd.end;d++) days.push(d);
   const hHead=days.map(d=>`<th>${d}</th>`).join('');
   const hRows=habits.map(h=>`<tr><td class="nm">${escHtml(h.n)} <span class="t">${h.m}m</span></td>${days.map(()=>'<td></td>').join('')}</tr>`).join('')
     || `<tr><td class="empty" colspan="${days.length+1}">No habits set — add some in Settings.</td></tr>`;
   const gRows=goals.map(g=>{
     const c=g.commit, pl=(c&&c.ym===ym&&c.period===period&&+c.amt>0)?` <span class="t">🎯 pledged ${+c.amt}</span>`:'';
-    return `<tr><td class="nm">${escHtml(g.name)}${pl}</td><td class="line"></td><td class="u">${escHtml(g.unit||'')}</td></tr>`;
+    return `<tr><td class="nm">${escHtml(goalLabel(g))}${pl}</td><td class="line"></td><td class="u">${escHtml(g.unit||'')}</td></tr>`;
   }).join('')
     || `<tr><td class="empty" colspan="3">No active goals.</td></tr>`;
   const title=`${ymLabel(ym)} · Days ${pd.start}–${pd.end}`;
@@ -2301,7 +2302,7 @@ function goalPeriodsToFinish(x){
 function goalFormShow(on){ document.getElementById('goalModal').hidden=!on; document.body.style.overflow=on?'hidden':''; }
 let goalMiniParent=null; // set while the form is creating a mini goal (holds the parent's id)
 function goalFormReset(){ goalEdit=null; goalMiniParent=null; document.getElementById('goalForm').reset();
-  document.getElementById('gCat').disabled=false; document.getElementById('gUnit').disabled=false; document.getElementById('gSecWrap').style.display='';
+  document.getElementById('gCat').disabled=false; document.getElementById('gUnit').disabled=false; document.getElementById('gMinPer').disabled=false; document.getElementById('gSecWrap').style.display='';
   document.getElementById('gParentWrap').style.display='none';
   document.getElementById('gUnitLab').textContent='unit'; document.getElementById('goalFormTitle').textContent='Add a goal';
   document.getElementById('gNameWrap').style.display=''; // minis hide it; default state = shown
@@ -2314,7 +2315,7 @@ window.startMiniCreate=function(pid){
   document.getElementById('gCat').value=p.cat;
   document.getElementById('gUnit').value=p.unit||''; document.getElementById('gUnitLab').textContent=p.unit||'unit';
   document.getElementById('gMinPer').value=(p.minPerUnit==null?'':p.minPerUnit);
-  document.getElementById('gCat').disabled=true; document.getElementById('gUnit').disabled=true; // inherited from the parent
+  document.getElementById('gCat').disabled=true; document.getElementById('gUnit').disabled=true; document.getElementById('gMinPer').disabled=true; // inherited from the parent
   document.getElementById('gNameWrap').style.display='none'; document.getElementById('gName').value=''; // minis aren't named — label is "mini · parent : target"
   document.getElementById('gSecWrap').style.display=''; document.getElementById('gSec').value='active'; // section editable; defaults active
   document.getElementById('goalMsg').textContent='';
@@ -2470,7 +2471,7 @@ function goalCard(x){
     <div class="grow-line">
       <span class="grow-st" title="${badge}">${stBadge(stKind)}</span>
       <div class="grow-main">
-        <div class="gcard-name" title="${escHtml(x.name)}">${escHtml(x.name)}</div>
+        <div class="gcard-name" title="${escHtml(goalLabel(x))}">${goalLabelHtml(x)}</div>
         ${subMain?`<div class="grow-sub">${subMain}</div>`:''}
         <div class="grow-when">${when}</div>
       </div>
@@ -2522,7 +2523,7 @@ function renderSec(filterFn, el, attention){
     : '<div class="empty">Nothing here yet. Add one above.</div>';
 }
 function renderGoalStats(){
-  const a=goalsLive().filter(g=>!g.done&&g.sec==='active'&&g.target>0&&!g.parentId); // minis excluded — the parent already counts them
+  const a=loggableGoals().filter(g=>g.target>0); // nuggets = loggable set (active minis stand in for their parent)
   const ahead=a.filter(g=>['Done','Ahead'].includes(paceLabel(g))).length;
   const onTrack=a.filter(g=>paceLabel(g)==='On track').length;
   const lagging=a.filter(g=>['Lagging','Behind'].includes(paceLabel(g))).length;
@@ -2556,7 +2557,9 @@ function renderGoalFilter(){
   const live=goalsLive().filter(g=>!g.parentId);
   const inCat=g=>gfCat==='all'||(g.cat||'—')===gfCat, inSec=g=>gfSec==='all'||gfSecOf(g)===gfSec;
   const secs=[['all','All'],['active','Live Nuggets'],['progress','Quarterly'],['yearly','Yearly'],['someday','Someday'],['completed','Completed']];
-  const secBtns=secs.map(([v,l])=>`<button type="button" class="gf-btn${gfSec===v?' active':''}" onclick="gfSet('sec','${v}')"><span>${l}</span><span class="gf-n">${live.filter(g=>inCat(g)&&(v==='all'||gfSecOf(g)===v)).length}</span></button>`).join('');
+  const nugs=loggableGoals(); // nugget count includes active minis
+  const secN=v=> v==='active' ? nugs.filter(inCat).length : live.filter(g=>inCat(g)&&(v==='all'||gfSecOf(g)===v)).length;
+  const secBtns=secs.map(([v,l])=>`<button type="button" class="gf-btn${gfSec===v?' active':''}" onclick="gfSet('sec','${v}')"><span>${l}</span><span class="gf-n">${secN(v)}</span></button>`).join('');
   GF_CATS=[...new Set(live.map(g=>g.cat||'—'))];
   const catBtns=[`<button type="button" class="gf-btn${gfCat==='all'?' active':''}" onclick="gfSet('cat','all')"><span>All</span><span class="gf-n">${live.filter(inSec).length}</span></button>`]
     .concat(GF_CATS.map((c,i)=>`<button type="button" class="gf-btn${gfCat===c?' active':''}" onclick="gfSet('cat',GF_CATS[${i}])"><span>${iconFor(c)} ${escHtml(c)}</span><span class="gf-n">${live.filter(g=>inSec(g)&&(g.cat||'—')===c).length}</span></button>`)).join('');
@@ -2567,7 +2570,8 @@ const SEC_CAP={active:6, progress:11, yearly:21};
 const NUGGET_BUDGET=12; // hours per 10-day period reserved for Live Nuggets (soft plan; grey line + mix editor)
 const SEC_LAB={active:'Live Nuggets', progress:'Quarterly', yearly:'Yearly', someday:'Someday'};
 function secOfGoal(g){ const s=(g.sec||'active'); return (s==='active'||s==='progress'||s==='yearly')?s:'someday'; }
-function secCount(sec, exceptId){ return goalsLive().filter(g=>!g.done && !g.parentId && g.id!==exceptId && secOfGoal(g)===sec).length; }
+function secCount(sec, exceptId){ if(sec==='active') return loggableGoals().filter(g=>g.id!==exceptId).length; // nuggets include active minis
+  return goalsLive().filter(g=>!g.done && !g.parentId && g.id!==exceptId && secOfGoal(g)===sec).length; }
 function secCapMsg(sec){ const c=SEC_CAP[sec]; return c?`${SEC_LAB[sec]} is capped at ${c}. Remove or move one before adding another.`:''; }
 // Live Nuggets composition tracker (per-category HOURS plan out of the period budget; soft warning only).
 function nuggetQuotaHTML(){
@@ -2583,7 +2587,7 @@ function nuggetQuotaHTML(){
 }
 // ---- Per-tier hours bars: whole-goal target/done/left across a tier's goals (time-mapped units only) ----
 function tierHours(sec){
-  const gs=goalsLive().filter(g=>!g.done&&!g.parentId&&(sec==='active'?(g.sec||'active')==='active':g.sec===sec));
+  const gs=sec==='active'?loggableGoals():goalsLive().filter(g=>!g.done&&!g.parentId&&g.sec===sec);
   let t=0,d=0; gs.forEach(g=>{ const mp=goalMinPer(g); t+=(+g.target||0)*mp/60; d+=(+g.cur||0)*mp/60; });
   return {t, d, l:Math.max(0,t-d)};
 }
@@ -2610,7 +2614,8 @@ function renderSecCaps(){
 }
 function renderGoals(){ renderGoalStats(); renderGoalFilter();
   const cf=g=>gfCat==='all'||(g.cat||'—')===gfCat;
-  renderSec(g=>!g.done&&(g.sec||'active')==='active'&&!g.parentId&&cf(g),'secActive',true);
+  const nug=new Set(loggableGoals().map(g=>g.id)); // Live Nuggets = the loggable set: active minis replace their parent
+  renderSec(g=>nug.has(g.id)&&cf(g),'secActive',true);
   renderSec(g=>!g.done&&g.sec==='progress'&&!g.parentId&&cf(g),'secProgress',false);
   renderSec(g=>!g.done&&g.sec==='yearly'&&!g.parentId&&cf(g),'secYearly',false);
   renderSec(g=>!g.done&&(g.sec||'active')!=='active'&&g.sec!=='progress'&&g.sec!=='yearly'&&!g.parentId&&cf(g),'secSomeday',false);
@@ -2690,9 +2695,9 @@ window.goalEditStart=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x
   document.getElementById('gMinPer').value=(x.minPerUnit==null?'':x.minPerUnit); document.getElementById('gUnitLab').textContent=x.unit||'unit';
   document.getElementById('gTag').value=x.tag||'';
   document.getElementById('gSec').value=x.sec==='progress'?'progress':x.sec==='yearly'?'yearly':((x.sec||'active')==='active'?'active':'someday');
-  const mini=!!x.parentId; // minis: cat/unit locked to the parent, but section IS editable, no sub-minis
+  const mini=!!x.parentId; // minis: cat/unit/mapping locked to the parent, but section IS editable, no sub-minis
   document.getElementById('goalFormTitle').textContent=mini?'Edit mini goal':'Edit goal';
-  document.getElementById('gCat').disabled=mini; document.getElementById('gUnit').disabled=mini;
+  document.getElementById('gCat').disabled=mini; document.getElementById('gUnit').disabled=mini; document.getElementById('gMinPer').disabled=mini;
   document.getElementById('gNameWrap').style.display=mini?'none':''; // minis aren't named
   document.getElementById('gSecWrap').style.display='';
   // Parent-goal picker (convert mini↔top-level). Hidden for a top-level goal that already has minis — can't nest 2 levels.
@@ -3063,7 +3068,7 @@ function maybeShowLetter(nudge){
 }
 // True when >half of active, targeted goals are Behind/Lagging — the "you're slipping" trigger.
 function mostGoalsBehind(){
-  const a=goalsLive().filter(g=>!g.done && g.sec==='active' && g.target>0 && !g.parentId);
+  const a=loggableGoals().filter(g=>g.target>0);
   if(a.length<2) return false;
   const off=a.filter(g=>['Behind','Lagging'].includes(paceLabel(g))).length;
   return off > a.length/2;
@@ -3376,9 +3381,9 @@ window.dump = function(q){
     P.rowsData.forEach(r=>add('calc.row.'+r.k, {done:r2(r.done),allocated:r2(r.allocated),target:r2(r.target)}));
   }catch(e){ add('calc.ERROR', e.message); }
   // ---- per active-nugget pace ----
-  goalsLive().filter(g=>g.sec==='active'&&!g.done&&!g.parentId).forEach(g=>{
+  loggableGoals().forEach(g=>{
     const mp=goalMinPer(g), left=Math.max(0,(+g.target||0)-(+g.cur||0));
-    add('calc.goal.'+(g.name||g.id), {cur:+g.cur||0,target:+g.target||0,unit:g.unit||'',minPer:r2(mp),hoursLeft:r2(mp>0?left*mp/60:0)});
+    add('calc.goal.'+(goalLabel(g)||g.id), {cur:+g.cur||0,target:+g.target||0,unit:g.unit||'',minPer:r2(mp),hoursLeft:r2(mp>0?left*mp/60:0)});
   });
   const out = q ? lines.filter(l=>l.toLowerCase().includes(String(q).toLowerCase())) : lines;
   out.forEach(l=>console.log(l));
