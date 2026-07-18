@@ -362,7 +362,8 @@ if(!window.Chart){
   .peamt .unitlab{font-size:12px;max-width:72px;overflow:hidden;text-overflow:ellipsis}
   .pecol-g{width:auto;min-width:150px}
   .sechead{margin:26px 0 4px;font-size:17px}
-  .gcard-acts{order:2;display:flex;gap:4px;align-items:center;flex:0 0 auto}
+  .gcard-acts{order:2;display:flex;gap:4px;align-items:center;flex:0 0 auto;opacity:0;transition:opacity .12s}
+  .gcard:hover .gcard-acts,.gcard:focus-within .gcard-acts{opacity:1}
   .gcard-acts button{border:1px solid #e7eaec;background:#fff;min-width:26px;height:23px;border-radius:3px;cursor:pointer;color:#676a6c;font-size:12px;font-weight:400;line-height:1;padding:1px 7px}
   .gcard-acts button:hover{color:#2d6cdf;border-color:#2d6cdf;background:#fff}
   .gminis{border-left:2px solid var(--line);padding:2px 0 2px 12px;margin-left:42px;display:flex;flex-direction:column;gap:5px}
@@ -2403,7 +2404,7 @@ function goalCard(x){
   const m = monthsUntil(x.by);
   const dl = daysLeft(x.by);
   const overdue = x.target>0 && x.cur<x.target && dl!=null && dl<0;
-  const when = x.by ? (m>0?`${m} mo left`:m===0?'this month':'overdue') : 'no deadline';
+  const when = x.by ? (m>0?`${m} month${m>1?'s':''} left`:m===0?'this month':'overdue') : 'no deadline';
   const hint = paceHint(x);
   const mp = goalMinPer(x);
   const doneM = Math.round((+x.cur||0)*mp), totM = Math.round((+x.target||0)*mp);
@@ -2435,7 +2436,7 @@ function goalCard(x){
   </div>` : '';
   const byD = x.by ? new Date(x.by+'T00:00') : null;
   const byTxt = (byD && !isNaN(byD)) ? ` by ${byD.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}` : '';
-  const subMain=x.target>0?`Target: ${x.target} ${escHtml(x.unit||'')}${byTxt}`:''; // line 1 (pace word lives only in the badge tooltip — GoT shows no status text)
+  const subMain=x.target>0?`${x.target} ${escHtml(x.unit||'')}${byTxt}`:''; // line 1 (pace word lives only in the badge tooltip — GoT shows no status text)
   const barTxt=`${x.cur} ${escHtml(x.unit||'')}`.trim();
   const barFits=(pct/100)*210 >= barTxt.length*6.8+12; // white label inside fill only when it fits (GoT look); else grey at left
   return `<div class="gcard${overdue?' gcard-overdue':''}${x.done?' gcard-done':''}" draggable="true" data-id="${x.id}" style="--gcol:${col}">
