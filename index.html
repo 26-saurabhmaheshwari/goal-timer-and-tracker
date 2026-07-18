@@ -2769,8 +2769,21 @@ window.goalRestore=function(id){ const g=loadGoals(); const x=g.find(o=>o.id===i
 // Permanent delete (the old hard-delete): removes the goal AND its tracked time entries.
 window.goalPurge=function(id){ const all=loadGoals(), x=all.find(o=>o.id===id); if(!x||!confirm(`Permanently delete "${x.name}" and its tracked time entries? This cannot be undone.`)) return;
   const ids=new Set([id, ...all.filter(k=>k.parentId===id).map(k=>k.id)]); // a parent takes its minis along
+  const catOf={}; all.forEach(k=>{ if(ids.has(k.id)) catOf[k.id]=k.cat; }); // remember each purged goal's category
   saveGoals(all.filter(o=>!ids.has(o.id)));
   const ents=loadEntries(), kept=ents.filter(e=>!(e.type==='goal'&&ids.has(e.goalId))); if(kept.length!==ents.length) saveEntries(kept);
+  // also strip archived (>3-month) minutes from the permanent monthly rollup + month category totals
+  const roll=loadRollup(); let months=loadMonths(), touched=false;
+  Object.keys(roll).forEach(ym=>{ const R=roll[ym]; if(!R||!R.g) return;
+    const M=months.find(o=>ymOf(o.m)===ym);
+    ids.forEach(gid=>{ const m=+R.g[gid]||0; if(!m) return;
+      const cat=catOf[gid];
+      if(R.c && cat!=null){ R.c[cat]=Math.max(0,(+R.c[cat]||0)-m); if(!R.c[cat]) delete R.c[cat]; }
+      if(M && M.cats && cat!=null){ M.cats[cat]=Math.max(0,(+M.cats[cat]||0)-m); if(!M.cats[cat]) delete M.cats[cat]; }
+      delete R.g[gid]; touched=true;
+    });
+  });
+  if(touched){ saveRollup(roll); localStorage.setItem(LS_MONTHS, JSON.stringify(months)); MONTHS=loadMonths(); fbSyncPush(); }
   renderGoals(); if(document.getElementById('entryTable')) renderLog(); };
 
 // ---- view switch ----
