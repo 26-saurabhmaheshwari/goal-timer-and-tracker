@@ -836,7 +836,7 @@ if(!window.Chart){
   <div class="card gsec"><h2>Live Nuggets <span id="nugCount" class="seccap"></span></h2><div class="hint">Your top few focus goals — the <b>only</b> ones that count toward your daily/period target. <span id="nugQuota"></span></div><div id="nugBar"></div><div id="secActive"></div></div>
   <div class="card gsec"><h2>Yearly <span id="yCount" class="seccap"></span></h2><div class="hint">This year's aims — the whole year, this quarter included. Loggable, but not counted in daily/period pace.</div><div id="yBar"></div>
     <div id="secThisQWrap" class="subsec" hidden><h3>🗓 This Quarter</h3><div class="hint">Due this quarter — the near-term slice of your year.</div><div id="secProgress"></div></div>
-    <div id="secRecurringWrap" class="subsec" hidden><h3>🔁 Recurring</h3><div class="hint">Ongoing habit-style goals — no real finish line.</div><div id="secRecurring"></div></div>
+    <div id="secRecurringWrap" class="subsec" hidden><h3>🔁 Recurring <span id="recurShare" style="font-size:10.5px;font-weight:400;color:var(--muted);letter-spacing:0"></span></h3><div class="hint">Ongoing habit-style goals — no real finish line.</div><div id="secRecurring"></div></div>
     <div id="secFinishWrap" class="subsec" hidden><h3>🏁 Finish-line</h3><div class="hint">One-off yearly goals with a real deadline — these get the room recurring leaves free.</div><div id="secYearly"></div></div>
   </div>
   <div class="card gsec"><h2>Someday</h2><div class="hint">Not started yet — things to begin later and big no-deadline aspirations.</div><div id="secSomeday"></div></div>
@@ -913,7 +913,7 @@ if(!window.Chart){
       </div>
     </form>
     <h2 style="margin-top:26px">Live Nuggets mix</h2>
-    <div class="hint">Live Nuggets are capped at 6 — the only goals that count toward your daily/period pace. Split your ~12 hrs/period budget by category (e.g. 3 Spiritual, 3 Youth, 2 Study). The rest stays open. This is a gentle guide: the shelf shows a warning if your plan exceeds 12 hrs, but never blocks you.</div>
+    <div class="hint">Live Nuggets are capped at 9 — the only goals that count toward your daily/period pace. Split your ~12 hrs/period budget by category (e.g. 3 Spiritual, 3 Youth, 2 Study). The rest stays open. This is a gentle guide: the shelf shows a warning if your plan exceeds 12 hrs, but never blocks you.</div>
     <div class="form" style="margin-top:12px">
       <div id="quotaRows"></div>
       <div style="margin-top:8px"><button type="button" id="quotaAdd" class="btn ghost">＋ Reserve a category</button></div>
@@ -2455,15 +2455,16 @@ function initGoals(){
     if(!willMini && o.sec==='active' && SEC_CAP.active && secCount('active', goalEdit)>=SEC_CAP.active){
       const m=document.getElementById('goalMsg'); m.textContent=secCapMsg('active'); m.style.color='#ef4444'; return;
     } // only the nugget tier is capped now — Quarterly/Yearly/Someday auto-fill from the deadline
-    // Recurring hours cap: recurring goals must stay ≤70% of the Yearly total need, so finish-line goals keep room.
+    // Recurring hours cap: recurring goals must stay ≤80% of the Yearly total need, so finish-line goals keep room.
     if(!willMini && o.recur){
       const hrs=x=>(+x.target||0)*goalMinPer(x)/60;
       const others=goalsLive().filter(x=>x.id!==goalEdit && !x.done && !x.parentId);
       const recurH=hrs(o)+others.filter(x=>x.sec==='yearly'&&x.recur).reduce((s,x)=>s+hrs(x),0);
       const yearlyH=hrs(o)+others.filter(x=>x.sec==='yearly'||x.sec==='progress').reduce((s,x)=>s+hrs(x),0);
-      if(yearlyH>0 && recurH>0.70*yearlyH){
+      if(yearlyH>0 && recurH>0.80*yearlyH){
+        const over=Math.round((recurH-0.80*yearlyH)*10)/10;
         const m=document.getElementById('goalMsg');
-        m.textContent=`Recurring would be ${Math.round(recurH/yearlyH*100)}% of your Yearly hours — keep recurring at or under 70% so finish-line goals keep room.`;
+        m.textContent=`Recurring would be ${Math.round(recurH/yearlyH*100)}% of your Yearly hours — ${over}h over the 80% limit. Trim recurring by ${over}h (or add finish-line hours) to save.`;
         m.style.color='#ef4444'; return;
       }
     }
@@ -2654,7 +2655,7 @@ function renderGoalFilter(){
   el.innerHTML=`<div class="gf-grp"><div class="gf-lab">Sections</div>${secBtns}</div><div class="gf-grp"><div class="gf-lab">Categories</div>${catBtns}</div>`;
 }
 // --- Tier caps: Live Nuggets 7 / Quarterly 11 / Yearly 21 (top-level goals only; minis ride a parent) ---
-const SEC_CAP={active:6, progress:11, yearly:21};
+const SEC_CAP={active:9, progress:11, yearly:21};
 const NUGGET_BUDGET=12; // hours per 10-day period reserved for Live Nuggets (soft plan; grey line + mix editor)
 const SEC_LAB={active:'Live Nuggets', progress:'This Quarter', yearly:'Yearly', someday:'Someday'};
 function secOfGoal(g){ const s=(g.sec||'active'); return (s==='active'||s==='progress'||s==='yearly')?s:'someday'; }
@@ -2675,7 +2676,7 @@ function nuggetQuotaHTML(){
 }
 // ---- Per-tier hours bars: whole-goal target/done/left across a tier's goals (time-mapped units only) ----
 function tierHours(sec){
-  const gs=sec==='active'?loggableGoals():goalsLive().filter(g=>!g.done&&!g.parentId&&(g.sec===sec||(sec==='yearly'&&g.sec==='progress')));
+  const gs=sec==='active'?loggableGoals():sec==='recur'?goalsLive().filter(g=>!g.done&&!g.parentId&&g.sec==='yearly'&&g.recur):goalsLive().filter(g=>!g.done&&!g.parentId&&(g.sec===sec||(sec==='yearly'&&g.sec==='progress')));
   let t=0,d=0; gs.forEach(g=>{ const mp=goalMinPer(g); t+=(+g.target||0)*mp/60; d+=(+g.cur||0)*mp/60; });
   return {t, d, l:Math.max(0,t-d)};
 }
@@ -2721,6 +2722,7 @@ function renderGoals(){ renderGoalStats(); renderGoalFilter();
   const recurN=goalsLive().filter(g=>!g.done&&g.sec==='yearly'&&g.recur&&!g.parentId&&cf(g)).length;
   renderSec(g=>!g.done&&g.sec==='yearly'&&g.recur&&!g.parentId&&cf(g),'secRecurring',false);
   { const rw=document.getElementById('secRecurringWrap'); if(rw) rw.hidden=recurN===0; } // subcard shows only when it has goals
+  { const rs=document.getElementById('recurShare'); if(rs){ const rh=tierHours('recur'), yh=tierHours('yearly'); const f=n=>Number.isInteger(n)?n:Math.round(n*10)/10; rs.textContent=(yh.t>0&&rh.t>0)?`${f(rh.t)}h · ${Math.round(rh.t/yh.t*100)}% of Yearly`:''; } }
   renderSec(g=>!g.done&&(g.sec||'active')!=='active'&&g.sec!=='progress'&&g.sec!=='yearly'&&!g.parentId&&cf(g),'secSomeday',false);
   renderSec(g=>!!g.done&&!g.parentId&&cf(g),'secCompleted',false);
   renderSecCaps();
