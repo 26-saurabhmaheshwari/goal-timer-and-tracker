@@ -298,6 +298,15 @@ if(!window.Chart){
   .grow-val{display:block;font-size:12px;font-weight:400;line-height:19px;color:#fff;white-space:nowrap}
   .grow-val-out{position:absolute;top:0;bottom:0;left:8px;display:flex;align-items:center;font-size:12px;font-weight:400;color:#676a6c;white-space:nowrap}
   .grow-pct{flex:0 0 56px;text-align:right;font-size:14px;font-weight:400;color:#676a6c;padding-left:10px}
+  /* GoalsOnTrack-exact "battery": 20-cell segmented activity gauge (recreated CSS, no copied assets) */
+  ul.pchart{list-style:none;margin:0;padding:3px 0 3px 3px;height:36px;box-sizing:border-box;width:100%;min-width:60px;border:1px solid #ccc;background:#fff;position:relative;overflow:hidden}
+  ul.pchart li{position:relative;float:left;width:calc(5% - 3px);margin:0 3px 0 0;padding:0;height:100%;background:#eef3f7;list-style:none}
+  ul.pchart li:hover{background:#d3d3d3}
+  ul.pchart li i{display:block;position:absolute;bottom:0;left:0;width:100%;background:#929ea9}
+  ul.pchart li:hover i{background:darkred}
+  .pchart-lab{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:5px;font-family:"Open Sans","Segoe UI",Arial,sans-serif;font-size:14px;line-height:20px}
+  .pchart-lab b{font-weight:600;color:#337ab7}
+  .pchart-lab span{font-weight:400;color:#676a6c;white-space:nowrap}
   .gcard-det{background:var(--panel);border-radius:10px;padding:8px 11px;display:flex;flex-direction:column;gap:4px;transform-origin:top;animation:gdetflip .22s ease;margin-left:42px}
   @keyframes gdetflip{from{transform:perspective(500px) rotateX(-65deg);opacity:0}to{transform:perspective(500px) rotateX(0);opacity:1}}
   .gdet-btn{cursor:pointer;font-size:11px;font-weight:700;color:var(--muted);background:transparent;border:1px solid rgba(70,58,32,.14);border-radius:999px;padding:2px 9px}
@@ -349,7 +358,7 @@ if(!window.Chart){
   .peamt .unitlab{font-size:12px;max-width:72px;overflow:hidden;text-overflow:ellipsis}
   .pecol-g{width:auto;min-width:150px}
   .sechead{margin:26px 0 4px;font-size:17px}
-  .gcard-acts{display:flex;gap:5px;opacity:0;transition:.15s;flex:0 0 auto;align-items:center}
+  .gcard-acts{display:flex;gap:5px;opacity:0;transition:.15s;flex:0 0 128px;justify-content:flex-end;align-items:center}
   .gcard:hover .gcard-acts{opacity:1}
   .gcard-acts button{border:1px solid #e7eaec;background:#fff;min-width:26px;height:24px;border-radius:12px;cursor:pointer;color:#676a6c;font-size:12px;font-weight:700;line-height:1;padding:1px 8px}
   .gcard-acts button:hover{color:#2d6cdf;border-color:#2d6cdf;background:#fff}
@@ -371,7 +380,7 @@ if(!window.Chart){
     .grow-line{flex-wrap:wrap}
     .grow-bar{flex:1 1 100%;order:5}
     .grow-pct{flex:0 0 auto}
-    .gcard-acts{opacity:1}
+    .gcard-acts{opacity:1;flex:0 0 auto}
     .gcard-det,.gminis{margin-left:0}
   }
   @media(max-width:880px){.gprog{min-width:110px}}
@@ -598,6 +607,11 @@ if(!window.Chart){
   <!-- ===== Pot (year-as-a-pot + journey scenes) ===== -->
   <div id="ovPot" hidden>
     <div class="card" style="max-width:none">
+      <h2 style="text-align:center">Recent momentum</h2>
+      <div class="hint" style="text-align:center">One battery per active goal. Each cell is a 10-day period; the grey column shows how much you logged that period.</div>
+      <div id="batteryBox" style="margin-top:14px"></div>
+    </div>
+    <div class="card" style="max-width:none;margin-top:18px">
       <h2 style="text-align:center">Your year in a pot</h2>
       <div class="hint" style="text-align:center">Capacity = your yearly hour target. Water = hours you've actually filled, coloured by category.</div>
       <div id="potBox" style="margin-top:14px"></div>
@@ -2986,7 +3000,7 @@ function setOv(o){
   document.getElementById('ovPot').hidden = o!=='pot';
   if(o==='year'){ renderYearDonut(); renderTotalTrend(); }
   if(o==='monthly') renderDonut(current);
-  if(o==='pot'){ renderPot(); try{ renderJourney(); }catch(e){} }
+  if(o==='pot'){ try{ renderBattery(); }catch(e){} renderPot(); try{ renderJourney(); }catch(e){} }
 }
 
 // ===== REPORTS =====
@@ -3306,6 +3320,42 @@ document.getElementById('setLetterSave').onclick=()=>{
 };
 
 // ================= POT (year capacity vs filled, coloured by category) =================
+// ---- Battery: GoalsOnTrack-style 20-cell recent-activity gauge, one per active goal ----
+// Each of the last 20 ten-day periods is a cell; the grey column height = amount that goal
+// logged that period, scaled to the goal's busiest period in the window. Derived on render,
+// no new state (reads goal.logs). Recreated CSS/markup — never copies GoT's assets.
+function batteryPeriods(){
+  const now=new Date();
+  let cur={ym:CUR_YM, period:periodOfDay(now.getDate())};
+  const arr=[cur];
+  for(let i=0;i<19;i++){ cur=prevPeriod(cur.ym,cur.period); arr.push(cur); }
+  return arr.reverse(); // oldest → newest (left → right)
+}
+function batteryGoals(){
+  return loadGoals().filter(g=>((g.sec||'active')==='active') && !g.done && !g.deleted && !g.parentId
+    && Array.isArray(g.logs) && g.logs.length);
+}
+function renderBattery(){
+  const box=document.getElementById('batteryBox'); if(!box) return;
+  const gs=batteryGoals();
+  if(!gs.length){ box.innerHTML=`<div class="hint" style="text-align:center;padding:18px 0">Log progress on an active goal and its recent-activity battery appears here.</div>`; return; }
+  const fmt=n=>Math.round(n).toLocaleString('en-US');
+  const periods=batteryPeriods();
+  box.innerHTML=gs.map(g=>{
+    const buckets={};
+    g.logs.forEach(l=>{ const k=`${l.ym}-${l.period}`; buckets[k]=(buckets[k]||0)+(+l.amt||0); });
+    const vals=periods.map(p=>buckets[`${p.ym}-${p.period}`]||0);
+    const max=Math.max(1,...vals), sum=vals.reduce((a,v)=>a+v,0), unit=escHtml(g.unit||'');
+    const cells=periods.map((p,i)=>{
+      const v=vals[i], h=v>0?Math.max(8,Math.round(v/max*100)):0;
+      const lbl=plabel(`${p.ym}-${p.period}`);
+      return `<li title="${fmt(v)} ${unit} · ${lbl}"><i style="height:${h}%"></i></li>`;
+    }).join('');
+    return `<div style="margin-bottom:16px">
+      <div class="pchart-lab"><b>${escHtml(g.name)}</b><span>${fmt(sum)} ${unit} · last ${periods.length} periods</span></div>
+      <ul class="pchart">${cells}</ul></div>`;
+  }).join('');
+}
 function renderPot(boxId){
   const box=document.getElementById(boxId||'potBox'); if(!box) return;
   const fmt=n=>Math.round(n).toLocaleString('en-US');
