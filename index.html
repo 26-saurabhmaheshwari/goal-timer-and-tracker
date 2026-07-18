@@ -849,9 +849,9 @@ if(!window.Chart){
   <div class="gwrap">
   <aside class="gside" id="gFilter"></aside>
   <div class="gmain">
-  <div class="card gsec"><h2>Live Nuggets <span id="nugCount" class="seccap"></span></h2><div class="hint">Your top few focus goals — the <b>only</b> ones that count toward your daily/period target. <span id="nugQuota"></span></div><div id="secActive"></div></div>
-  <div class="card gsec"><h2>Quarterly <span id="qCount" class="seccap"></span></h2><div class="hint">This quarter's work. Loggable — time still adds to your total — but they don't count toward your daily/period target.</div><div id="secProgress"></div></div>
-  <div class="card gsec"><h2>Yearly <span id="yCount" class="seccap"></span></h2><div class="hint">This year's aims. Loggable, but not counted in daily/period pace.</div><div id="secYearly"></div></div>
+  <div class="card gsec"><h2>Live Nuggets <span id="nugCount" class="seccap"></span></h2><div class="hint">Your top few focus goals — the <b>only</b> ones that count toward your daily/period target. <span id="nugQuota"></span></div><div id="nugBar"></div><div id="secActive"></div></div>
+  <div class="card gsec"><h2>Quarterly <span id="qCount" class="seccap"></span></h2><div class="hint">This quarter's work. Loggable — time still adds to your total — but they don't count toward your daily/period target.</div><div id="qBar"></div><div id="secProgress"></div></div>
+  <div class="card gsec"><h2>Yearly <span id="yCount" class="seccap"></span></h2><div class="hint">This year's aims. Loggable, but not counted in daily/period pace.</div><div id="yBar"></div><div id="secYearly"></div></div>
   <div class="card gsec"><h2>Someday</h2><div class="hint">Not started yet — things to begin later and big no-deadline aspirations.</div><div id="secSomeday"></div></div>
   <div class="card gsec"><h2>✅ Completed</h2><div class="hint">Marked done. Logged time is kept; reopen any time to keep going.</div><div id="secCompleted"></div></div>
   <div class="card gsec" id="secTrashWrap" hidden><h2>🗑️ Trash</h2><div class="hint">Deleted goals. Their tracked time is kept until you delete forever. Restore any time.</div><div id="secTrash"></div></div>
@@ -926,7 +926,7 @@ if(!window.Chart){
       </div>
     </form>
     <h2 style="margin-top:26px">Live Nuggets mix</h2>
-    <div class="hint">Live Nuggets are capped at 7 — the only goals that count toward your daily/period pace. Optionally reserve slots by category (e.g. 2 Spiritual, 1 Youth). The rest stay open. This is a gentle guide: the shelf shows a warning if you drift off your mix, but never blocks you.</div>
+    <div class="hint">Live Nuggets are capped at 6 — the only goals that count toward your daily/period pace. Split your ~12 hrs/period budget by category (e.g. 3 Spiritual, 3 Youth, 2 Study). The rest stays open. This is a gentle guide: the shelf shows a warning if your plan exceeds 12 hrs, but never blocks you.</div>
     <div class="form" style="margin-top:12px">
       <div id="quotaRows"></div>
       <div style="margin-top:8px"><button type="button" id="quotaAdd" class="btn ghost">＋ Reserve a category</button></div>
@@ -2351,6 +2351,10 @@ function initGoals(){
     }
     // Tier caps (top-level goals only; minis ride a parent and don't occupy a slot).
     const willMini = goalEdit ? ('parentId' in o ? !!o.parentId : !!(g.find(x=>x.id===goalEdit)||{}).parentId) : !!goalMiniParent;
+    // Nuggets must be time-based so they count toward the hours budget (minis inherit their parent's mapping).
+    if(!willMini && (o.sec||'active')==='active' && goalMinPer(o)<=0){
+      const m=document.getElementById('goalMsg'); m.textContent='Nuggets must be time-based — set “minutes per unit” (e.g. 1 unit = 60 min).'; m.style.color='#ef4444'; return;
+    }
     if(!willMini && SEC_CAP[o.sec] && secCount(o.sec, goalEdit)>=SEC_CAP[o.sec]){
       const m=document.getElementById('goalMsg'); m.textContent=secCapMsg(o.sec); m.style.color='#ef4444'; return;
     }
@@ -2536,27 +2540,50 @@ function renderGoalFilter(){
   el.innerHTML=`<div class="gf-grp"><div class="gf-lab">Sections</div>${secBtns}</div><div class="gf-grp"><div class="gf-lab">Categories</div>${catBtns}</div>`;
 }
 // --- Tier caps: Live Nuggets 7 / Quarterly 11 / Yearly 21 (top-level goals only; minis ride a parent) ---
-const SEC_CAP={active:7, progress:11, yearly:21};
+const SEC_CAP={active:6, progress:11, yearly:21};
+const NUGGET_BUDGET=12; // hours per 10-day period reserved for Live Nuggets (soft plan; grey line + mix editor)
 const SEC_LAB={active:'Live Nuggets', progress:'Quarterly', yearly:'Yearly', someday:'Someday'};
 function secOfGoal(g){ const s=(g.sec||'active'); return (s==='active'||s==='progress'||s==='yearly')?s:'someday'; }
 function secCount(sec, exceptId){ return goalsLive().filter(g=>!g.done && !g.parentId && g.id!==exceptId && secOfGoal(g)===sec).length; }
 function secCapMsg(sec){ const c=SEC_CAP[sec]; return c?`${SEC_LAB[sec]} is capped at ${c}. Remove or move one before adding another.`:''; }
-// Live Nuggets composition tracker (configurable per-category quota; soft warning only).
+// Live Nuggets composition tracker (per-category HOURS plan out of the period budget; soft warning only).
 function nuggetQuotaHTML(){
-  const cap=SEC_CAP.active, q=loadQuota();
-  const nug=goalsLive().filter(g=>!g.done&&!g.parentId&&(g.sec||'active')==='active');
+  const q=loadQuota();
   if(!q.length) return '';
-  const named=q.map(r=>r.cat); let warn=false;
-  const parts=q.map(r=>{ const f=nug.filter(g=>(g.cat||'—')===r.cat).length; if(f>r.n) warn=true; return `${escHtml(r.cat)} ${f}/${r.n}`; });
-  const namedSlots=q.reduce((s,r)=>s+(+r.n||0),0), openN=Math.max(0,cap-namedSlots);
-  const openFilled=nug.filter(g=>!named.includes(g.cat||'—')).length; if(openFilled>openN) warn=true;
-  parts.push(`open ${openFilled}/${openN}`);
-  return `<span class="quotaline${warn?' quota-warn':''}">Mix: ${parts.join(' · ')}</span>`;
+  const fh=n=>Number.isInteger(n)?n:Math.round(n*10)/10;
+  const reserved=q.reduce((s,r)=>s+(+r.n||0),0);
+  const open=Math.round((NUGGET_BUDGET-reserved)*10)/10;
+  const warn=reserved>NUGGET_BUDGET;
+  const parts=q.map(r=>`${escHtml(r.cat)} ${fh(+r.n||0)}h`);
+  parts.push(open>=0?`open ${fh(open)}h`:`over by ${fh(-open)}h`);
+  return `<span class="quotaline${warn?' quota-warn':''}">Mix: ${parts.join(' · ')} <span style="opacity:.7">(${fh(reserved)}/${NUGGET_BUDGET}h)</span></span>`;
+}
+// ---- Per-tier hours bars: whole-goal target/done/left across a tier's goals (time-mapped units only) ----
+function tierHours(sec){
+  const gs=goalsLive().filter(g=>!g.done&&!g.parentId&&(sec==='active'?(g.sec||'active')==='active':g.sec===sec));
+  let t=0,d=0; gs.forEach(g=>{ const mp=goalMinPer(g); t+=(+g.target||0)*mp/60; d+=(+g.cur||0)*mp/60; });
+  return {t, d, l:Math.max(0,t-d)};
+}
+function tierBarHTML(sec, grey){
+  const h=tierHours(sec), pct=h.t>0?Math.min(100,Math.round(h.d/h.t*100)):0;
+  const f=n=>Number.isInteger(n)?n:Math.round(n*10)/10;
+  return `<div style="margin:8px 0 2px">
+    <div class="hint" style="margin:0 0 5px;font-style:italic">${grey}</div>
+    <div style="height:8px;border-radius:5px;background:var(--line);overflow:hidden"><i style="display:block;height:100%;width:${pct}%;background:#34a853"></i></div>
+    <div style="display:flex;gap:16px;margin-top:5px;font-size:12px;color:var(--muted)"><span>target <b>${f(h.t)}h</b></span><span>done <b>${f(h.d)}h</b></span><span>left <b>${f(h.l)}h</b></span></div>
+  </div>`;
+}
+function renderTierBars(){
+  const set=(id,sec,grey)=>{ const el=document.getElementById(id); if(el) el.innerHTML=tierBarHTML(sec,grey); };
+  set('nugBar','active',`Plan ~${NUGGET_BUDGET} hrs per period across your ${SEC_CAP.active} nuggets`);
+  set('qBar','progress','Quarter ≈ 9 periods × 22h ≈ 198 hrs — plan within this');
+  set('yBar','yearly','Year ≈ 36 periods × 22h ≈ 792 hrs — plan within this');
 }
 function renderSecCaps(){
   const set=(id,sec)=>{ const el=document.getElementById(id); if(el) el.textContent=`${secCount(sec)}/${SEC_CAP[sec]}`; };
   set('nugCount','active'); set('qCount','progress'); set('yCount','yearly');
   const nq=document.getElementById('nugQuota'); if(nq) nq.innerHTML=nuggetQuotaHTML();
+  renderTierBars();
 }
 function renderGoals(){ renderGoalStats(); renderGoalFilter();
   const cf=g=>gfCat==='all'||(g.cat||'—')===gfCat;
@@ -2732,7 +2759,7 @@ const LS_LETTER='ptd_letter_v1';
 function loadLetter(){ try{ const v=JSON.parse(localStorage.getItem(LS_LETTER)); return (v&&typeof v==='object'&&!Array.isArray(v))?v:{text:'',writtenYm:''}; }catch(e){ return {text:'',writtenYm:''}; } }
 function saveLetter(text){ localStorage.setItem(LS_LETTER, JSON.stringify({text:String(text||''), writtenYm:CUR_YM})); fbSyncPush(); }
 
-// ---- Live Nuggets composition quota (array of {cat, n}; open slots = 7 − Σn). Soft warning only. ----
+// ---- Live Nuggets composition quota (array of {cat, n}; n = HOURS/period, open = NUGGET_BUDGET − Σn). Soft warning only. ----
 const LS_QUOTA='ptd_quota_v1';
 function loadQuota(){ try{ const v=JSON.parse(localStorage.getItem(LS_QUOTA)); return Array.isArray(v)?v.filter(r=>r&&r.cat&&+r.n>0):[]; }catch(e){ return []; } }
 function saveQuota(q){ localStorage.setItem(LS_QUOTA, JSON.stringify(q)); fbSyncPush(); }
@@ -3446,28 +3473,28 @@ function quotaRowHTML(cat, n){
   const opts=ALLCATS.map(c=>`<option value="${escHtml(c)}"${c===cat?' selected':''}>${escHtml(c)}</option>`).join('');
   return `<div class="qrow" style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
     <select class="qcat" style="flex:1;min-width:0">${opts}</select>
-    <input class="qn" type="number" min="1" max="5" step="1" value="${Math.min(5,Math.max(1,+n||1))}" style="width:64px">
-    <span class="hint" style="margin:0">slots</span>
+    <input class="qn" type="number" min="0.5" max="${NUGGET_BUDGET}" step="0.5" value="${Math.min(NUGGET_BUDGET,Math.max(0.5,+n||1))}" style="width:64px">
+    <span class="hint" style="margin:0">hrs / period</span>
     <button type="button" class="qdel btn ghost" title="Remove">✕</button></div>`;
 }
 function renderQuotaEditor(){
   const box=document.getElementById('quotaRows'); if(!box) return;
   const q=loadQuota();
-  box.innerHTML = q.length ? q.map(r=>quotaRowHTML(r.cat,r.n)).join('') : '<div class="hint" style="margin:0">No reserved categories — all 5 slots open.</div>';
+  box.innerHTML = q.length ? q.map(r=>quotaRowHTML(r.cat,r.n)).join('') : `<div class="hint" style="margin:0">No reserved categories — all ${NUGGET_BUDGET} hrs open.</div>`;
 }
 (function initQuotaEditor(){
   const box=document.getElementById('quotaRows'), add=document.getElementById('quotaAdd'), save=document.getElementById('quotaSave');
   if(!box||!add||!save) return;
   add.onclick=()=>{ if(!box.querySelector('.qrow')) box.innerHTML=''; box.insertAdjacentHTML('beforeend', quotaRowHTML(ALLCATS[0]||'', 1)); };
   box.addEventListener('click', e=>{ const d=e.target.closest('.qdel'); if(!d) return; d.closest('.qrow').remove();
-    if(!box.querySelector('.qrow')) box.innerHTML='<div class="hint" style="margin:0">No reserved categories — all 5 slots open.</div>'; });
+    if(!box.querySelector('.qrow')) box.innerHTML=`<div class="hint" style="margin:0">No reserved categories — all ${NUGGET_BUDGET} hrs open.</div>`; });
   save.onclick=()=>{
-    const rows=[...box.querySelectorAll('.qrow')].map(r=>({cat:r.querySelector('.qcat').value, n:Math.min(5,Math.max(1,Math.round(+r.querySelector('.qn').value||1)))}));
+    const rows=[...box.querySelectorAll('.qrow')].map(r=>({cat:r.querySelector('.qcat').value, n:Math.min(NUGGET_BUDGET,Math.max(0.5,Math.round((+r.querySelector('.qn').value||0.5)*2)/2))}));
     const m=document.getElementById('quotaMsg');
-    const total=rows.reduce((s,r)=>s+r.n,0);
-    if(total>SEC_CAP.active){ m.textContent=`Reserved slots (${total}) exceed the ${SEC_CAP.active} Live Nuggets.`; m.style.color='#ef4444'; return; }
-    // merge duplicate categories (sum slots), re-cap
-    const merged=[]; rows.forEach(r=>{ const e=merged.find(x=>x.cat===r.cat); if(e) e.n=Math.min(5,e.n+r.n); else merged.push({...r}); });
+    // merge duplicate categories (sum hours), then re-cap each to the budget
+    const merged=[]; rows.forEach(r=>{ const e=merged.find(x=>x.cat===r.cat); if(e) e.n=Math.min(NUGGET_BUDGET,e.n+r.n); else merged.push({...r}); });
+    const total=merged.reduce((s,r)=>s+r.n,0);
+    if(total>NUGGET_BUDGET){ m.textContent=`Planned hours (${Math.round(total*10)/10}h) exceed the ${NUGGET_BUDGET}h period budget.`; m.style.color='#ef4444'; return; }
     saveQuota(merged); renderQuotaEditor();
     if(document.getElementById('secActive')) renderGoals();
     m.textContent='Saved ✓'; m.style.color='#34a853'; setTimeout(()=>{ m.textContent=''; }, 2000);
