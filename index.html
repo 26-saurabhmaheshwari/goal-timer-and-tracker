@@ -2519,7 +2519,7 @@ function goalCard(x){
       <div class="grow-bar">${barFits?`<i style="width:${pct}%"><span class="grow-val">${barTxt}</span></i>`:`<i style="width:${pct}%"></i><span class="grow-val grow-val-out">${barTxt}</span>`}</div>
       <span class="grow-pct">${x.target>0?raw+'%':''}</span>
       <div class="gcard-acts">
-        ${x.target>0&&!x.done?`<button title="Add progress" onclick="goalAdd('${x.id}')">+</button>`:''}
+        ${!x.done?`<button title="Create nugget" onclick="startMiniCreate('${x.id}')">🏅</button>`:''}
         ${logs.length?`<button title="Log (${logs.length})" onclick="goalLogShow('${x.id}')">📜</button>`:''}
         <button title="Edit" onclick="goalEditStart('${x.id}')">✎</button>
         ${det?`<button type="button" class="gdet-btn" title="Details" onclick="goalFlip('${x.id}')">▾</button>`:''}
