@@ -2576,8 +2576,8 @@ function tierBarHTML(sec, grey){
 function renderTierBars(){
   const set=(id,sec,grey)=>{ const el=document.getElementById(id); if(el) el.innerHTML=tierBarHTML(sec,grey); };
   set('nugBar','active',`Plan ~${NUGGET_BUDGET} hrs per period across your ${SEC_CAP.active} nuggets`);
-  set('qBar','progress','Quarter ≈ 9 periods × 22h ≈ 198 hrs — plan within this');
-  set('yBar','yearly','Year ≈ 36 periods × 22h ≈ 792 hrs — plan within this');
+  set('qBar','progress','Quarter ≈ 9 periods × 12h goal-time ≈ 108 hrs — plan within this');
+  set('yBar','yearly','Year ≈ 36 periods × 12h goal-time ≈ 432 hrs — plan within this');
 }
 function renderSecCaps(){
   const set=(id,sec)=>{ const el=document.getElementById(id); if(el) el.textContent=`${secCount(sec)}/${SEC_CAP[sec]}`; };
