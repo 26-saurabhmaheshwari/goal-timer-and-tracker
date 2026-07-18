@@ -2407,7 +2407,7 @@ function goalFormReset(){ goalEdit=null; goalMiniParent=null; document.getElemen
 window.startMiniCreate=function(pid){
   const p=loadGoals().find(o=>o.id===pid); if(!p) return;
   goalFormReset(); goalMiniParent=pid;
-  document.getElementById('goalFormTitle').textContent=`＋ Mini goal of “${p.name}”`;
+  document.getElementById('goalFormTitle').textContent=`🏅 Carve nugget from “${p.name}”`;
   document.getElementById('gCat').value=p.cat;
   document.getElementById('gUnit').value=p.unit||''; document.getElementById('gUnitLab').textContent=p.unit||'unit';
   document.getElementById('gMinPer').value=(p.minPerUnit==null?'':p.minPerUnit);
@@ -2602,7 +2602,7 @@ function goalCard(x){
       <div class="grow-bar">${barFits?`<i style="width:${pct}%"><span class="grow-val">${barTxt}</span></i>`:`<i style="width:${pct}%"></i><span class="grow-val grow-val-out">${barTxt}</span>`}</div>
       <span class="grow-pct">${x.target>0?raw+'%':''}</span>
       <div class="gcard-acts">
-        ${!x.done?(x.parentId?`<button title="Log entry" onclick="goalAdd('${x.id}')">＋</button>`:`<button title="Create nugget" onclick="startMiniCreate('${x.id}')">🏅</button>`):''}
+        ${!x.done?(x.parentId?`<button title="Log entry" onclick="goalAdd('${x.id}')">＋</button>`:`<button title="Carve nugget" onclick="startMiniCreate('${x.id}')">🏅</button>`):''}
         ${logs.length?`<button title="Log (${logs.length})" onclick="goalLogShow('${x.id}')">📜</button>`:''}
         <button title="Edit" onclick="goalEditStart('${x.id}')">✎</button>
         ${det?`<button type="button" class="gdet-btn" title="Details" onclick="goalFlip('${x.id}')">▾</button>`:''}
@@ -2847,7 +2847,7 @@ window.goalEditStart=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x
   document.getElementById('goalFormTitle').textContent=mini?'Edit mini goal':'Edit goal';
   document.getElementById('gCat').disabled=mini; document.getElementById('gUnit').disabled=mini; document.getElementById('gMinPer').disabled=mini;
   document.getElementById('gNameWrap').style.display=mini?'none':''; // minis aren't named
-  document.getElementById('gSecWrap').style.display=mini?'none':''; document.getElementById('gRecurWrap').style.display=mini?'none':''; // minis are always Live Nuggets — no section picker
+  document.getElementById('gSecWrap').style.display='none'; document.getElementById('gRecurWrap').style.display=mini?'none':''; // tier is fixed once created — no Live Nugget toggle when editing
   document.getElementById('gDatesWrap').style.display=mini?'none':''; document.getElementById('gPeriodWrap').style.display=mini?'':'none'; if(mini) fillGoalPeriods(x.start); // minis pick a period, not dates
   document.getElementById('gCurWrap').style.display=mini?'none':''; document.getElementById('gTagWrap').style.display=mini?'none':''; // minis: only target + period editable
   // Parent-goal picker (convert mini↔top-level). Hidden for minis and for a top-level goal that already has minis — can't nest 2 levels.
