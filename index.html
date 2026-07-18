@@ -751,27 +751,6 @@ if(!window.Chart){
     </div>
   </div>
 
-  <div id="scrWrap"><!-- whole screen-time section; hidden by the features.screen toggle -->
-  <h2 class="sechead">📱 Screen time — online vs the life you logged</h2>
-  <div class="hint" style="margin:-6px 0 12px">Log it above with the <b>📱 Screen</b> type. This reflects the month you've selected.</div>
-  <div class="grid">
-    <div class="card">
-      <h2 id="onTitle">—</h2>
-      <div class="hint">Online = phone + laptop. Offline = everything you logged that month.</div>
-      <div class="kpis" id="onKpis" style="grid-template-columns:1fr 1fr;margin-bottom:14px"></div>
-      <canvas id="onSplit" class="chart" style="height:200px!important"></canvas>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>The hard truth — what that wasted time could become</h2>
-    <div class="hint">If you redirected your wasted hours into one category, here's the impact.</div>
-    <div class="frow" style="max-width:340px;margin:6px 0 16px">
-      <label>Redirect wasted time into <select id="onRedirect"></select></label>
-    </div>
-    <div class="ibox" id="onWhatIf"></div>
-  </div>
-  </div><!-- /scrWrap -->
 </div><!-- /viewLog -->
 
 <div id="viewGoals" hidden>
@@ -1321,8 +1300,9 @@ function initLogForm(){
   document.getElementById('fHabitExtra').addEventListener('input', habitLogHint);
   document.getElementById('fDevice').addEventListener('change', ()=>{
     document.getElementById('fScrWasteRow').hidden = document.getElementById('fDevice').value!=='laptop'; });
-  document.getElementById('onRedirect').innerHTML = ALLCATS.map(c=>`<option value="${escHtml(c)}" ${c==='Career'?'selected':''}>${escHtml(c)}</option>`).join('');
-  document.getElementById('onRedirect').addEventListener('change', ()=>renderOnline());
+  const onRed=document.getElementById('onRedirect');
+  if(onRed){ onRed.innerHTML = ALLCATS.map(c=>`<option value="${escHtml(c)}" ${c==='Career'?'selected':''}>${escHtml(c)}</option>`).join('');
+    onRed.addEventListener('change', ()=>renderOnline()); }
   document.getElementById('logForm').addEventListener('submit', onLogSubmit);
   document.getElementById('qlogForm').addEventListener('submit', qlogSubmit); // #49 quick-log
   // --- whole-period bulk entry ---
@@ -2127,6 +2107,7 @@ function onlineAgg(d){
 }
 
 function renderOnline(){
+  if(!document.getElementById('onTitle')) return; // screen-time display removed
   const data=loadOnline();
   const ym = logSel ? logSel.slice(0,7) : (Object.keys(data).sort().at(-1)||null);
   const ti=document.getElementById('onTitle');
