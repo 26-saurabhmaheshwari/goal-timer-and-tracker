@@ -794,7 +794,7 @@ if(!window.Chart){
       </div>
       <div class="frow">
         <label>Start <input id="gStart" type="date"></label>
-        <label>Deadline <input id="gBy" type="date"></label>
+        <label id="gByWrap">Deadline <input id="gBy" type="date"></label>
       </div>
       <label>Tag <input id="gTag" placeholder="optional — e.g. spanish (groups this goal across years, even after it's completed/deleted)"></label>
       <div class="gmap" id="gMapWrap">
@@ -802,12 +802,8 @@ if(!window.Chart){
         <div class="gmap-row">1 <b id="gUnitLab">unit</b> = <input id="gMinPer" type="number" min="0" step="any" placeholder="e.g. 1.5"> min</div>
         <div class="hint" style="margin:0">How one unit converts to tracked minutes (decimals ok). Leave blank if this goal isn't time-based.</div>
       </div>
-      <label class="gform-sec" id="gSecWrap">Section <select id="gSec">
-        <option value="active">Live Nugget</option>
-        <option value="progress">Quarterly</option>
-        <option value="yearly">Yearly</option>
-        <option value="someday">Someday</option>
-      </select></label>
+      <label class="gform-sec" id="gSecWrap"><input id="gNug" type="checkbox" style="width:auto;margin:0 6px 0 0;vertical-align:middle"><b>Live Nugget</b> — a focus goal for the current period. No deadline; the only tier that counts toward your daily/period target.</label>
+      <div class="hint" id="gTierHint" style="margin:-4px 0 0"></div>
       <label class="gform-sec" id="gParentWrap" style="display:none">Parent goal <select id="gParent"></select><span class="hint" style="margin:0">Pick a parent to make this a mini of it (inherits its category &amp; unit); choose “Top-level goal” to detach.</span></label>
       <div class="gform-foot">
         <button type="button" id="gDelete" class="btn" style="background:#ef4444;margin-right:auto;display:none">Delete goal</button>
@@ -2281,6 +2277,24 @@ function saveGoals(g){ localStorage.setItem(LS_GOALS, JSON.stringify(g)); fbSync
 function fmtBy(by){ if(!by) return ''; const d=new Date(by+'T00:00:00'); return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
 function monthsUntil(by){ if(!by) return null; const d=new Date(by+'T00:00:00'), now=new Date(); let m=(d.getFullYear()-now.getFullYear())*12+(d.getMonth()-now.getMonth()); if(d.getDate()<now.getDate())m--; return m; }
 function daysLeft(by){ if(!by) return null; const d=new Date(by+'T00:00:00'), now=new Date(); return Math.ceil((d-now)/86400000); }
+// Auto-tier from the deadline: this quarter → Quarterly, later this year → Yearly, next year+ or none → Someday.
+function tierFromDeadline(by){
+  if(!by) return 'someday';
+  const d=new Date(by+'T00:00:00'), now=new Date();
+  if(d.getFullYear()>now.getFullYear()) return 'someday';   // after this year
+  if(d.getFullYear()<now.getFullYear()) return 'progress';  // overdue from a past year → needs attention now
+  return Math.floor(d.getMonth()/3)<=Math.floor(now.getMonth()/3) ? 'progress' : 'yearly';
+}
+// First day of the current 10-day period (nuggets have no deadline; their window is the current period).
+function periodStartISO(){ const d=new Date(), day=d.getDate(), s=day<=10?1:day<=20?11:21;
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(s).padStart(2,'0'); }
+// Live preview under the form: show which tier the deadline maps to, or hide the deadline for a nugget.
+function updGoalTier(){ const nug=document.getElementById('gNug').checked;
+  document.getElementById('gByWrap').style.display=nug?'none':'';
+  const h=document.getElementById('gTierHint');
+  if(nug){ h.textContent='→ Live Nugget · current period · no deadline'; return; }
+  const by=document.getElementById('gBy').value;
+  h.textContent='→ '+SEC_LAB[tierFromDeadline(by)]+(by?'':' (set a deadline to auto-sort)'); }
 function paceRank(l){ return {Lagging:0,Behind:1,'On track':2,Ahead:3,Done:4}[l] ?? 5; }
 function paceHint(x){ // "~N/day needed" to finish by deadline
   if(x.target<=0||x.cur>=x.target) return '';
@@ -2306,7 +2320,7 @@ function goalFormReset(){ goalEdit=null; goalMiniParent=null; document.getElemen
   document.getElementById('gParentWrap').style.display='none';
   document.getElementById('gUnitLab').textContent='unit'; document.getElementById('goalFormTitle').textContent='Add a goal';
   document.getElementById('gNameWrap').style.display=''; // minis hide it; default state = shown
-  document.getElementById('gDelete').style.display='none'; document.getElementById('gDone').style.display='none'; document.getElementById('gMini').style.display='none'; goalFormShow(false); }
+  document.getElementById('gDelete').style.display='none'; document.getElementById('gDone').style.display='none'; document.getElementById('gMini').style.display='none'; updGoalTier(); goalFormShow(false); }
 // Open the goal form pre-locked to carve a mini out of parent pid (cat/unit/mapping inherited, always active).
 window.startMiniCreate=function(pid){
   const p=loadGoals().find(o=>o.id===pid); if(!p) return;
@@ -2317,7 +2331,7 @@ window.startMiniCreate=function(pid){
   document.getElementById('gMinPer').value=(p.minPerUnit==null?'':p.minPerUnit);
   document.getElementById('gCat').disabled=true; document.getElementById('gUnit').disabled=true; document.getElementById('gMinPer').disabled=true; // inherited from the parent
   document.getElementById('gNameWrap').style.display='none'; document.getElementById('gName').value=''; // minis aren't named — label is "mini · parent : target"
-  document.getElementById('gSecWrap').style.display='none'; document.getElementById('gSec').value='active'; // minis are always Live Nuggets — no section picker
+  document.getElementById('gSecWrap').style.display='none'; document.getElementById('gNug').checked=true; // minis are always Live Nuggets — no section picker
   document.getElementById('goalMsg').textContent='';
   goalFormShow(true); document.getElementById('gTarget').focus();
 };
@@ -2331,6 +2345,7 @@ function initGoals(){
   document.getElementById('goalCreateBtn').onclick=()=>{ goalFormReset(); document.getElementById('goalMsg').textContent=''; goalFormShow(true); };
   document.getElementById('gMini').onclick=()=>{ if(goalEdit) startMiniCreate(goalEdit); };
   document.getElementById('gParent').onchange=function(){ const p=!!this.value; document.getElementById('gCat').disabled=p; document.getElementById('gUnit').disabled=p; };
+  document.getElementById('gBy').addEventListener('input',updGoalTier); document.getElementById('gNug').addEventListener('change',updGoalTier);
   document.getElementById('gCancel').onclick=()=>{ goalFormReset(); document.getElementById('goalMsg').textContent=''; };
   document.getElementById('gClose').onclick=()=>{ goalFormReset(); document.getElementById('goalMsg').textContent=''; };
   document.getElementById('goalModal').onclick=(e)=>{ if(e.target.id==='goalModal'){ goalFormReset(); document.getElementById('goalMsg').textContent=''; } };
@@ -2364,7 +2379,10 @@ function initGoals(){
     const o={ name, cat:document.getElementById('gCat').value,
       cur:+document.getElementById('gCur').value||0, target:+document.getElementById('gTarget').value||0,
       unit:document.getElementById('gUnit').value.trim(), start:document.getElementById('gStart').value, by:document.getElementById('gBy').value,
-      sec:document.getElementById('gSec').value, minPerUnit: mpRaw===''?null:(+mpRaw||0), tag:document.getElementById('gTag').value.trim() };
+      minPerUnit: mpRaw===''?null:(+mpRaw||0), tag:document.getElementById('gTag').value.trim() };
+    const isNug=document.getElementById('gNug').checked;
+    o.sec = isNug ? 'active' : tierFromDeadline(o.by); // tier is auto: nugget toggle, else derived from the deadline
+    if(isNug){ o.by=''; if(!o.start) o.start=periodStartISO(); } // nuggets: no deadline, current-period window
     const g=loadGoals();
     // Convert mini↔top-level via the parent picker (only when it's shown, i.e. editing a goal that can be re-parented).
     const pw=document.getElementById('gParentWrap');
@@ -2380,9 +2398,9 @@ function initGoals(){
     if(!willMini && (o.sec||'active')==='active' && goalMinPer(o)<=0){
       const m=document.getElementById('goalMsg'); m.textContent='Nuggets must be time-based — set “minutes per unit” (e.g. 1 unit = 60 min).'; m.style.color='#ef4444'; return;
     }
-    if(!willMini && SEC_CAP[o.sec] && secCount(o.sec, goalEdit)>=SEC_CAP[o.sec]){
-      const m=document.getElementById('goalMsg'); m.textContent=secCapMsg(o.sec); m.style.color='#ef4444'; return;
-    }
+    if(!willMini && o.sec==='active' && SEC_CAP.active && secCount('active', goalEdit)>=SEC_CAP.active){
+      const m=document.getElementById('goalMsg'); m.textContent=secCapMsg('active'); m.style.color='#ef4444'; return;
+    } // only the nugget tier is capped now — Quarterly/Yearly/Someday auto-fill from the deadline
     if(goalEdit){ const i=g.findIndex(x=>x.id===goalEdit); if(i>=0){ g[i]={...g[i],...o}; saveGoals(g); syncGoalEntries(g[i]); } }
     else { o.id='g'+Date.now();
       if(goalMiniParent){ const p=g.find(q=>q.id===goalMiniParent); if(p){ o.parentId=p.id; o.cat=p.cat; o.unit=p.unit; if(o.minPerUnit==null) o.minPerUnit=p.minPerUnit; } } // o.sec comes from the section dropdown
@@ -2698,7 +2716,7 @@ window.goalEditStart=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x
   document.getElementById('gUnit').value=x.unit; document.getElementById('gStart').value=x.start||''; document.getElementById('gBy').value=x.by||'';
   document.getElementById('gMinPer').value=(x.minPerUnit==null?'':x.minPerUnit); document.getElementById('gUnitLab').textContent=x.unit||'unit';
   document.getElementById('gTag').value=x.tag||'';
-  document.getElementById('gSec').value=x.sec==='progress'?'progress':x.sec==='yearly'?'yearly':((x.sec||'active')==='active'?'active':'someday');
+  document.getElementById('gNug').checked=((x.sec||'active')==='active');
   const mini=!!x.parentId; // minis: cat/unit/mapping/section all locked to Live Nuggets, no sub-minis
   document.getElementById('goalFormTitle').textContent=mini?'Edit mini goal':'Edit goal';
   document.getElementById('gCat').disabled=mini; document.getElementById('gUnit').disabled=mini; document.getElementById('gMinPer').disabled=mini;
@@ -2715,7 +2733,8 @@ window.goalEditStart=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x
   document.getElementById('gDelete').style.display='';
   const gd=document.getElementById('gDone'); gd.style.display=''; gd.style.background=x.done?'#64748b':'#16a34a';
   gd.textContent=x.done?'↩ Reopen goal':'✓ Mark complete';
-  gd.onclick=()=>{ goalFormReset(); document.getElementById('goalMsg').textContent=''; window.goalToggleDone(id); }; };
+  gd.onclick=()=>{ goalFormReset(); document.getElementById('goalMsg').textContent=''; window.goalToggleDone(id); };
+  updGoalTier(); };
 window.goalToggleDone=function(id){ const g=loadGoals(); const x=g.find(o=>o.id===id); if(!x) return;
   x.done=!x.done; saveGoals(g); renderGoals(); if(document.getElementById('entryTable')) renderLog(); };
 // Flip open one card's detail rows (gcard-det); only one card open at a time. Pure DOM — resets on re-render.
