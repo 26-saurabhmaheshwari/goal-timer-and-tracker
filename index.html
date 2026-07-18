@@ -1303,6 +1303,7 @@ function eid(){ return Date.now()+''+Math.floor(performance.now()); }
 function initLogForm(){
   document.getElementById('fMonth').innerHTML = ymList().map(o=>`<option value="${o.key}">${o.label}</option>`).join('');
   document.getElementById('fMonth').value = CUR_YM;
+  document.getElementById('fPeriod').value = periodOfDay(new Date().getDate()); // default to today's real period, not P1
   refreshHabitOptions(); refreshGoalOptions();
   document.querySelectorAll('#typeTabs button').forEach(b=>b.onclick=()=>setLogType(b.dataset.t));
   document.getElementById('fGoal').addEventListener('change', syncGoalFields);
@@ -1375,7 +1376,7 @@ function savePeriodEntry(){
   const ym=document.getElementById('peMonth').value, period=document.getElementById('pePeriod').value;
   const body=document.getElementById('peBody');
   const all=loadEntries(); const goals=loadGoals();
-  let added=0, gTouched=false;
+  let added=0, gTouched=false; const dropped=[];
   // habits
   body.querySelectorAll('[data-pe-h]').forEach(inp=>{
     const i=inp.dataset.peH;
@@ -1383,7 +1384,8 @@ function savePeriodEntry(){
     const times=Math.max(0,+inp.value||0);
     const extra=Math.max(0,+(body.querySelector(`[data-pe-hx="${i}"]`)||{}).value||0);
     const mins=Math.round(times*perDay+extra);
-    if(mins<=0) return;
+    // 0 min/day habit logged by Times only = 0 mins → would vanish silently; flag it instead
+    if(mins<=0){ if(times>0||extra>0) dropped.push(inp.dataset.name); return; }
     all.push({id:eid(), ym, period, type:'project', task:inp.dataset.name, cat:inp.dataset.cat, mins, times, extra});
     added++;
   });
@@ -1399,7 +1401,8 @@ function savePeriodEntry(){
     if(mins>0){ all.push({id:eid(), ym, period, type:'goal', goalId:x.id, amt, task:x.name, cat:x.cat, mins}); }
     added++;
   });
-  if(!added){ const m=document.getElementById('peMsg'); m.style.color='#dc2626'; m.textContent='Nothing entered — fill at least one row.'; return; }
+  const dropMsg = dropped.length ? `${dropped.join(', ')}: 0 min/day — set a min/day in Settings, or use the "+ mins" box. Not saved.` : '';
+  if(!added){ const m=document.getElementById('peMsg'); m.style.color='#dc2626'; m.textContent=dropMsg||'Nothing entered — fill at least one row.'; return; }
   saveEntries(all); if(gTouched) saveGoals(goals);
   logSel=`${ym}-${period}`;
   peShow(false);
@@ -1407,7 +1410,7 @@ function savePeriodEntry(){
   const v=periodVerdict(ym,period);
   const VW={hit:'🟢 GREEN (hit the plan)',partial:'🟡 AMBER (partway)',miss:'🔴 RED (missed)'};
   const tail = VW[v] ? ` — colour this cell on your wall poster: ${VW[v]}` : '';
-  flash(`Logged ${added} item${added>1?'s':''} for ${plabel(`${ym}-${period}`)}${tail}`);
+  flash(`Logged ${added} item${added>1?'s':''} for ${plabel(`${ym}-${period}`)}${tail}${dropMsg?` · ⚠ ${dropMsg}`:''}`, dropped.length>0);
   openCommitStep(ym, period);
 }
 // --- Pledge the NEXT period (goal.commit={ym,period,amt}, rides LS_GOALS) ---
@@ -1871,7 +1874,7 @@ function renderHabitsSettings(){
     const off=it.done||it.paused, badge=it.done?' <span class="muted-sm">✓ done</span>':(it.paused?' <span class="muted-sm">⏸ paused</span>':'');
     return `<div class="catrow"${off?' style="opacity:.5"':''}>
       <span class="cdot" style="background:${colorFor(it.cat)}"></span>
-      <span class="nm">${habitIcon(it.cat)} ${escHtml(it.n)}${badge}${habitAdhereBadge(it)}</span>
+      <span class="nm">${habitIcon(it.cat)} ${escHtml(it.n)}${badge}</span>
       <span class="muted-sm">${escHtml(it.cat)} · ${it.m}m</span>
       <button class="cedit" title="${it.paused?'Resume':'Pause'}" onclick="habitTogglePause(${i})">${it.paused?'▶':'⏸'}</button>
       <button class="cedit" title="${it.done?'Reopen':'Mark done'}" onclick="habitToggleDone(${i})">${it.done?'↺':'✓'}</button>
@@ -3752,7 +3755,7 @@ function renderAudit(){
   const ents=loadEntries().map(e=>({e,ts:parseInt(String(e.id).slice(0,13),10)}))
     .filter(o=>!isNaN(o.ts)&&now-o.ts<=win).sort((a,b)=>b.ts-a.ts);
   if(!ents.length){ el.innerHTML='<div class="empty">No entries in the last 40 days.</div>'; return; }
-  const perLabel=ts=>{const d=new Date(ts),p=periodOfDay(d.getDate()),rng=p==='P1'?'1–10':p==='P2'?'11–20':'21–end';return `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()} · ${p} (${rng})`;};
+  const perLabel=e=>{const p=e.period,rng=p==='P1'?'1–10':p==='P2'?'11–20':'21–end',[y,m]=String(e.ym||'').split('-').map(Number);return `${MONTH_NAMES[(m||1)-1]} ${y||''} · ${p} (${rng})`;}; // group by the period the entry belongs to, not the day it was logged
   const fmtDt=ts=>{const d=new Date(ts);return `${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;};
   // back-walk each goal's current cur to recover before/after state per entry (exact within the 20-day window)
   const state={}, run={};
@@ -3762,10 +3765,12 @@ function renderAudit(){
     state[e.id]={after,before}; run[e.goalId]=before;
   }});
   const cell=(t,style='')=>`<td style="padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top;${style}">${t}</td>`;
+  // display order = by the period an entry belongs to (most recent first), then by log-time within a period
+  const disp=[...ents].sort((a,b)=>`${b.e.ym}${b.e.period}`.localeCompare(`${a.e.ym}${a.e.period}`) || b.ts-a.ts);
   let prevPer=null;
-  const rows=ents.map(({e,ts})=>{
+  const rows=disp.map(({e,ts})=>{
     let hdr='';
-    const per=perLabel(ts);
+    const per=perLabel(e);
     if(per!==prevPer){ prevPer=per; hdr=`<tr><td colspan="7" style="padding:10px 10px 6px;background:rgba(127,127,127,.08);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border-bottom:2px solid var(--line)">${per}</td></tr>`; }
     const icon=e.type==='goal'?'🎯':e.type==='habit'?'🔁':e.type==='screen'?'📱':'⏱';
     let name='—',prev='—',added='—',cur='—',prevReq='—',curReq='—';
