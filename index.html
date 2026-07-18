@@ -552,7 +552,6 @@ if(!window.Chart){
         <span class="gc-plus">＋</span>
         <span class="gc-lab">New goal</span>
       </button>
-      <button id="pgLogBtn" class="btn pgact" hidden onclick="document.getElementById('periodEntryBtn').click()">📝 Log period</button>
       <button id="pgPdfBtn" class="btn pgact" hidden onclick="document.getElementById('repPdfBtn').click()">⤓ Export PDF</button>
       <span id="fbWho"></span>
       <button id="fbBtn" onclick="fbToggle()">Sign in to sync</button>
@@ -3200,7 +3199,6 @@ function setView(v){
   document.querySelectorAll('#viewNav button').forEach(b=>b.classList.toggle('active', b.dataset.v===v));
   // #45: per-view primary action pinned in the page header
   document.getElementById('goalCreateBtn').hidden = v!=='goals';
-  document.getElementById('pgLogBtn').hidden = v!=='log';
   document.getElementById('pgPdfBtn').hidden = v!=='reports';
   if(v==='overview'){ renderTabs(); setOv(ovTab); maybeShowLetter(mostGoalsBehind()); }
   if(v==='log') renderLog();
