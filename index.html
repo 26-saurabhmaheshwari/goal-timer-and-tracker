@@ -2411,7 +2411,7 @@ function paceColor(label){
 // 30x30 status badge: rounded square, vertical gradient, white arrow/check/dash.
 // Original SVGs (not copied assets) — geometry: 16px arrowhead rows 6-15, 6px stem rows 15-23.
 function stBadge(kind){
-  const G={up:['#8dd52f','#62af14'],warn:['#efa615','#c98b00'],down:['#d14137','#ae1715'],ok:['#8dd52f','#62af14'],na:['#b8bfc9','#98a1ad']};
+  const G={up:['#8dd52f','#62af14'],warn:['#efa615','#c98b00'],down:['#d14137','#ae1715'],ok:['#8dd52f','#62af14'],na:['#aab2bd','#8a93a3']};
   const [a,b]=G[kind]||G.na;
   const grad=`<defs><linearGradient id="stg-${kind}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient><linearGradient id="stgl-${kind}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".5"/><stop offset="1" stop-color="#fff" stop-opacity=".06"/></linearGradient></defs>`;
   let inner;
@@ -2419,16 +2419,19 @@ function stBadge(kind){
   else if(kind==='na') inner='<rect x="8" y="13.4" width="14" height="3.2" rx="1.6" fill="#fff"/>';
   else if(kind==='down') inner='<path d="M15 24 L7 15 H12 V7 H18 V15 H23 Z" fill="#fff"/>';
   else inner='<path d="M15 6 L23 15 H18 V23 H12 V15 H7 Z" fill="#fff"/>';
-  return `<svg viewBox="0 0 30 30" width="30" height="30" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${grad}<rect width="30" height="30" rx="8" fill="url(#stg-${kind})"/><rect x="1.5" y="1.5" width="27" height="13" rx="6.5" fill="url(#stgl-${kind})"/>${inner}</svg>`;
+  // na = neutral/no-pace: flat grey, no top sheen (the sheen washed the light grey out to near-white).
+  const gloss = kind==='na' ? '' : `<rect x="1.5" y="1.5" width="27" height="13" rx="6.5" fill="url(#stgl-${kind})"/>`;
+  return `<svg viewBox="0 0 30 30" width="30" height="30" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${grad}<rect width="30" height="30" rx="8" fill="url(#stg-${kind})"/>${gloss}${inner}</svg>`;
 }
 function goalCard(x){
   const raw = x.target>0 ? Math.round(x.cur/x.target*100) : 0;
   const pct = Math.min(100, raw);
   const started = x.done || (x.target>0 && x.cur>0);
+  const someday = secOfGoal(x)==='someday'; // backlog tier — not pace-tracked, so no up/down arrows
   const pace = paceLabel(x);
   const col = started ? paceColor(pace) : '#8a93a3';
-  const badge = x.done ? 'Done' : (started ? pace : 'Not started');
-  const stKind = (x.done||raw>=100) ? 'ok' : !started ? 'na' : pace==='Lagging' ? 'down' : pace==='Behind' ? 'warn' : 'up';
+  const badge = x.done ? 'Done' : someday ? 'Someday' : (started ? pace : 'Not started');
+  const stKind = (x.done||raw>=100) ? 'ok' : (someday||!started) ? 'na' : pace==='Lagging' ? 'down' : pace==='Behind' ? 'warn' : 'up';
   const m = monthsUntil(x.by);
   const dl = daysLeft(x.by);
   const overdue = x.target>0 && x.cur<x.target && dl!=null && dl<0;
