@@ -837,7 +837,7 @@ if(!window.Chart){
   <div class="card gsec"><h2>Yearly <span id="yCount" class="seccap"></span></h2><div class="hint">This year's aims — the whole year, this quarter included. Loggable, but not counted in daily/period pace.</div><div id="yBar"></div>
     <div id="secThisQWrap" class="subsec" hidden><h3>🗓 This Quarter</h3><div class="hint">Due this quarter — the near-term slice of your year.</div><div id="secProgress"></div></div>
     <div id="secRecurringWrap" class="subsec" hidden><h3>🔁 Recurring</h3><div class="hint">Ongoing habit-style goals — no real finish line.</div><div id="secRecurring"></div></div>
-    <div id="secYearly"></div>
+    <div id="secFinishWrap" class="subsec" hidden><h3>🏁 Finish-line</h3><div class="hint">One-off yearly goals with a real deadline — these get the room recurring leaves free.</div><div id="secYearly"></div></div>
   </div>
   <div class="card gsec"><h2>Someday</h2><div class="hint">Not started yet — things to begin later and big no-deadline aspirations.</div><div id="secSomeday"></div></div>
   <div class="card gsec"><h2>✅ Completed</h2><div class="hint">Marked done. Logged time is kept; reopen any time to keep going.</div><div id="secCompleted"></div></div>
@@ -2455,6 +2455,18 @@ function initGoals(){
     if(!willMini && o.sec==='active' && SEC_CAP.active && secCount('active', goalEdit)>=SEC_CAP.active){
       const m=document.getElementById('goalMsg'); m.textContent=secCapMsg('active'); m.style.color='#ef4444'; return;
     } // only the nugget tier is capped now — Quarterly/Yearly/Someday auto-fill from the deadline
+    // Recurring hours cap: recurring goals must stay ≤70% of the Yearly total need, so finish-line goals keep room.
+    if(!willMini && o.recur){
+      const hrs=x=>(+x.target||0)*goalMinPer(x)/60;
+      const others=goalsLive().filter(x=>x.id!==goalEdit && !x.done && !x.parentId);
+      const recurH=hrs(o)+others.filter(x=>x.sec==='yearly'&&x.recur).reduce((s,x)=>s+hrs(x),0);
+      const yearlyH=hrs(o)+others.filter(x=>x.sec==='yearly'||x.sec==='progress').reduce((s,x)=>s+hrs(x),0);
+      if(yearlyH>0 && recurH>0.70*yearlyH){
+        const m=document.getElementById('goalMsg');
+        m.textContent=`Recurring would be ${Math.round(recurH/yearlyH*100)}% of your Yearly hours — keep recurring at or under 70% so finish-line goals keep room.`;
+        m.style.color='#ef4444'; return;
+      }
+    }
     if(goalEdit){ const i=g.findIndex(x=>x.id===goalEdit); if(i>=0){ g[i]={...g[i],...o}; saveGoals(g); syncGoalEntries(g[i]); } }
     else { o.id='g'+Date.now();
       if(goalMiniParent){ const p=g.find(q=>q.id===goalMiniParent); if(p){ o.parentId=p.id; o.cat=p.cat; o.unit=p.unit; if(o.minPerUnit==null) o.minPerUnit=p.minPerUnit; } } // o.sec comes from the section dropdown
@@ -2704,6 +2716,8 @@ function renderGoals(){ renderGoalStats(); renderGoalFilter();
   renderSec(g=>!g.done&&g.sec==='progress'&&!g.parentId&&cf(g),'secProgress',false);
   { const pw=document.getElementById('secThisQWrap'); if(pw) pw.hidden=goalsLive().filter(g=>!g.done&&g.sec==='progress'&&!g.parentId&&cf(g)).length===0; } // This Quarter subcard shows only when it has goals
   renderSec(g=>!g.done&&g.sec==='yearly'&&!g.recur&&!g.parentId&&cf(g),'secYearly',false);
+  { const finishN=goalsLive().filter(g=>!g.done&&g.sec==='yearly'&&!g.recur&&!g.parentId&&cf(g)).length;
+    const fw=document.getElementById('secFinishWrap'); if(fw) fw.hidden=finishN===0; } // Finish-line subcard shows only when it has goals
   const recurN=goalsLive().filter(g=>!g.done&&g.sec==='yearly'&&g.recur&&!g.parentId&&cf(g)).length;
   renderSec(g=>!g.done&&g.sec==='yearly'&&g.recur&&!g.parentId&&cf(g),'secRecurring',false);
   { const rw=document.getElementById('secRecurringWrap'); if(rw) rw.hidden=recurN===0; } // subcard shows only when it has goals
