@@ -296,6 +296,7 @@ if(!window.Chart){
   .grow-st svg{display:block;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.35))}
   .grow-main{flex:1 1 auto;min-width:0}
   .gcard-name{font-size:17px;font-weight:600;color:#337ab7;line-height:1.43;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .gcard-name .mini-goto{display:block;font-size:12px;font-weight:600;color:#98a0ab;line-height:1.25}
   .grow-sub{font-size:15px;line-height:20px;color:#676a6c;margin-top:2px}
   .grow-when{font-size:14px;line-height:18px;color:#98a0ab;margin-top:1px}
   .grow-bar{position:relative;order:3;flex:0 0 20.5%;min-width:120px;height:20px;margin-top:1px;border-radius:4px;background:#f5f5f5;border:.625px solid var(--gcol,#8a93a3);box-shadow:1px 1px 2px 0 rgba(0,0,0,.75);overflow:hidden}
@@ -799,7 +800,7 @@ if(!window.Chart){
       <div class="frow" id="gPeriodWrap" style="display:none">
         <label>Period <select id="gPeriod"></select></label>
       </div>
-      <label>Tag <input id="gTag" placeholder="optional — e.g. spanish (groups this goal across years, even after it's completed/deleted)"></label>
+      <label id="gTagWrap">Tag <input id="gTag" placeholder="optional — e.g. spanish (groups this goal across years, even after it's completed/deleted)"></label>
       <div class="gmap" id="gMapWrap">
         <div class="gmap-lab">Time mapping</div>
         <div class="gmap-row">1 <b id="gUnitLab">unit</b> = <input id="gMinPer" type="number" min="0" step="any" placeholder="e.g. 1.5"> min</div>
@@ -2256,7 +2257,7 @@ function minisOf(id){ return goalsLive().filter(g=>g.parentId===id); }
 // Minis aren't named — their label reads "<target> closer to <parent>".
 function goalMiniTgt(g){ return (+g.target>0)?`${g.target} ${g.unit||''}`.trimEnd()+' ':''; }
 function goalLabel(g){ if(!g.parentId) return g.name; const p=loadGoals().find(o=>o.id===g.parentId); return p?`${goalMiniTgt(g)}closer to ${p.name}`:g.name; }
-function goalLabelHtml(g){ if(!g.parentId) return escHtml(g.name); const p=loadGoals().find(o=>o.id===g.parentId); if(!p) return escHtml(g.name); return `${escHtml(goalMiniTgt(g))}closer to <span class="par-tag">${escHtml(p.name)}</span>`; }
+function goalLabelHtml(g){ if(!g.parentId) return escHtml(g.name); const p=loadGoals().find(o=>o.id===g.parentId); if(!p) return escHtml(g.name); return `<span class="mini-goto">${escHtml(goalMiniTgt(g))}closer to</span><span class="mini-par">${escHtml(p.name)}</span>`; }
 // What the log lists (Log Data dropdown, period entry, pledge) offer: active not-done
 // goals, but a parent with ≥1 live active mini is REPLACED by those minis. Orphan minis
 // (parent done/someday) stand alone so they stay loggable.
@@ -2334,6 +2335,7 @@ let goalMiniParent=null; // set while the form is creating a mini goal (holds th
 function goalFormReset(){ goalEdit=null; goalMiniParent=null; document.getElementById('goalForm').reset();
   document.getElementById('gCat').disabled=false; document.getElementById('gUnit').disabled=false; document.getElementById('gMinPer').disabled=false; document.getElementById('gSecWrap').style.display='';
   document.getElementById('gParentWrap').style.display='none';
+  document.getElementById('gCurWrap').style.display=''; document.getElementById('gTagWrap').style.display='';
   document.getElementById('gDatesWrap').style.display=''; document.getElementById('gPeriodWrap').style.display='none';
   document.getElementById('gUnitLab').textContent='unit'; document.getElementById('goalFormTitle').textContent='Add a goal';
   document.getElementById('gNameWrap').style.display=''; // minis hide it; default state = shown
@@ -2350,6 +2352,7 @@ window.startMiniCreate=function(pid){
   document.getElementById('gNameWrap').style.display='none'; document.getElementById('gName').value=''; // minis aren't named — label is "mini · parent : target"
   document.getElementById('gSecWrap').style.display='none'; document.getElementById('gNug').checked=true; // minis are always Live Nuggets — no section picker
   document.getElementById('gDatesWrap').style.display='none'; document.getElementById('gPeriodWrap').style.display=''; fillGoalPeriods(); // minis pick a period, not dates
+  document.getElementById('gCurWrap').style.display='none'; document.getElementById('gTagWrap').style.display='none'; // minis: only target + period
   document.getElementById('goalMsg').textContent='';
   goalFormShow(true); document.getElementById('gTarget').focus();
 };
@@ -2513,13 +2516,13 @@ function goalCard(x){
       <span class="grow-st" title="${badge}">${stBadge(stKind)}</span>
       <div class="grow-main">
         <div class="gcard-name" title="${escHtml(goalLabel(x))}">${goalLabelHtml(x)}</div>
-        ${subMain?`<div class="grow-sub">${subMain}</div>`:''}
-        <div class="grow-when">${when}</div>
+        ${subMain&&!x.parentId?`<div class="grow-sub">${subMain}</div>`:''}
+        ${x.by?`<div class="grow-when">${when}</div>`:''}
       </div>
       <div class="grow-bar">${barFits?`<i style="width:${pct}%"><span class="grow-val">${barTxt}</span></i>`:`<i style="width:${pct}%"></i><span class="grow-val grow-val-out">${barTxt}</span>`}</div>
       <span class="grow-pct">${x.target>0?raw+'%':''}</span>
       <div class="gcard-acts">
-        ${!x.done?`<button title="Create nugget" onclick="startMiniCreate('${x.id}')">🏅</button>`:''}
+        ${!x.done?(x.parentId?`<button title="Log entry" onclick="goalAdd('${x.id}')">＋</button>`:`<button title="Create nugget" onclick="startMiniCreate('${x.id}')">🏅</button>`):''}
         ${logs.length?`<button title="Log (${logs.length})" onclick="goalLogShow('${x.id}')">📜</button>`:''}
         <button title="Edit" onclick="goalEditStart('${x.id}')">✎</button>
         ${det?`<button type="button" class="gdet-btn" title="Details" onclick="goalFlip('${x.id}')">▾</button>`:''}
@@ -2742,10 +2745,11 @@ window.goalEditStart=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x
   document.getElementById('gNameWrap').style.display=mini?'none':''; // minis aren't named
   document.getElementById('gSecWrap').style.display=mini?'none':''; // minis are always Live Nuggets — no section picker
   document.getElementById('gDatesWrap').style.display=mini?'none':''; document.getElementById('gPeriodWrap').style.display=mini?'':'none'; if(mini) fillGoalPeriods(x.start); // minis pick a period, not dates
-  // Parent-goal picker (convert mini↔top-level). Hidden for a top-level goal that already has minis — can't nest 2 levels.
+  document.getElementById('gCurWrap').style.display=mini?'none':''; document.getElementById('gTagWrap').style.display=mini?'none':''; // minis: only target + period editable
+  // Parent-goal picker (convert mini↔top-level). Hidden for minis and for a top-level goal that already has minis — can't nest 2 levels.
   const hasKids=!mini && minisOf(x.id).length>0;
   const pw=document.getElementById('gParentWrap'), ps=document.getElementById('gParent');
-  if(hasKids){ pw.style.display='none'; }
+  if(mini||hasKids){ pw.style.display='none'; }
   else { const cand=loadGoals().filter(o=>!o.deleted && !o.parentId && !o.done && o.id!==x.id);
     ps.innerHTML=`<option value="">— Top-level goal —</option>`+cand.map(o=>`<option value="${o.id}">${escHtml(o.name)}</option>`).join('');
     ps.value=x.parentId||''; pw.style.display=''; }
