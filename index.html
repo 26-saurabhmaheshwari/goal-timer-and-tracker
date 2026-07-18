@@ -2317,7 +2317,7 @@ window.startMiniCreate=function(pid){
   document.getElementById('gMinPer').value=(p.minPerUnit==null?'':p.minPerUnit);
   document.getElementById('gCat').disabled=true; document.getElementById('gUnit').disabled=true; document.getElementById('gMinPer').disabled=true; // inherited from the parent
   document.getElementById('gNameWrap').style.display='none'; document.getElementById('gName').value=''; // minis aren't named — label is "mini · parent : target"
-  document.getElementById('gSecWrap').style.display=''; document.getElementById('gSec').value='active'; // section editable; defaults active
+  document.getElementById('gSecWrap').style.display='none'; document.getElementById('gSec').value='active'; // minis are always Live Nuggets — no section picker
   document.getElementById('goalMsg').textContent='';
   goalFormShow(true); document.getElementById('gTarget').focus();
 };
@@ -2375,6 +2375,7 @@ function initGoals(){
     }
     // Tier caps (top-level goals only; minis ride a parent and don't occupy a slot).
     const willMini = goalEdit ? ('parentId' in o ? !!o.parentId : !!(g.find(x=>x.id===goalEdit)||{}).parentId) : !!goalMiniParent;
+    if(willMini) o.sec='active'; // minis are always Live Nuggets, regardless of any stale section value
     // Nuggets must be time-based so they count toward the hours budget (minis inherit their parent's mapping).
     if(!willMini && (o.sec||'active')==='active' && goalMinPer(o)<=0){
       const m=document.getElementById('goalMsg'); m.textContent='Nuggets must be time-based — set “minutes per unit” (e.g. 1 unit = 60 min).'; m.style.color='#ef4444'; return;
@@ -2698,11 +2699,11 @@ window.goalEditStart=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x
   document.getElementById('gMinPer').value=(x.minPerUnit==null?'':x.minPerUnit); document.getElementById('gUnitLab').textContent=x.unit||'unit';
   document.getElementById('gTag').value=x.tag||'';
   document.getElementById('gSec').value=x.sec==='progress'?'progress':x.sec==='yearly'?'yearly':((x.sec||'active')==='active'?'active':'someday');
-  const mini=!!x.parentId; // minis: cat/unit/mapping locked to the parent, but section IS editable, no sub-minis
+  const mini=!!x.parentId; // minis: cat/unit/mapping/section all locked to Live Nuggets, no sub-minis
   document.getElementById('goalFormTitle').textContent=mini?'Edit mini goal':'Edit goal';
   document.getElementById('gCat').disabled=mini; document.getElementById('gUnit').disabled=mini; document.getElementById('gMinPer').disabled=mini;
   document.getElementById('gNameWrap').style.display=mini?'none':''; // minis aren't named
-  document.getElementById('gSecWrap').style.display='';
+  document.getElementById('gSecWrap').style.display=mini?'none':''; // minis are always Live Nuggets — no section picker
   // Parent-goal picker (convert mini↔top-level). Hidden for a top-level goal that already has minis — can't nest 2 levels.
   const hasKids=!mini && minisOf(x.id).length>0;
   const pw=document.getElementById('gParentWrap'), ps=document.getElementById('gParent');
