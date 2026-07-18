@@ -792,9 +792,12 @@ if(!window.Chart){
         <label id="gCurWrap"><span id="gCurLab">Current</span> <input id="gCur" type="number" min="0" step="any" placeholder="0"></label>
         <label id="gTargetWrap">Target <input id="gTarget" type="number" min="0" step="any" placeholder="e.g. 1250"></label>
       </div>
-      <div class="frow">
+      <div class="frow" id="gDatesWrap">
         <label>Start <input id="gStart" type="date"></label>
         <label id="gByWrap">Deadline <input id="gBy" type="date"></label>
+      </div>
+      <div class="frow" id="gPeriodWrap" style="display:none">
+        <label>Period <select id="gPeriod"></select></label>
       </div>
       <label>Tag <input id="gTag" placeholder="optional — e.g. spanish (groups this goal across years, even after it's completed/deleted)"></label>
       <div class="gmap" id="gMapWrap">
@@ -2288,6 +2291,19 @@ function tierFromDeadline(by){
 // First day of the current 10-day period (nuggets have no deadline; their window is the current period).
 function periodStartISO(){ const d=new Date(), day=d.getDate(), s=day<=10?1:day<=20?11:21;
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(s).padStart(2,'0'); }
+// First-day ISO of a given period key. P1→01, P2→11, P3→21.
+function periodToISO(ym,p){ return ym+'-'+(p==='P2'?'11':p==='P3'?'21':'01'); }
+// Fill the mini "Period" dropdown: 1 period back → 6 forward, plus the goal's own period if outside that range.
+function fillGoalPeriods(selISO){
+  const now=new Date(), curYm=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  let cursor=prevPeriod(curYm, periodOfDay(now.getDate())); const opts=[];
+  for(let i=0;i<8;i++){ opts.push(cursor); cursor=nextPeriod(cursor.ym,cursor.period); }
+  let want=selISO ? periodToISO(selISO.slice(0,7), periodOfDay(+selISO.slice(8,10))) : periodToISO(curYm, periodOfDay(now.getDate()));
+  if(!opts.some(o=>periodToISO(o.ym,o.period)===want)){ const [y,m]=want.split('-'); opts.unshift({ym:y+'-'+m, period:periodOfDay(+want.slice(8,10))}); }
+  const el=document.getElementById('gPeriod');
+  el.innerHTML=opts.map(o=>`<option value="${periodToISO(o.ym,o.period)}">${plabel(o.ym+'-'+o.period)}</option>`).join('');
+  el.value=want;
+}
 // Live preview under the form: show which tier the deadline maps to, or hide the deadline for a nugget.
 function updGoalTier(){ const nug=document.getElementById('gNug').checked;
   document.getElementById('gByWrap').style.display=nug?'none':'';
@@ -2318,6 +2334,7 @@ let goalMiniParent=null; // set while the form is creating a mini goal (holds th
 function goalFormReset(){ goalEdit=null; goalMiniParent=null; document.getElementById('goalForm').reset();
   document.getElementById('gCat').disabled=false; document.getElementById('gUnit').disabled=false; document.getElementById('gMinPer').disabled=false; document.getElementById('gSecWrap').style.display='';
   document.getElementById('gParentWrap').style.display='none';
+  document.getElementById('gDatesWrap').style.display=''; document.getElementById('gPeriodWrap').style.display='none';
   document.getElementById('gUnitLab').textContent='unit'; document.getElementById('goalFormTitle').textContent='Add a goal';
   document.getElementById('gNameWrap').style.display=''; // minis hide it; default state = shown
   document.getElementById('gDelete').style.display='none'; document.getElementById('gDone').style.display='none'; document.getElementById('gMini').style.display='none'; updGoalTier(); goalFormShow(false); }
@@ -2332,6 +2349,7 @@ window.startMiniCreate=function(pid){
   document.getElementById('gCat').disabled=true; document.getElementById('gUnit').disabled=true; document.getElementById('gMinPer').disabled=true; // inherited from the parent
   document.getElementById('gNameWrap').style.display='none'; document.getElementById('gName').value=''; // minis aren't named — label is "mini · parent : target"
   document.getElementById('gSecWrap').style.display='none'; document.getElementById('gNug').checked=true; // minis are always Live Nuggets — no section picker
+  document.getElementById('gDatesWrap').style.display='none'; document.getElementById('gPeriodWrap').style.display=''; fillGoalPeriods(); // minis pick a period, not dates
   document.getElementById('goalMsg').textContent='';
   goalFormShow(true); document.getElementById('gTarget').focus();
 };
@@ -2394,6 +2412,7 @@ function initGoals(){
     // Tier caps (top-level goals only; minis ride a parent and don't occupy a slot).
     const willMini = goalEdit ? ('parentId' in o ? !!o.parentId : !!(g.find(x=>x.id===goalEdit)||{}).parentId) : !!goalMiniParent;
     if(willMini) o.sec='active'; // minis are always Live Nuggets, regardless of any stale section value
+    if(willMini && document.getElementById('gPeriodWrap').style.display!=='none'){ o.start=document.getElementById('gPeriod').value||periodStartISO(); o.by=''; } // minis: window = the picked period
     // Nuggets must be time-based so they count toward the hours budget (minis inherit their parent's mapping).
     if(!willMini && (o.sec||'active')==='active' && goalMinPer(o)<=0){
       const m=document.getElementById('goalMsg'); m.textContent='Nuggets must be time-based — set “minutes per unit” (e.g. 1 unit = 60 min).'; m.style.color='#ef4444'; return;
@@ -2722,6 +2741,7 @@ window.goalEditStart=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x
   document.getElementById('gCat').disabled=mini; document.getElementById('gUnit').disabled=mini; document.getElementById('gMinPer').disabled=mini;
   document.getElementById('gNameWrap').style.display=mini?'none':''; // minis aren't named
   document.getElementById('gSecWrap').style.display=mini?'none':''; // minis are always Live Nuggets — no section picker
+  document.getElementById('gDatesWrap').style.display=mini?'none':''; document.getElementById('gPeriodWrap').style.display=mini?'':'none'; if(mini) fillGoalPeriods(x.start); // minis pick a period, not dates
   // Parent-goal picker (convert mini↔top-level). Hidden for a top-level goal that already has minis — can't nest 2 levels.
   const hasKids=!mini && minisOf(x.id).length>0;
   const pw=document.getElementById('gParentWrap'), ps=document.getElementById('gParent');
