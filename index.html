@@ -793,6 +793,7 @@ if(!window.Chart){
         <label>Start <input id="gStart" type="date"></label>
         <label>Deadline <input id="gBy" type="date"></label>
       </div>
+      <label>Tag <input id="gTag" placeholder="optional — e.g. spanish (groups this goal across years, even after it's completed/deleted)"></label>
       <div class="gmap" id="gMapWrap">
         <div class="gmap-lab">Time mapping</div>
         <div class="gmap-row">1 <b id="gUnitLab">unit</b> = <input id="gMinPer" type="number" min="0" step="any" placeholder="e.g. 1.5"> min</div>
@@ -889,6 +890,7 @@ if(!window.Chart){
     <div id="repControls" class="noprint" style="margin-top:14px"></div>
   </div>
   <div id="repGrid" style="margin-top:16px"></div>
+  <div id="repTags" style="margin-top:16px"></div>
   <div id="repProgress" style="margin-top:16px"></div>
 </div><!-- /viewReports -->
 
@@ -977,6 +979,7 @@ if(!window.Chart){
         <label>Category <select id="newHabitCat"></select></label>
         <label>Min/day <input id="newHabitMin" type="number" min="0" step="1" value="10" style="width:80px"></label>
       </div>
+      <label>Tag <input id="newHabitTag" type="text" placeholder="optional — groups this habit across time in Reports"></label>
       <div class="gform-foot">
         <button type="submit" class="btn">+ Add habit</button>
         <span id="habitMsg" class="fmsg"></span>
@@ -1035,6 +1038,7 @@ if(!window.Chart){
         <label>Category <select id="habitEditCat"></select></label>
         <label>Min/day <input id="habitEditMin" type="number" min="0" step="1" style="width:80px"></label>
       </div>
+      <label>Tag <input id="habitEditTag" type="text" placeholder="optional tag"></label>
       <div class="gform-foot">
         <button type="button" id="habitEditDelete" class="btn" style="background:#ef4444;margin-right:auto">Delete</button>
         <button type="button" id="habitEditCancel" class="btn" style="background:#94a3b8;margin-left:auto">Cancel</button>
@@ -1883,6 +1887,7 @@ window.habitEditStart=function(i){
   document.getElementById('habitEditName').value=h[i].n;
   document.getElementById('habitEditCat').innerHTML=habitCatOpts(h[i].cat);
   document.getElementById('habitEditMin').value=h[i].m;
+  document.getElementById('habitEditTag').value=h[i].tag||'';
   document.getElementById('habitEditMsg').textContent='';
   habitModalShow(true);
 };
@@ -1893,6 +1898,7 @@ function habitSaveEdit(){
   if(!name) return false;
   it.n=name; it.cat=document.getElementById('habitEditCat').value;
   it.m=Math.max(0,Math.floor(+document.getElementById('habitEditMin').value||0));
+  it.tag=document.getElementById('habitEditTag').value.trim();
   saveHabits(h); renderHabitsSettings(); refreshHabitOptions();
   if(!document.getElementById('viewPlanning').hidden) renderPlanning();
   return true;
@@ -2333,7 +2339,7 @@ function initGoals(){
     const o={ name, cat:document.getElementById('gCat').value,
       cur:+document.getElementById('gCur').value||0, target:+document.getElementById('gTarget').value||0,
       unit:document.getElementById('gUnit').value.trim(), start:document.getElementById('gStart').value, by:document.getElementById('gBy').value,
-      sec:document.getElementById('gSec').value, minPerUnit: mpRaw===''?null:(+mpRaw||0) };
+      sec:document.getElementById('gSec').value, minPerUnit: mpRaw===''?null:(+mpRaw||0), tag:document.getElementById('gTag').value.trim() };
     const g=loadGoals();
     // Convert mini↔top-level via the parent picker (only when it's shown, i.e. editing a goal that can be re-parented).
     const pw=document.getElementById('gParentWrap');
@@ -2631,6 +2637,7 @@ window.goalEditStart=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x
   document.getElementById('gCur').value=x.cur; document.getElementById('gTarget').value=x.target;
   document.getElementById('gUnit').value=x.unit; document.getElementById('gStart').value=x.start||''; document.getElementById('gBy').value=x.by||'';
   document.getElementById('gMinPer').value=(x.minPerUnit==null?'':x.minPerUnit); document.getElementById('gUnitLab').textContent=x.unit||'unit';
+  document.getElementById('gTag').value=x.tag||'';
   document.getElementById('gSec').value=x.sec==='progress'?'progress':x.sec==='yearly'?'yearly':((x.sec||'active')==='active'?'active':'someday');
   const mini=!!x.parentId; // minis: cat/unit locked to the parent, but section IS editable, no sub-minis
   document.getElementById('goalFormTitle').textContent=mini?'Edit mini goal':'Edit goal';
@@ -3085,9 +3092,19 @@ function repSubjSamples(s, es, roll){
     else if(s.kind==='goal')     mins=(r.g||{})[s.id]||0;
     else if(s.kind==='habit')    mins=(r.h||{})[s.name]||0;
     else if(s.kind==='cat')      mins=(r.c||{})[s.name]||0;
+    else if(s.kind==='tag'){ const rg=r.g||{}, rh=r.h||{}; s._idx.goalIds.forEach(id=>mins+=(+rg[id]||0)); s._idx.habitNames.forEach(n=>mins+=(+rh[n]||0)); }
     if(mins>0) out.push({ym, period:null, mins});
   });
   return out;
+}
+// Tag → the goals & habits carrying it. Uses loadGoals() (NOT goalsLive) so a tag's lifetime total
+// survives completed AND trashed goals — the whole point of tagging: "5-year total for this tag".
+function tagsIndex(){
+  const idx={};
+  const add=(t,kind,val)=>{ t=String(t||'').trim(); if(!t) return; (idx[t]||(idx[t]={goalIds:new Set(),habitNames:new Set()}))[kind].add(val); };
+  loadGoals().forEach(g=>add(g.tag,'goalIds',g.id));
+  loadHabits().forEach(h=>add(h.tag,'habitNames',h.n));
+  return idx;
 }
 function repSubjects(){
   const out=[
@@ -3097,6 +3114,8 @@ function repSubjects(){
   ALLCATS.forEach(c=>out.push({key:'cat:'+c, kind:'cat', grp:'Categories', name:c, title:c, cat:c}));
   goalsLive().forEach(g=>out.push({key:'goal:'+g.id, kind:'goal', grp:'Goals', id:g.id, title:g.name, cat:g.cat}));
   loadHabits().forEach(h=>out.push({key:'habit:'+h.n, kind:'habit', grp:'Habits', name:h.n, title:h.n, cat:h.cat}));
+  const ti=tagsIndex();
+  Object.keys(ti).sort().forEach(t=>out.push({key:'tag:'+t, kind:'tag', grp:'Tags', tagName:t, title:'#'+t, cat:null, _idx:ti[t]}));
   return out;
 }
 function repSubjEntries(s, es){
@@ -3105,6 +3124,7 @@ function repSubjEntries(s, es){
   if(s.kind==='goal')      return es.filter(e=>e.type==='goal' && e.goalId===s.id);
   if(s.kind==='habit')     return es.filter(e=>e.type==='project' && e.task===s.name);
   if(s.kind==='cat')       return es.filter(e=>e.cat===s.name);
+  if(s.kind==='tag')       return es.filter(e=>(e.type==='goal' && s._idx.goalIds.has(e.goalId)) || (e.type==='project' && s._idx.habitNames.has(e.task)));
   return [];
 }
 function renderReports(){
@@ -3112,7 +3132,7 @@ function renderReports(){
   if(repSel===null) repSel=new Set(); // default = stacked overview only; drill-down adds per-subject charts
   // controls
   const granSel=`<select id="repGranSel" class="repsel">${REP_GRANS.map(([k,l])=>`<option value="${k}" ${k===repGran?'selected':''}>${l}</option>`).join('')}</select>`;
-  const order=['Overall','Categories','Goals','Habits'];
+  const order=['Overall','Categories','Goals','Habits','Tags'];
   const opts=order.map(grp=>{
     const items=subs.filter(s=>s.grp===grp); if(!items.length) return '';
     return `<div class="repgrp">${grp}</div>`+items.map(s=>
@@ -3158,7 +3178,7 @@ function renderReports(){
       const data=sumByBucket(rows);
       const totH=+(rows.reduce((a,x)=>a+(+x.mins||0),0)/60).toFixed(1);
       document.getElementById('repSub'+i).textContent=`${totH}h total`;
-      const col=s.cat?colorFor(s.cat):(s.kind==='goalsAll'?'#4C6EF5':'#8DC63F');
+      const col=s.cat?colorFor(s.cat):(s.kind==='goalsAll'?'#4C6EF5':s.kind==='tag'?'#7c5cd6':'#8DC63F');
       repCharts.push(new Chart(document.getElementById('repC'+i),{type:'bar',
         data:{labels,datasets:[{data,backgroundColor:col,borderRadius:4,maxBarThickness:46}]},
         options:{animation:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.raw} h`}}},
@@ -3166,6 +3186,24 @@ function renderReports(){
                   y:{beginAtZero:true,grid:{color:'#e7ddc8'},ticks:{callback:v=>v+'h'}}}}}));
     });
   }
+  // ---- lifetime totals by tag: all tracked time ever, grouped by tag (survives completed & trashed goals) ----
+  (function(){
+    const el=document.getElementById('repTags'); if(!el) return;
+    const hm=h=>{const m=Math.round(h*60);if(m<=0)return '0';const H=Math.floor(m/60),M=m%60;return H?(M?`${H}h ${M}m`:`${H}h`):`${M}m`;};
+    const rows=subs.filter(s=>s.kind==='tag')
+      .map(s=>({t:s.tagName, h:repSubjSamples(s,es,roll).reduce((a,x)=>a+(+x.mins||0),0)/60}))
+      .filter(r=>r.h>0).sort((a,b)=>b.h-a.h);
+    if(!rows.length){ el.innerHTML=''; return; }
+    el.innerHTML=`<div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:12px 14px;font-weight:700">Lifetime totals by tag<span class="hint" style="display:block;font-weight:400;margin-top:2px">all tracked time ever for each tag — counts completed &amp; trashed goals, so it holds across years</span></div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="background:rgba(127,127,127,.07);text-transform:uppercase;font-size:11px;letter-spacing:.04em;color:var(--muted)">
+          <th style="padding:8px 12px;text-align:left">Tag</th>
+          <th style="padding:8px 12px;text-align:right">Lifetime total</th>
+        </tr></thead><tbody>${rows.map(r=>`<tr style="border-top:1px solid var(--line)">
+          <td style="padding:7px 12px;font-weight:600;color:#7c5cd6">#${escHtml(r.t)}</td>
+          <td style="padding:7px 12px;text-align:right;font-weight:700">${hm(r.h)}</td></tr>`).join('')}</tbody></table></div>`;
+  })();
   // ---- cumulative progress table: total tracked time per bucket, with before / added / running total ----
   (function(){
     const tEl=document.getElementById('repProgress'); if(!tEl) return;
@@ -3359,8 +3397,9 @@ document.getElementById('habitForm').addEventListener('submit', e=>{
   const m=Math.max(0,Math.floor(+document.getElementById('newHabitMin').value||0));
   const msg=document.getElementById('habitMsg');
   if(!name){ msg.textContent='Enter a name'; msg.style.color='#dc2626'; return; }
-  const h=loadHabits(); h.push({n:name,cat,m}); saveHabits(h); renderHabitsSettings(); refreshHabitOptions();
-  document.getElementById('newHabitName').value='';
+  const tag=document.getElementById('newHabitTag').value.trim();
+  const h=loadHabits(); h.push({n:name,cat,m,tag}); saveHabits(h); renderHabitsSettings(); refreshHabitOptions();
+  document.getElementById('newHabitName').value=''; document.getElementById('newHabitTag').value='';
   msg.textContent=`Added “${name}” ✓`; msg.style.color='#16a34a';
   if(!document.getElementById('viewPlanning').hidden) renderPlanning();
 });
