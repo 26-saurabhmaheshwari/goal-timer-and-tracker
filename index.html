@@ -888,6 +888,7 @@ if(!window.Chart){
       <button data-s="personal" class="active">Personal</button>
       <button data-s="cats">Categories</button>
       <button data-s="habits">Habits</button>
+      <button data-s="limits">Limits</button>
       <button data-s="faq">FAQ</button>
     </div>
     <div class="tipmain">
@@ -913,7 +914,7 @@ if(!window.Chart){
       </div>
     </form>
     <h2 style="margin-top:26px">Live Nuggets mix</h2>
-    <div class="hint">Live Nuggets are capped at 9 — the only goals that count toward your daily/period pace. Split your ~12 hrs/period budget by category (e.g. 3 Spiritual, 3 Youth, 2 Study). The rest stays open. This is a gentle guide: the shelf shows a warning if your plan exceeds 12 hrs, but never blocks you.</div>
+    <div class="hint">Live Nuggets are capped (set the cap in Limits) — the only goals that count toward your daily/period pace. Split your ~12 hrs/period budget by category (e.g. 3 Spiritual, 3 Youth, 2 Study). The rest stays open. This is a gentle guide: the shelf shows a warning if your plan exceeds 12 hrs, but never blocks you.</div>
     <div class="form" style="margin-top:12px">
       <div id="quotaRows"></div>
       <div style="margin-top:8px"><button type="button" id="quotaAdd" class="btn ghost">＋ Reserve a category</button></div>
@@ -979,6 +980,22 @@ if(!window.Chart){
     <h2>Completed habits</h2>
     <div class="hint">Habits you've marked done. Reopen (↺) to move one back to the active list.</div>
     <div id="habitDoneList" class="catlist"></div>
+  </div>
+
+  <div class="card" id="setLimits" hidden>
+    <h2>Limits</h2>
+    <div class="hint">Caps that keep your goals honest. Changes take effect immediately; existing goals already over a new cap aren't removed.</div>
+    <form id="limitsForm" class="form" style="margin-top:14px">
+      <div class="frow">
+        <label>Live Nuggets cap <input id="setNugCap" type="number" min="1" max="15" step="1" style="width:110px"></label>
+        <label>Recurring max (% of Yearly hours) <input id="setRecurPct" type="number" min="10" max="100" step="5" style="width:150px"></label>
+      </div>
+      <div class="hint" style="margin:-6px 0 0">Nuggets are the only goals counted in daily/period pace. A recurring goal is blocked on save if it'd push recurring past this share of your Yearly hours, leaving room for finish-line goals.</div>
+      <div class="gform-foot">
+        <button type="submit" class="btn">Save</button>
+        <span id="limitsMsg" class="fmsg"></span>
+      </div>
+    </form>
   </div>
 
   <div class="card" id="setFaq" hidden style="line-height:1.55">
@@ -1854,10 +1871,12 @@ function setSettab(s){
   document.getElementById('setCats').hidden = s!=='cats';
   document.getElementById('setHabits').hidden = s!=='habits';
   document.getElementById('setHabitsDone').hidden = true;
+  document.getElementById('setLimits').hidden = s!=='limits';
   document.getElementById('setFaq').hidden = s!=='faq';
   document.querySelectorAll('#setSide button').forEach(b=>b.classList.toggle('active', b.dataset.s===s));
   if(s==='personal') renderPersonalSettings();
   if(s==='habits') renderHabitsSettings();
+  if(s==='limits') renderLimitsSettings();
 }
 function habitCatOpts(c){ return ALLCATS.map(x=>`<option value="${escHtml(x)}"${x===c?' selected':''}>${escHtml(x)}</option>`).join(''); }
 // --- habit adherence: "hit plan N of last M periods" (pure derived, no new state) ---
@@ -2245,6 +2264,21 @@ function renderPersonalSettings(){
   const fp=document.getElementById('setFeatPlanning'); if(fp) fp.checked=!!f.planning;
   renderQuotaEditor();
 }
+function renderLimitsSettings(){
+  const c=document.getElementById('setNugCap'), p=document.getElementById('setRecurPct');
+  if(!c) return;
+  const L=loadLimits(); c.value=L.nugCap; p.value=L.recurPct;
+}
+function saveLimitsForm(e){
+  e.preventDefault();
+  const nugCap=Math.min(15,Math.max(1,Math.round(+document.getElementById('setNugCap').value||0)));
+  const recurPct=Math.min(100,Math.max(10,Math.round(+document.getElementById('setRecurPct').value||0)));
+  saveLimits({nugCap, recurPct}); // persists + sets SEC_CAP.active + fbSyncPush
+  renderLimitsSettings();
+  if(!document.getElementById('viewGoals').hidden) renderGoals(); // reflect the new nugget cap live
+  const msg=document.getElementById('limitsMsg'); msg.textContent='Saved ✓'; msg.style.color='#34a853';
+  setTimeout(()=>{ msg.textContent=''; }, 2000);
+}
 function savePersonal(e){
   e.preventDefault();
   const name=document.getElementById('setName').value.trim();
@@ -2455,16 +2489,17 @@ function initGoals(){
     if(!willMini && o.sec==='active' && SEC_CAP.active && secCount('active', goalEdit)>=SEC_CAP.active){
       const m=document.getElementById('goalMsg'); m.textContent=secCapMsg('active'); m.style.color='#ef4444'; return;
     } // only the nugget tier is capped now — Quarterly/Yearly/Someday auto-fill from the deadline
-    // Recurring hours cap: recurring goals must stay ≤80% of the Yearly total need, so finish-line goals keep room.
+    // Recurring hours cap: recurring goals must stay ≤ the configured % of the Yearly total need, so finish-line goals keep room.
     if(!willMini && o.recur){
+      const cap=loadLimits().recurPct/100;
       const hrs=x=>(+x.target||0)*goalMinPer(x)/60;
       const others=goalsLive().filter(x=>x.id!==goalEdit && !x.done && !x.parentId);
       const recurH=hrs(o)+others.filter(x=>x.sec==='yearly'&&x.recur).reduce((s,x)=>s+hrs(x),0);
       const yearlyH=hrs(o)+others.filter(x=>x.sec==='yearly'||x.sec==='progress').reduce((s,x)=>s+hrs(x),0);
-      if(yearlyH>0 && recurH>0.80*yearlyH){
-        const over=Math.round((recurH-0.80*yearlyH)*10)/10;
+      if(yearlyH>0 && recurH>cap*yearlyH){
+        const over=Math.round((recurH-cap*yearlyH)*10)/10;
         const m=document.getElementById('goalMsg');
-        m.textContent=`Recurring would be ${Math.round(recurH/yearlyH*100)}% of your Yearly hours — ${over}h over the 80% limit. Trim recurring by ${over}h (or add finish-line hours) to save.`;
+        m.textContent=`Recurring would be ${Math.round(recurH/yearlyH*100)}% of your Yearly hours — ${over}h over the ${loadLimits().recurPct}% limit. Trim recurring by ${over}h (or add finish-line hours) to save.`;
         m.style.color='#ef4444'; return;
       }
     }
@@ -2655,7 +2690,14 @@ function renderGoalFilter(){
   el.innerHTML=`<div class="gf-grp"><div class="gf-lab">Sections</div>${secBtns}</div><div class="gf-grp"><div class="gf-lab">Categories</div>${catBtns}</div>`;
 }
 // --- Tier caps: Live Nuggets 7 / Quarterly 11 / Yearly 21 (top-level goals only; minis ride a parent) ---
-const SEC_CAP={active:9, progress:11, yearly:21};
+// ---- Configurable limits (Settings→Limits): nugget cap + recurring % of Yearly hours. ----
+const LS_LIMITS='ptd_limits_v1';
+const SEED_LIMITS={nugCap:9, recurPct:80};
+function loadLimits(){ try{ const v=JSON.parse(localStorage.getItem(LS_LIMITS)); const o={...SEED_LIMITS, ...(v&&typeof v==='object'&&!Array.isArray(v)?v:{})};
+  o.nugCap=Math.min(15,Math.max(1,Math.round(+o.nugCap||SEED_LIMITS.nugCap)));
+  o.recurPct=Math.min(100,Math.max(10,Math.round(+o.recurPct||SEED_LIMITS.recurPct))); return o; }catch(e){ return {...SEED_LIMITS}; } }
+function saveLimits(o){ const m={...loadLimits(),...o}; localStorage.setItem(LS_LIMITS, JSON.stringify(m)); SEC_CAP.active=m.nugCap; fbSyncPush(); }
+const SEC_CAP={active:loadLimits().nugCap, progress:11, yearly:21};
 const NUGGET_BUDGET=12; // hours per 10-day period reserved for Live Nuggets (soft plan; grey line + mix editor)
 const SEC_LAB={active:'Live Nuggets', progress:'This Quarter', yearly:'Yearly', someday:'Someday'};
 function secOfGoal(g){ const s=(g.sec||'active'); return (s==='active'||s==='progress'||s==='yearly')?s:'someday'; }
@@ -3459,6 +3501,7 @@ const SYNC_FIELDS=[
   ['renounced', LS_RENOUNCED, loadRenounced, 'id'],
   ['features', LS_FEATURES, loadFeatures,   'replace'],
   ['quota',    LS_QUOTA,    loadQuota,      'replace'],
+  ['limits',   LS_LIMITS,   loadLimits,     'map'],
 ];
 function mergeById(loc,cld){ const m=new Map(); (Array.isArray(loc)?loc:[]).forEach(x=>{ if(x&&x.id!=null) m.set(x.id,x); }); (Array.isArray(cld)?cld:[]).forEach(x=>{ if(x&&x.id!=null) m.set(x.id,x); }); return [...m.values()]; }
 function mergeMap(loc,cld){ return {...(loc&&typeof loc==='object'&&!Array.isArray(loc)?loc:{}), ...(cld&&typeof cld==='object'&&!Array.isArray(cld)?cld:{})}; }
@@ -3612,6 +3655,7 @@ document.getElementById('catEditForm').addEventListener('submit', e=>{
 });
 document.querySelectorAll('#setSide button').forEach(b=>b.onclick=()=>setSettab(b.dataset.s));
 document.getElementById('personalForm').addEventListener('submit', savePersonal);
+document.getElementById('limitsForm').addEventListener('submit', saveLimitsForm);
 document.getElementById('renForm').addEventListener('submit', e=>{
   e.preventDefault();
   const inp=document.getElementById('renInput');
