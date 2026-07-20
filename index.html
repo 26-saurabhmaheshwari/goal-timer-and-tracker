@@ -288,7 +288,7 @@ if(!window.Chart){
   .gcard.dragging{opacity:.4;outline:2px dashed var(--gcol,#8a93a3);outline-offset:2px}
   .gcard .gcard-acts button{cursor:pointer}
   .gcard:hover{background:rgba(255,255,255,.55)}
-  .grow-line{position:relative;display:flex;align-items:flex-start;gap:12px;min-height:43px;font-family:Calibri,"Open Sans","Segoe UI",Arial,sans-serif}
+  .grow-line{position:relative;display:flex;align-items:flex-start;gap:12px;min-height:43px;cursor:pointer;font-family:Calibri,"Open Sans","Segoe UI",Arial,sans-serif}
   .grow-st{flex:0 0 30px;width:30px;height:30px;line-height:0}
   .grow-st svg{display:block;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.35))}
   .grow-main{flex:1 1 auto;min-width:0}
@@ -367,7 +367,7 @@ if(!window.Chart){
   .gcard-acts button{border:1px solid #e7eaec;background:#fff;min-width:26px;height:23px;border-radius:3px;cursor:pointer;color:#676a6c;font-size:12px;font-weight:400;line-height:1;padding:1px 7px}
   .gcard-acts button:hover{color:#2d6cdf;border-color:#2d6cdf;background:#fff}
   .gminis{border-left:2px solid var(--line);padding:2px 0 2px 12px;margin-left:42px;display:flex;flex-direction:column;gap:5px}
-  .gminis-head{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;cursor:pointer;user-select:none;display:flex;align-items:center;gap:5px}
+  .gminis-head{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;user-select:none;display:flex;align-items:center;gap:5px}
   .gminis-caret{display:inline-block;transition:transform .15s;font-size:9px}
   .gminis.open .gminis-caret{transform:rotate(90deg)}
   .gminis-body{display:flex;flex-direction:column;gap:5px}
@@ -2547,9 +2547,9 @@ function goalCard(x){
   // Mini goals live INSIDE the parent card as slim rows — never as top-level cards.
   const minis = x.parentId ? [] : minisOf(x.id);
   const mDone = minis.filter(m=>m.done).length;
-  const minisHtml = minis.length ? `<div class="gminis">
-    <div class="gminis-head" role="button" tabindex="0" onclick="toggleMinis(this)"><span class="gminis-caret">▸</span>💎 ${mDone}/${minis.length} mini goal${minis.length>1?'s':''} accomplished</div>
-    <div class="gminis-body" hidden>${minis.map(m=>{
+  const minisHtml = minis.length ? `<div class="gminis" hidden>
+    <div class="gminis-head">💎 ${mDone}/${minis.length} mini goal${minis.length>1?'s':''} accomplished</div>
+    <div class="gminis-body">${minis.map(m=>{
       const mpct=m.target>0?Math.min(100,Math.round((+m.cur||0)/m.target*100)):0;
       const msec=(m.sec||'active'); const off=!m.done && msec!=='active'; const offLab=msec==='progress'?'this quarter':msec==='yearly'?'yearly':'someday';
       return `<div class="gmini${m.done?' gmini-done':''}${off?' gmini-someday':''}">
@@ -2567,7 +2567,7 @@ function goalCard(x){
   const barTxt=`${x.cur} ${escHtml(x.unit||'')}`.trim();
   const barFits=(pct/100)*210 >= barTxt.length*6.8+12; // white label inside fill only when it fits (GoT look); else grey at left
   return `<div class="gcard${overdue?' gcard-overdue':''}${x.done?' gcard-done':''}" draggable="true" data-id="${x.id}" style="--gcol:${col}">
-    <div class="grow-line">
+    <div class="grow-line" onclick="goalRowClick(event,'${x.id}')">
       <span class="grow-st" title="${badge}">${stBadge(stKind)}</span>
       <div class="grow-main">
         <div class="gcard-name" title="${escHtml(goalLabel(x))}">${goalLabelHtml(x, true)}</div>
@@ -2587,9 +2587,8 @@ function goalCard(x){
     ${minisHtml}
   </div>`;
 }
-// Mini goals collapse: rows hide behind the "X/Y accomplished" head; scrolling away auto-closes.
-window.toggleMinis=function(head){ const box=head.closest('.gminis'); if(!box) return; const body=box.querySelector('.gminis-body'); const open=box.classList.toggle('open'); if(body) body.hidden=!open; };
-window.addEventListener('scroll',()=>{ document.querySelectorAll('.gminis.open').forEach(box=>{ const r=box.getBoundingClientRect(); if(r.bottom<0||r.top>innerHeight){ box.classList.remove('open'); const b=box.querySelector('.gminis-body'); if(b) b.hidden=true; } }); },{passive:true});
+// Any scroll auto-collapses an open card (details + mini rows) to keep the list tidy.
+window.addEventListener('scroll',()=>{ document.querySelectorAll('.gcard-open').forEach(closeCard); },{passive:true});
 // ---- drag-drop reordering of goal cards (within a section) ----
 let goalDragId=null;
 function goalAfterEl(cont,y){ // card the dragged item should sit before, by vertical midpoint
@@ -2859,14 +2858,19 @@ window.goalEditStart=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x
   updGoalTier(); };
 window.goalToggleDone=function(id){ const g=loadGoals(); const x=g.find(o=>o.id===id); if(!x) return;
   x.done=!x.done; saveGoals(g); renderGoals(); if(document.getElementById('entryTable')) renderLog(); };
-// Flip open one card's detail rows (gcard-det); only one card open at a time. Pure DOM — resets on re-render.
+// Collapse one card: hide its detail rows + mini block, reset the caret.
+function closeCard(c){ c.classList.remove('gcard-open'); const d=c.querySelector('.gcard-det'); if(d) d.hidden=true; const m=c.querySelector('.gminis'); if(m) m.hidden=true; const b=c.querySelector('.gdet-btn'); if(b) b.textContent='▾'; }
+// Flip open one card's details + mini rows (only one card open at a time). Pure DOM — resets on re-render.
 window.goalFlip=function(id){
-  document.querySelectorAll('.gcard-open').forEach(c=>{ if(c.dataset.id!==id){ c.classList.remove('gcard-open'); const d=c.querySelector('.gcard-det'); if(d) d.hidden=true; } });
+  document.querySelectorAll('.gcard-open').forEach(c=>{ if(c.dataset.id!==id) closeCard(c); });
   const card=document.querySelector(`.gcard[data-id="${id}"]`); if(!card) return;
   const open=card.classList.toggle('gcard-open');
   const d=card.querySelector('.gcard-det'); if(d) d.hidden=!open;
+  const m=card.querySelector('.gminis'); if(m) m.hidden=!open;
   const b=card.querySelector('.gdet-btn'); if(b) b.textContent=open?'▴':'▾';
 };
+// Clicking anywhere on the row (except an action button) flips the card open/closed.
+window.goalRowClick=function(e,id){ if(e.target.closest('button,a,input,select')) return; goalFlip(id); };
 window.goalLogShow=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x) return;
   const logs=Array.isArray(x.logs)?x.logs:[];
   document.getElementById('glTitle').textContent=`📜 ${x.name} — log (${logs.length})`;
