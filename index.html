@@ -367,7 +367,10 @@ if(!window.Chart){
   .gcard-acts button{border:1px solid #e7eaec;background:#fff;min-width:26px;height:23px;border-radius:3px;cursor:pointer;color:#676a6c;font-size:12px;font-weight:400;line-height:1;padding:1px 7px}
   .gcard-acts button:hover{color:#2d6cdf;border-color:#2d6cdf;background:#fff}
   .gminis{border-left:2px solid var(--line);padding:2px 0 2px 12px;margin-left:42px;display:flex;flex-direction:column;gap:5px}
-  .gminis-head{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+  .gminis-head{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;cursor:pointer;user-select:none;display:flex;align-items:center;gap:5px}
+  .gminis-caret{display:inline-block;transition:transform .15s;font-size:9px}
+  .gminis.open .gminis-caret{transform:rotate(90deg)}
+  .gminis-body{display:flex;flex-direction:column;gap:5px}
   .gmini{display:flex;align-items:center;gap:7px;font-size:12px}
   .gmini-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
   .gmini-bar{flex:0 0 44px;height:5px;border-radius:3px;background:rgba(70,58,32,.12);overflow:hidden}
@@ -2545,19 +2548,18 @@ function goalCard(x){
   const minis = x.parentId ? [] : minisOf(x.id);
   const mDone = minis.filter(m=>m.done).length;
   const minisHtml = minis.length ? `<div class="gminis">
-    <div class="gminis-head">💎 ${mDone}/${minis.length} mini goal${minis.length>1?'s':''} accomplished</div>
-    ${minis.map(m=>{
+    <div class="gminis-head" role="button" tabindex="0" onclick="toggleMinis(this)"><span class="gminis-caret">▸</span>💎 ${mDone}/${minis.length} mini goal${minis.length>1?'s':''} accomplished</div>
+    <div class="gminis-body" hidden>${minis.map(m=>{
       const mpct=m.target>0?Math.min(100,Math.round((+m.cur||0)/m.target*100)):0;
       const msec=(m.sec||'active'); const off=!m.done && msec!=='active'; const offLab=msec==='progress'?'this quarter':msec==='yearly'?'yearly':'someday';
       return `<div class="gmini${m.done?' gmini-done':''}${off?' gmini-someday':''}">
         <span class="gmini-name" title="${escHtml(goalMiniTgt(m))}closer">${escHtml(goalMiniTgt(m))}closer${off?` <span class="gmini-tag">${offLab}</span>`:''}</span>
         <span class="gmini-bar"><i style="width:${mpct}%"></i></span>
         <span class="gmini-sub">${m.cur}${m.target>0?`/${m.target}`:''}</span>
-        ${m.done?'<span class="gmini-check" title="Accomplished">✓</span>'
-          :`<button type="button" title="Add progress" onclick="goalAdd('${m.id}')">+</button><button type="button" class="gmini-ok" title="Mark accomplished" onclick="goalToggleDone('${m.id}')">✓</button>`}
-        ${(m.done||off)?`<button type="button" title="Edit" onclick="goalEditStart('${m.id}')">✎</button>`:''}
+        ${m.done?'<span class="gmini-check" title="Accomplished">✓</span><button type="button" title="Edit" onclick="goalEditStart(\''+m.id+'\')">✎</button>'
+          :''}
       </div>`;
-    }).join('')}
+    }).join('')}</div>
   </div>` : '';
   const byD = x.by ? new Date(x.by+'T00:00') : null;
   const byTxt = (byD && !isNaN(byD)) ? ` by ${byD.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}` : '';
@@ -2585,6 +2587,9 @@ function goalCard(x){
     ${minisHtml}
   </div>`;
 }
+// Mini goals collapse: rows hide behind the "X/Y accomplished" head; scrolling away auto-closes.
+window.toggleMinis=function(head){ const box=head.closest('.gminis'); if(!box) return; const body=box.querySelector('.gminis-body'); const open=box.classList.toggle('open'); if(body) body.hidden=!open; };
+window.addEventListener('scroll',()=>{ document.querySelectorAll('.gminis.open').forEach(box=>{ const r=box.getBoundingClientRect(); if(r.bottom<0||r.top>innerHeight){ box.classList.remove('open'); const b=box.querySelector('.gminis-body'); if(b) b.hidden=true; } }); },{passive:true});
 // ---- drag-drop reordering of goal cards (within a section) ----
 let goalDragId=null;
 function goalAfterEl(cont,y){ // card the dragged item should sit before, by vertical midpoint
