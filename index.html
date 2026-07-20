@@ -608,7 +608,7 @@ if(!window.Chart){
   <div id="ovPot" hidden>
     <div class="card" style="max-width:none">
       <h2 style="text-align:center">Recent momentum</h2>
-      <div class="hint" style="text-align:center">One battery per active goal. Each cell is a 10-day period; the grey column shows how much you logged that period.</div>
+      <div class="hint" style="text-align:center">One battery per category (what the year split shows, over time). Each cell is a 10-day period; the column shows how much you logged in that category that period.</div>
       <div id="batteryBox" style="margin-top:14px"></div>
     </div>
     <div class="card" style="max-width:none;margin-top:18px">
@@ -3662,11 +3662,11 @@ function renderQuotaEditor(){
 })();
 
 // ================= POT (year capacity vs filled, coloured by category) =================
-// ---- Battery: GoalsOnTrack-style 20-cell recent-activity gauge, one per active goal ----
-// Each of the last 20 ten-day periods is a cell; the grey column height = amount that goal
-// logged that period, scaled to the goal's busiest period in the window. Derived on render,
-// no new state. Prefers goal.logs (never purged); falls back to logged goal ENTRIES for
-// older data with no per-goal log. Recreated CSS/markup — never copies GoT's assets.
+// ---- Battery: GoalsOnTrack-style 20-cell recent-activity gauge, one per CATEGORY ----
+// Each of the last 20 ten-day periods is a cell; the column height = minutes logged in that
+// category that period, scaled to the category's busiest period in the window. Mirrors what
+// the year donut shows (category split), spread over time. Derived on render from Log
+// entries, no new state. Recreated CSS/markup — never copies GoT's assets.
 function batteryPeriods(){
   const now=new Date();
   let cur={ym:CUR_YM, period:periodOfDay(now.getDate())};
@@ -3674,38 +3674,32 @@ function batteryPeriods(){
   for(let i=0;i<19;i++){ cur=prevPeriod(cur.ym,cur.period); arr.push(cur); }
   return arr.reverse(); // oldest → newest (left → right)
 }
-// active or in-progress top-level goals (both are "chipping away" — momentum applies to both)
-function batteryGoals(){
-  return loadGoals().filter(g=>{ const s=g.sec||'active';
-    return (s==='active'||s==='progress'||s==='yearly') && !g.done && !g.deleted && !g.parentId; });
-}
-// per-goal {periodKey: amount} — logs first, else fall back to that goal's time entries
-function batteryBuckets(g, ents){
-  const buckets={};
-  if(Array.isArray(g.logs) && g.logs.length){
-    g.logs.forEach(l=>{ const k=`${l.ym}-${l.period}`; buckets[k]=(buckets[k]||0)+(+l.amt||0); });
-  } else {
-    ents.forEach(e=>{ if(e.type==='goal' && e.goalId===g.id){ const k=`${e.ym}-${e.period}`; buckets[k]=(buckets[k]||0)+(+e.amt||0); } });
-  }
-  return buckets;
+// per-category {periodKey: minutes} from every Log entry in the window
+function batteryCatBuckets(ents){
+  const byCat={};
+  ents.forEach(e=>{ const c=e.cat; if(!c) return;
+    const k=`${e.ym}-${e.period}`;
+    (byCat[c]=byCat[c]||{})[k]=(byCat[c][k]||0)+(+e.mins||0); });
+  return byCat;
 }
 function renderBattery(){
   const box=document.getElementById('batteryBox'); if(!box) return;
-  const fmt=n=>Math.round(n).toLocaleString('en-US');
   const periods=batteryPeriods(), ents=loadEntries();
-  const rows=batteryGoals().map(g=>({g, buckets:batteryBuckets(g, ents)}))
-    .filter(r=>Object.values(r.buckets).some(v=>v>0));
-  if(!rows.length){ box.innerHTML=`<div class="hint" style="text-align:center;padding:18px 0">Log progress on an active goal and its recent-activity battery appears here.</div>`; return; }
-  box.innerHTML=rows.map(({g,buckets})=>{
+  const byCat=batteryCatBuckets(ents);
+  // keep Settings order; drop categories with no time in the window
+  const cats=ALLCATS.filter(c=>byCat[c] && Object.values(byCat[c]).some(v=>v>0));
+  if(!cats.length){ box.innerHTML=`<div class="hint" style="text-align:center;padding:18px 0">Log some time and each category's recent-activity battery appears here.</div>`; return; }
+  box.innerHTML=cats.map(c=>{
+    const buckets=byCat[c];
     const vals=periods.map(p=>buckets[`${p.ym}-${p.period}`]||0);
-    const max=Math.max(1,...vals), sum=vals.reduce((a,v)=>a+v,0), unit=escHtml(g.unit||'');
+    const max=Math.max(1,...vals), sum=vals.reduce((a,v)=>a+v,0), col=colorFor(c);
     const cells=periods.map((p,i)=>{
       const v=vals[i], h=v>0?Math.max(8,Math.round(v/max*100)):0;
       const lbl=plabel(`${p.ym}-${p.period}`);
-      return `<li title="${fmt(v)} ${unit} · ${lbl}"><i style="height:${h}%"></i></li>`;
+      return `<li title="${fmtShort(v)} · ${lbl}"><i style="height:${h}%;background:${col}"></i></li>`;
     }).join('');
     return `<div style="margin-bottom:16px">
-      <div class="pchart-lab"><b>${escHtml(g.name)}</b><span>${fmt(sum)} ${unit} · last ${periods.length} periods</span></div>
+      <div class="pchart-lab"><b><span class="dot" style="background:${col}"></span>${escHtml(c)}</b><span>${fmtShort(sum)} · last ${periods.length} periods</span></div>
       <ul class="pchart">${cells}</ul></div>`;
   }).join('');
 }
