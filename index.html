@@ -757,6 +757,7 @@ if(!window.Chart){
     <button type="button" id="gClose" class="modal-x" title="Close">✕</button>
     <h2 id="goalFormTitle">Add a goal</h2>
     <div class="hint">Named goal with its own unit, target and deadline. Progress = current ÷ target.</div>
+    <div id="gIdChip" class="hint" style="margin-top:-4px;display:none">Unique code: <span id="gIdChipVal"></span></div>
     <form id="goalForm" class="form">
       <label id="gNameWrap">Name <input id="gName" placeholder="e.g. Read 12 books"></label>
       <div class="frow">
@@ -2262,7 +2263,7 @@ function goalLabel(g){ if(!g.parentId) return g.name; const p=loadGoals().find(o
 // Short stable per-goal reference tag (#xxxx) — hash of the goal id, base36, so the same goal reads the same on every device. No stored state.
 function goalTag(g){ let h=0; const s=String((g&&g.id)||''); for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0; return h.toString(36).slice(-5).padStart(5,'0'); }
 function goalTagHtml(g){ return `<span class="gid">#${goalTag(g)}</span>`; }
-function goalLabelHtml(g){ if(!g.parentId) return `${escHtml(g.name)} ${goalTagHtml(g)}`; const p=loadGoals().find(o=>o.id===g.parentId); if(!p) return `${escHtml(g.name)} ${goalTagHtml(g)}`; return `<span class="mini-goto">${escHtml(goalMiniTgt(g))}closer to</span><span class="mini-par">${escHtml(p.name)} ${goalTagHtml(g)}</span>`; }
+function goalLabelHtml(g, noTag){ const tag=noTag?'':' '+goalTagHtml(g); if(!g.parentId) return `${escHtml(g.name)}${tag}`; const p=loadGoals().find(o=>o.id===g.parentId); if(!p) return `${escHtml(g.name)}${tag}`; return `<span class="mini-goto">${escHtml(goalMiniTgt(g))}closer to</span><span class="mini-par">${escHtml(p.name)}${tag}</span>`; }
 // A time entry's task label: minis have no name ('mini') — resolve to the nugget label so the Log list is readable.
 function entryTaskLabel(e){ if(e.goalId){ const g=loadGoals().find(o=>o.id===e.goalId); if(g&&g.parentId) return goalLabel(g); } return e.task; }
 // Log-row tag: goal-linked entries show the goal/mini reference tag; plain tasks show none.
@@ -2349,7 +2350,7 @@ function goalFormReset(){ goalEdit=null; goalMiniParent=null; document.getElemen
   document.getElementById('gDatesWrap').style.display=''; document.getElementById('gPeriodWrap').style.display='none';
   document.getElementById('gUnitLab').textContent='unit'; document.getElementById('goalFormTitle').textContent='Add a goal';
   document.getElementById('gNameWrap').style.display=''; // minis hide it; default state = shown
-  document.getElementById('gDelete').style.display='none'; document.getElementById('gDone').style.display='none'; document.getElementById('gMini').style.display='none'; updGoalTier(); goalFormShow(false); }
+  document.getElementById('gDelete').style.display='none'; document.getElementById('gDone').style.display='none'; document.getElementById('gMini').style.display='none'; document.getElementById('gIdChip').style.display='none'; updGoalTier(); goalFormShow(false); }
 // Open the goal form pre-locked to carve a mini out of parent pid (cat/unit/mapping inherited, always active).
 window.startMiniCreate=function(pid){
   const p=loadGoals().find(o=>o.id===pid); if(!p) return;
@@ -2524,7 +2525,7 @@ function goalCard(x){
       const mpct=m.target>0?Math.min(100,Math.round((+m.cur||0)/m.target*100)):0;
       const msec=(m.sec||'active'); const off=!m.done && msec!=='active'; const offLab=msec==='progress'?'this quarter':msec==='yearly'?'yearly':'someday';
       return `<div class="gmini${m.done?' gmini-done':''}${off?' gmini-someday':''}">
-        <span class="gmini-name" title="${escHtml(goalMiniTgt(m))}closer">${escHtml(goalMiniTgt(m))}closer ${goalTagHtml(m)}${off?` <span class="gmini-tag">${offLab}</span>`:''}</span>
+        <span class="gmini-name" title="${escHtml(goalMiniTgt(m))}closer">${escHtml(goalMiniTgt(m))}closer${off?` <span class="gmini-tag">${offLab}</span>`:''}</span>
         <span class="gmini-bar"><i style="width:${mpct}%"></i></span>
         <span class="gmini-sub">${m.cur}${m.target>0?`/${m.target}`:''}</span>
         ${m.done?'<span class="gmini-check" title="Accomplished">✓</span>'
@@ -2542,7 +2543,7 @@ function goalCard(x){
     <div class="grow-line">
       <span class="grow-st" title="${badge}">${stBadge(stKind)}</span>
       <div class="grow-main">
-        <div class="gcard-name" title="${escHtml(goalLabel(x))}">${goalLabelHtml(x)}</div>
+        <div class="gcard-name" title="${escHtml(goalLabel(x))}">${goalLabelHtml(x, true)}</div>
         ${subMain&&!x.parentId?`<div class="grow-sub">${subMain}</div>`:''}
         ${x.by?`<div class="grow-when">${when}</div>`:''}
       </div>
@@ -2788,6 +2789,7 @@ window.goalEditStart=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x
   document.getElementById('gUnit').value=x.unit; document.getElementById('gStart').value=x.start||''; document.getElementById('gBy').value=x.by||'';
   document.getElementById('gMinPer').value=(x.minPerUnit==null?'':x.minPerUnit); document.getElementById('gUnitLab').textContent=x.unit||'unit';
   document.getElementById('gTag').value=x.tag||'';
+  document.getElementById('gIdChipVal').innerHTML=goalTagHtml(x); document.getElementById('gIdChip').style.display='';
   document.getElementById('gNug').checked=((x.sec||'active')==='active');
   document.getElementById('gRecur').checked=!!x.recur;
   const mini=!!x.parentId; // minis: cat/unit/mapping/section all locked to Live Nuggets, no sub-minis
