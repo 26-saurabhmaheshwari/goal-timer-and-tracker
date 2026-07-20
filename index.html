@@ -2458,7 +2458,7 @@ function initGoals(){
       const m=document.getElementById('goalMsg'); m.style.color='#ef4444';
       const q=loadQuota().find(r=>r.cat===o.cat);
       if(q){ const catH=newH+others.filter(x=>x.cat===o.cat).reduce((s,x)=>s+hrs(x),0);
-        if(catH>q.n+1e-9){ m.textContent=`${o.cat} nuggets would use ${Math.round(catH*10)/10}h — over the ${q.n}h reserved for ${o.cat} in your mix. Trim it, or raise the reservation in Settings → Live Nuggets mix.`; return; } }
+        if(catH>q.n+1e-9){ m.textContent=`${o.cat} nuggets would use ${Math.round(catH*10)/10}h — over the ${q.n}h reserved for ${o.cat} in your mix.`; return; } }
       const totH=newH+others.reduce((s,x)=>s+hrs(x),0);
       if(NUGGET_BUDGET>0 && totH>NUGGET_BUDGET+1e-9){ m.textContent=`Nuggets would use ${Math.round(totH*10)/10}h this period — over the ${NUGGET_BUDGET}h budget. Trim a nugget, or raise the budget in Settings → Limits.`; return; }
     }
