@@ -1407,7 +1407,7 @@ function savePeriodEntry(){
     const x=goals.find(o=>o.id===inp.dataset.peG); if(!x) return;
     x.cur=(+x.cur||0)+amt;
     (x.logs=Array.isArray(x.logs)?x.logs:[]).push({ym, period, amt, total:x.cur});
-    if(x.parentId){ const p=goals.find(o=>o.id===x.parentId); if(p){ p.cur=(+p.cur||0)+amt; (p.logs=Array.isArray(p.logs)?p.logs:[]).push({ym, period, amt, total:p.cur, via:x.name}); } } // mini → echo to parent (no 2nd time entry)
+    if(x.parentId){ const p=goals.find(o=>o.id===x.parentId); if(p){ p.cur=(+p.cur||0)+amt; (p.logs=Array.isArray(p.logs)?p.logs:[]).push({ym, period, amt, total:p.cur, via:x.name, viaId:x.id}); } } // mini → echo to parent (no 2nd time entry)
     gTouched=true;
     const mins=goalMins(x,amt);
     if(mins>0){ all.push({id:eid(), ym, period, type:'goal', goalId:x.id, amt, task:goalLabel(x), cat:x.cat, mins}); }
@@ -1740,7 +1740,7 @@ function habitLogHint(){
 function addGoalProgress(g, x, amt, ym, period, extraLog){
   x.cur=(+x.cur||0)+amt;
   (x.logs=Array.isArray(x.logs)?x.logs:[]).push({...(extraLog||{}), ym, period, amt, total:x.cur});
-  if(x.parentId){ const p=g.find(o=>o.id===x.parentId); if(p){ p.cur=(+p.cur||0)+amt; (p.logs=Array.isArray(p.logs)?p.logs:[]).push({ym, period, amt, total:p.cur, via:x.name}); } }
+  if(x.parentId){ const p=g.find(o=>o.id===x.parentId); if(p){ p.cur=(+p.cur||0)+amt; (p.logs=Array.isArray(p.logs)?p.logs:[]).push({ym, period, amt, total:p.cur, via:x.name, viaId:x.id}); } }
   saveGoals(g);
   const mins=goalMins(x,amt);
   if(mins>0){ const all=loadEntries(); all.push({id:eid(), ym, period, type:'goal', goalId:x.id, amt, task:goalLabel(x), cat:x.cat, mins}); saveEntries(all); logSel=`${ym}-${period}`; }
@@ -2875,7 +2875,7 @@ window.goalLogShow=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x) 
   const logs=Array.isArray(x.logs)?x.logs:[];
   document.getElementById('glTitle').textContent=`📜 ${x.name} — log (${logs.length})`;
   document.getElementById('glBody').innerHTML = logs.length ? logs.slice().reverse().map(l=>{
-    const when=(l.ym?l.ym.slice(5)+'/'+l.ym.slice(2,4):'')+(l.period?' '+l.period:'')+(l.via?' · via '+escHtml(l.via):'');
+    const when=(l.ym?l.ym.slice(5)+'/'+l.ym.slice(2,4):'')+(l.period?' '+l.period:'')+(l.via?' · via '+escHtml(l.via)+(l.viaId?' #'+goalTag({id:l.viaId}):''):'');
     const prev=(+l.total||0)-(+l.amt||0);
     return `<div class="glog-row"><span class="glog-when">${when}</span><span class="glog-mid"><span class="glog-prev">${prev}</span> <span class="glog-amt">${(+l.amt||0)<0?'':'+'}${l.amt}</span></span><span class="glog-tot">→ ${l.total}${x.unit?' '+escHtml(x.unit):''}</span></div>`;
   }).join('') : '<div class="hint">No entries yet.</div>';
