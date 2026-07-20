@@ -908,7 +908,7 @@ if(!window.Chart){
       </div>
     </form>
     <h2 style="margin-top:26px">Live Nuggets mix</h2>
-    <div class="hint">Live Nuggets are capped (set the cap in Limits) — the only goals that count toward your daily/period pace. Split your ~12 hrs/period budget by category (e.g. 3 Spiritual, 3 Youth, 2 Study). The rest stays open. This is a gentle guide: the shelf shows a warning if your plan exceeds 12 hrs, but never blocks you.</div>
+    <div class="hint">Live Nuggets are capped (set the cap in Limits) — the only goals that count toward your daily/period pace. Split your period budget by category (e.g. 3 Spiritual, 3 Youth, 2 Study); set the budget in Limits. The rest stays open. When <b>hard-block</b> is on (Limits), a nugget that would push its category over its reserved hours — or the period over budget — is blocked on save. Turn it off in Limits to treat this as a gentle guide only.</div>
     <div class="form" style="margin-top:12px">
       <div id="quotaRows"></div>
       <div style="margin-top:8px"><button type="button" id="quotaAdd" class="btn ghost">＋ Reserve a category</button></div>
@@ -984,7 +984,11 @@ if(!window.Chart){
         <label>Live Nuggets cap <input id="setNugCap" type="number" min="1" max="15" step="1" style="width:110px"></label>
         <label>Recurring max (% of Yearly hours) <input id="setRecurPct" type="number" min="10" max="100" step="5" style="width:150px"></label>
       </div>
-      <div class="hint" style="margin:-6px 0 0">Nuggets are the only goals counted in daily/period pace. A recurring goal is blocked on save if it'd push recurring past this share of your Yearly hours, leaving room for finish-line goals.</div>
+      <div class="frow">
+        <label>Nugget hours budget (per 10-day period) <input id="setNugBudget" type="number" min="1" max="200" step="0.5" style="width:130px"></label>
+        <label style="display:flex;align-items:center;gap:8px"><input id="setEnforceNug" type="checkbox" style="width:auto;margin:0"> Hard-block nuggets that break the mix</label>
+      </div>
+      <div class="hint" style="margin:-6px 0 0">Nuggets are the only goals counted in daily/period pace. A recurring goal is blocked on save if it'd push recurring past this share of your Yearly hours, leaving room for finish-line goals. When <b>hard-block</b> is on, a nugget is also blocked on save if it would push its category over its reserved hours in the mix, or all nuggets over the period budget above.</div>
       <div class="gform-foot">
         <button type="submit" class="btn">Save</button>
         <span id="limitsMsg" class="fmsg"></span>
@@ -2209,12 +2213,16 @@ function renderLimitsSettings(){
   const c=document.getElementById('setNugCap'), p=document.getElementById('setRecurPct');
   if(!c) return;
   const L=loadLimits(); c.value=L.nugCap; p.value=L.recurPct;
+  const b=document.getElementById('setNugBudget'), en=document.getElementById('setEnforceNug');
+  if(b) b.value=L.nugBudget; if(en) en.checked=L.enforceNug;
 }
 function saveLimitsForm(e){
   e.preventDefault();
   const nugCap=Math.min(15,Math.max(1,Math.round(+document.getElementById('setNugCap').value||0)));
   const recurPct=Math.min(100,Math.max(10,Math.round(+document.getElementById('setRecurPct').value||0)));
-  saveLimits({nugCap, recurPct}); // persists + sets SEC_CAP.active + fbSyncPush
+  const nugBudget=Math.min(200,Math.max(1,Math.round((+document.getElementById('setNugBudget').value||0)*2)/2));
+  const enforceNug=document.getElementById('setEnforceNug').checked;
+  saveLimits({nugCap, recurPct, nugBudget, enforceNug}); // persists + sets SEC_CAP.active + NUGGET_BUDGET + fbSyncPush
   renderLimitsSettings();
   if(!document.getElementById('viewGoals').hidden) renderGoals(); // reflect the new nugget cap live
   const msg=document.getElementById('limitsMsg'); msg.textContent='Saved ✓'; msg.style.color='#34a853';
@@ -2437,6 +2445,23 @@ function initGoals(){
     if(!willMini && o.sec==='active' && SEC_CAP.active && secCount('active', goalEdit)>=SEC_CAP.active){
       const m=document.getElementById('goalMsg'); m.textContent=secCapMsg('active'); m.style.color='#ef4444'; return;
     } // only the nugget tier is capped now — Quarterly/Yearly/Someday auto-fill from the deadline
+    // Live Nuggets hours cap — the mix is HARD when enforceNug is on: block a nugget that would push its
+    // category over its reserved hours, or the period over the total budget. Minis stand in for parents (loggable set).
+    if(loadLimits().enforceNug && o.sec==='active'){
+      const hrs=x=>(+x.target||0)*goalMinPer(x)/60;
+      const pid=o.parentId||goalMiniParent||(goalEdit?(g.find(x=>x.id===goalEdit)||{}).parentId:null);
+      const par=pid?g.find(x=>x.id===pid):null;
+      const effO=(par&&o.minPerUnit==null)?{...o,minPerUnit:par.minPerUnit,unit:o.unit||par.unit}:o;
+      const hasKids=!o.parentId&&goalEdit&&g.some(k=>k.parentId===goalEdit&&!k.done&&(k.sec||'active')==='active');
+      const newH=hasKids?0:hrs(effO); // a parent with active minis contributes via its minis, not itself
+      const others=loggableGoals().filter(x=>x.id!==goalEdit);
+      const m=document.getElementById('goalMsg'); m.style.color='#ef4444';
+      const q=loadQuota().find(r=>r.cat===o.cat);
+      if(q){ const catH=newH+others.filter(x=>x.cat===o.cat).reduce((s,x)=>s+hrs(x),0);
+        if(catH>q.n+1e-9){ m.textContent=`${o.cat} nuggets would use ${Math.round(catH*10)/10}h — over the ${q.n}h reserved for ${o.cat} in your mix. Trim it, or raise the reservation in Settings → Live Nuggets mix.`; return; } }
+      const totH=newH+others.reduce((s,x)=>s+hrs(x),0);
+      if(NUGGET_BUDGET>0 && totH>NUGGET_BUDGET+1e-9){ m.textContent=`Nuggets would use ${Math.round(totH*10)/10}h this period — over the ${NUGGET_BUDGET}h budget. Trim a nugget, or raise the budget in Settings → Limits.`; return; }
+    }
     // Recurring hours cap: recurring goals must stay ≤ the configured % of the Yearly total need, so finish-line goals keep room.
     if(!willMini && o.recur){
       const cap=loadLimits().recurPct/100;
@@ -2640,13 +2665,15 @@ function renderGoalFilter(){
 // --- Tier caps: Live Nuggets 7 / Quarterly 11 / Yearly 21 (top-level goals only; minis ride a parent) ---
 // ---- Configurable limits (Settings→Limits): nugget cap + recurring % of Yearly hours. ----
 const LS_LIMITS='ptd_limits_v1';
-const SEED_LIMITS={nugCap:9, recurPct:80};
+const SEED_LIMITS={nugCap:9, recurPct:80, nugBudget:12, enforceNug:true};
 function loadLimits(){ try{ const v=JSON.parse(localStorage.getItem(LS_LIMITS)); const o={...SEED_LIMITS, ...(v&&typeof v==='object'&&!Array.isArray(v)?v:{})};
   o.nugCap=Math.min(15,Math.max(1,Math.round(+o.nugCap||SEED_LIMITS.nugCap)));
-  o.recurPct=Math.min(100,Math.max(10,Math.round(+o.recurPct||SEED_LIMITS.recurPct))); return o; }catch(e){ return {...SEED_LIMITS}; } }
-function saveLimits(o){ const m={...loadLimits(),...o}; localStorage.setItem(LS_LIMITS, JSON.stringify(m)); SEC_CAP.active=m.nugCap; fbSyncPush(); }
+  o.recurPct=Math.min(100,Math.max(10,Math.round(+o.recurPct||SEED_LIMITS.recurPct)));
+  o.nugBudget=Math.min(200,Math.max(1,Math.round((+o.nugBudget||SEED_LIMITS.nugBudget)*2)/2));
+  o.enforceNug=o.enforceNug!==false; return o; }catch(e){ return {...SEED_LIMITS}; } }
+function saveLimits(o){ const m={...loadLimits(),...o}; localStorage.setItem(LS_LIMITS, JSON.stringify(m)); SEC_CAP.active=m.nugCap; NUGGET_BUDGET=m.nugBudget; fbSyncPush(); }
 const SEC_CAP={active:loadLimits().nugCap, progress:11, yearly:21};
-const NUGGET_BUDGET=12; // hours per 10-day period reserved for Live Nuggets (soft plan; grey line + mix editor)
+let NUGGET_BUDGET=loadLimits().nugBudget; // hours per 10-day period for Live Nuggets (configurable in Settings→Limits; hard-blocks the mix when enforceNug is on)
 const SEC_LAB={active:'Live Nuggets', progress:'This Quarter', yearly:'Yearly', someday:'Someday'};
 function secOfGoal(g){ const s=(g.sec||'active'); return (s==='active'||s==='progress'||s==='yearly')?s:'someday'; }
 function secCount(sec, exceptId){ if(sec==='active') return loggableGoals().filter(g=>g.id!==exceptId).length; // nuggets include active minis
