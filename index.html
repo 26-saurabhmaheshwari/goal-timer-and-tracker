@@ -3686,15 +3686,19 @@ function renderBattery(){
   const box=document.getElementById('batteryBox'); if(!box) return;
   const periods=batteryPeriods(), ents=loadEntries();
   const byCat=batteryCatBuckets(ents);
-  // keep Settings order; drop categories with no time in the window
-  const cats=ALLCATS.filter(c=>byCat[c] && Object.values(byCat[c]).some(v=>v>0));
-  if(!cats.length){ box.innerHTML=`<div class="hint" style="text-align:center;padding:18px 0">Log some time and each category's recent-activity battery appears here.</div>`; return; }
-  box.innerHTML=cats.map(c=>{
-    const buckets=byCat[c];
-    const vals=periods.map(p=>buckets[`${p.ym}-${p.period}`]||0);
-    const max=Math.max(1,...vals), sum=vals.reduce((a,v)=>a+v,0), col=colorFor(c);
+  // rows = categories with any time in the window, sorted biggest total first (mirrors the
+  // pie's ranking). ONE shared scale across all rows → cell heights compare like the pie.
+  const rows=ALLCATS
+    .map(c=>{ const buckets=byCat[c]||{}; const vals=periods.map(p=>buckets[`${p.ym}-${p.period}`]||0);
+      return {c, vals, sum:vals.reduce((a,v)=>a+v,0)}; })
+    .filter(r=>r.sum>0)
+    .sort((a,b)=>b.sum-a.sum);
+  if(!rows.length){ box.innerHTML=`<div class="hint" style="text-align:center;padding:18px 0">Log some time and each category's recent-activity battery appears here.</div>`; return; }
+  const gmax=Math.max(1,...rows.flatMap(r=>r.vals)); // one busiest period across ALL categories
+  box.innerHTML=rows.map(({c,vals,sum})=>{
+    const col=colorFor(c);
     const cells=periods.map((p,i)=>{
-      const v=vals[i], h=v>0?Math.max(8,Math.round(v/max*100)):0;
+      const v=vals[i], h=v>0?Math.max(3,Math.round(v/gmax*100)):0; // thin tick for nonzero, else empty
       const lbl=plabel(`${p.ym}-${p.period}`);
       return `<li title="${fmtShort(v)} · ${lbl}"><i style="height:${h}%;background:${col}"></i></li>`;
     }).join('');
