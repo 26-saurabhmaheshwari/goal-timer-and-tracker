@@ -2555,7 +2555,7 @@ function goalCard(x){
         <span class="gmini-sub">${m.cur}${m.target>0?`/${m.target}`:''}</span>
         ${m.done?'<span class="gmini-check" title="Accomplished">✓</span>'
           :`<button type="button" title="Add progress" onclick="goalAdd('${m.id}')">+</button><button type="button" class="gmini-ok" title="Mark accomplished" onclick="goalToggleDone('${m.id}')">✓</button>`}
-        <button type="button" title="Edit" onclick="goalEditStart('${m.id}')">✎</button>
+        ${(m.done||off)?`<button type="button" title="Edit" onclick="goalEditStart('${m.id}')">✎</button>`:''}
       </div>`;
     }).join('')}
   </div>` : '';
