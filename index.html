@@ -1410,7 +1410,7 @@ function savePeriodEntry(){
     if(x.parentId){ const p=goals.find(o=>o.id===x.parentId); if(p){ p.cur=(+p.cur||0)+amt; (p.logs=Array.isArray(p.logs)?p.logs:[]).push({ym, period, amt, total:p.cur, via:x.name}); } } // mini → echo to parent (no 2nd time entry)
     gTouched=true;
     const mins=goalMins(x,amt);
-    if(mins>0){ all.push({id:eid(), ym, period, type:'goal', goalId:x.id, amt, task:x.name, cat:x.cat, mins}); }
+    if(mins>0){ all.push({id:eid(), ym, period, type:'goal', goalId:x.id, amt, task:goalLabel(x), cat:x.cat, mins}); }
     added++;
   });
   const dropMsg = dropped.length ? `${dropped.join(', ')}: 0 min/day — set a min/day in Settings, or use the "+ mins" box. Not saved.` : '';
@@ -1743,7 +1743,7 @@ function addGoalProgress(g, x, amt, ym, period, extraLog){
   if(x.parentId){ const p=g.find(o=>o.id===x.parentId); if(p){ p.cur=(+p.cur||0)+amt; (p.logs=Array.isArray(p.logs)?p.logs:[]).push({ym, period, amt, total:p.cur, via:x.name}); } }
   saveGoals(g);
   const mins=goalMins(x,amt);
-  if(mins>0){ const all=loadEntries(); all.push({id:eid(), ym, period, type:'goal', goalId:x.id, amt, task:x.name, cat:x.cat, mins}); saveEntries(all); logSel=`${ym}-${period}`; }
+  if(mins>0){ const all=loadEntries(); all.push({id:eid(), ym, period, type:'goal', goalId:x.id, amt, task:goalLabel(x), cat:x.cat, mins}); saveEntries(all); logSel=`${ym}-${period}`; }
   return mins;
 }
 function submitGoal(ym,period){
@@ -2071,7 +2071,7 @@ function renderLog(){
   const rows = all.filter(e=>pkey(e)===logSel);
   document.getElementById('entryCount').textContent = all.length? `· ${all.length} total` : '';
   document.getElementById('entryTable').innerHTML = rows.length
-    ? rows.map(e=>`<div class="trow"><span class="tt">${escHtml(e.task)}${e.times?` <span style="color:var(--muted);font-size:12px">×${e.times}${e.extra?` +${e.extra}m`:''}</span>`:''}</span>
+    ? rows.map(e=>`<div class="trow"><span class="tt">${escHtml(entryTaskLabel(e))}${e.times?` <span style="color:var(--muted);font-size:12px">×${e.times}${e.extra?` +${e.extra}m`:''}</span>`:''}</span>
         <span class="tc" style="background:${colorFor(e.cat)}">${e.cat}</span>
         <span class="tm">${fmtShort(e.mins)}</span>
         <button class="del" onclick="deleteEntry('${e.id}')">✕</button></div>`).join('')
@@ -2320,6 +2320,8 @@ function minisOf(id){ return goalsLive().filter(g=>g.parentId===id); }
 function goalMiniTgt(g){ return (+g.target>0)?`${g.target} ${g.unit||''}`.trimEnd()+' ':''; }
 function goalLabel(g){ if(!g.parentId) return g.name; const p=loadGoals().find(o=>o.id===g.parentId); return p?`${goalMiniTgt(g)}closer to ${p.name}`:g.name; }
 function goalLabelHtml(g){ if(!g.parentId) return escHtml(g.name); const p=loadGoals().find(o=>o.id===g.parentId); if(!p) return escHtml(g.name); return `<span class="mini-goto">${escHtml(goalMiniTgt(g))}closer to</span><span class="mini-par">${escHtml(p.name)}</span>`; }
+// A time entry's task label: minis have no name ('mini') — resolve to the nugget label so the Log list is readable.
+function entryTaskLabel(e){ if(e.goalId){ const g=loadGoals().find(o=>o.id===e.goalId); if(g&&g.parentId) return goalLabel(g); } return e.task; }
 // What the log lists (Log Data dropdown, period entry, pledge) offer: active not-done
 // goals, but a parent with ≥1 live active mini is REPLACED by those minis. Orphan minis
 // (parent done/someday) stand alone so they stay loggable.
