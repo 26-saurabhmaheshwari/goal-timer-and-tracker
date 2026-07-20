@@ -757,7 +757,7 @@ if(!window.Chart){
     <button type="button" id="gClose" class="modal-x" title="Close">✕</button>
     <h2 id="goalFormTitle">Add a goal</h2>
     <div class="hint">Named goal with its own unit, target and deadline. Progress = current ÷ target.</div>
-    <div id="gIdChip" class="hint" style="margin-top:-4px;display:none">Unique code: <span id="gIdChipVal"></span></div>
+    <div id="gIdChip" style="margin:-4px 0 14px;font-size:13px;color:var(--ink);display:none">Unique code: <span id="gIdChipVal" style="font-weight:700;letter-spacing:.02em;font-variant-numeric:tabular-nums"></span></div>
     <form id="goalForm" class="form">
       <label id="gNameWrap">Name <input id="gName" placeholder="e.g. Read 12 books"></label>
       <div class="frow">
@@ -2261,7 +2261,7 @@ function minisOf(id){ return goalsLive().filter(g=>g.parentId===id); }
 function goalMiniTgt(g){ return (+g.target>0)?`${g.target} ${g.unit||''}`.trimEnd()+' ':''; }
 function goalLabel(g){ if(!g.parentId) return g.name; const p=loadGoals().find(o=>o.id===g.parentId); return p?`${goalMiniTgt(g)}closer to ${p.name}`:g.name; }
 // Short stable per-goal reference tag (#xxxx) — hash of the goal id, base36, so the same goal reads the same on every device. No stored state.
-function goalTag(g){ let h=0; const s=String((g&&g.id)||''); for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0; return h.toString(36).slice(-5).padStart(5,'0'); }
+function goalTag(g){ let h=0; const s=String((g&&g.id)||''); for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0; return h.toString(36).slice(-6).padStart(6,'0'); }
 function goalTagHtml(g){ return `<span class="gid">#${goalTag(g)}</span>`; }
 function goalLabelHtml(g, noTag){ const tag=noTag?'':' '+goalTagHtml(g); if(!g.parentId) return `${escHtml(g.name)}${tag}`; const p=loadGoals().find(o=>o.id===g.parentId); if(!p) return `${escHtml(g.name)}${tag}`; return `<span class="mini-goto">${escHtml(goalMiniTgt(g))}closer to</span><span class="mini-par">${escHtml(p.name)}${tag}</span>`; }
 // A time entry's task label: minis have no name ('mini') — resolve to the nugget label so the Log list is readable.
@@ -2789,7 +2789,7 @@ window.goalEditStart=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x
   document.getElementById('gUnit').value=x.unit; document.getElementById('gStart').value=x.start||''; document.getElementById('gBy').value=x.by||'';
   document.getElementById('gMinPer').value=(x.minPerUnit==null?'':x.minPerUnit); document.getElementById('gUnitLab').textContent=x.unit||'unit';
   document.getElementById('gTag').value=x.tag||'';
-  document.getElementById('gIdChipVal').innerHTML=goalTagHtml(x); document.getElementById('gIdChip').style.display='';
+  document.getElementById('gIdChipVal').textContent='#'+goalTag(x); document.getElementById('gIdChip').style.display='';
   document.getElementById('gNug').checked=((x.sec||'active')==='active');
   document.getElementById('gRecur').checked=!!x.recur;
   const mini=!!x.parentId; // minis: cat/unit/mapping/section all locked to Live Nuggets, no sub-minis
