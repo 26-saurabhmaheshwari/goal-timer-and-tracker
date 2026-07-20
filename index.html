@@ -2695,15 +2695,16 @@ function paceVerdictHTML(avail, need){
   else if(slack>=need*0.15){ col='#34a853'; txt=`On pace 🎯 — ${f(avail)}h of time left, goals need ${f(need)}h. ${f(slack)}h to spare.`; }
   else if(slack>=0){ col='#f9a825'; txt=`Cutting it close ⏳ — ${f(avail)}h left vs ${f(need)}h needed. Only ${f(slack)}h buffer.`; }
   else { col='#ea4335'; txt=`Behind ⚠️ — goals need ${f(need)}h but only ${f(avail)}h left. Short by ${f(-slack)}h.`; }
-  return `<div style="margin-top:6px;font-size:12px;font-weight:600;color:${col}">${txt}</div>`;
+  return `<span style="font-weight:600;color:${col};text-align:right;padding-left:16px">${txt}</span>`;
 }
 function renderTierBars(){
   const set=(id,sec,grey)=>{ const el=document.getElementById(id); if(el) el.innerHTML=tierBarHTML(sec,grey); };
   const yL=periodsLeftScope('year');
   set('nugBar','active',`Plan ~${NUGGET_BUDGET} hrs per period across your ${SEC_CAP.active} nuggets`);
   set('yBar','yearly',`≈ ${yL*12}h left this year · ${yL} period${yL>1?'s':''} × 12h`);
-  const yEl=document.getElementById('yBar');
-  if(yEl) yEl.insertAdjacentHTML('beforeend', paceVerdictHTML(yL*12, tierHours('yearly').l));
+  const hint=document.querySelector('#yBar .hint');
+  if(hint){ hint.style.display='flex'; hint.style.justifyContent='space-between'; hint.style.alignItems='baseline'; hint.style.flexWrap='wrap';
+    hint.insertAdjacentHTML('beforeend', paceVerdictHTML(yL*12, tierHours('yearly').l)); }
 }
 function renderSecCaps(){
   const set=(id,sec)=>{ const el=document.getElementById(id); if(el) el.textContent=`${secCount(sec)}/${SEC_CAP[sec]}`; };
