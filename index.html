@@ -67,11 +67,6 @@ if(!window.Chart){
   /* ---- page header strip ---- */
   header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:12px;padding-bottom:16px;border-bottom:1px solid var(--line)}
   .ph-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-  /* #49: header quick-log */
-  #qlogForm{display:flex}
-  #qlog{width:185px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font-size:12.5px;font-family:inherit;transition:width .15s,border-color .15s}
-  #qlog:focus{outline:none;border-color:var(--accent);width:240px}
-  #qlog::placeholder{color:var(--muted)}
   #fbWho{font-size:12px;color:var(--muted)}
   #fbBtn{cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 13px;border-radius:8px;font-size:12.5px;font-weight:600}
   #fbBtn:hover{background:var(--panel)}
@@ -548,9 +543,6 @@ if(!window.Chart){
       <div class="sub" id="sub">your finite hours, on purpose</div>
     </div>
     <div class="ph-right">
-      <form id="qlogForm" class="noprint" title="Quick log — a time like &quot;30m yoga&quot; hits a habit; a plain number like &quot;2 books&quot; hits a goal. Logged to today's period.">
-        <input id="qlog" type="text" placeholder="⚡ 30m yoga · 2 books" autocomplete="off" aria-label="Quick log">
-      </form>
       <button id="goalCreateBtn" class="btn" title="Create goal" aria-label="Create goal" hidden>
         <span class="gc-plus">＋</span>
         <span class="gc-lab">New goal</span>
@@ -1328,7 +1320,6 @@ function initLogForm(){
   if(onRed){ onRed.innerHTML = ALLCATS.map(c=>`<option value="${escHtml(c)}" ${c==='Career'?'selected':''}>${escHtml(c)}</option>`).join('');
     onRed.addEventListener('change', ()=>renderOnline()); }
   document.getElementById('logForm').addEventListener('submit', onLogSubmit);
-  document.getElementById('qlogForm').addEventListener('submit', qlogSubmit); // #49 quick-log
   // --- whole-period bulk entry ---
   document.getElementById('peMonth').innerHTML = ymList().map(o=>`<option value="${o.key}">${o.label}</option>`).join('');
   document.getElementById('periodEntryBtn').onclick = openPeriodEntry;
@@ -1778,58 +1769,6 @@ function submitScreen(ym,period){
   logSel=`${ym}-${period}`;
   flash(`Added ${hours}h ${dev==='phone'?'📱 phone':'💻 laptop'} screen time`);
   renderLog();
-}
-// #49: header quick-log — one input, logged to today's period. "30m yoga" (time suffix)
-// = habit minutes (extra-mins entry, mirrors submitProject) or a time-mapped goal;
-// "2 books" (bare number) = goal units via addGoalProgress, or habit times-done.
-function qlogParse(s){
-  const m=s.trim().match(/^(\d+(?:\.\d+)?)\s*(m|min|mins|h|hr|hrs)?\b\s*(.+)$/i);
-  if(!m) return null;
-  const n=+m[1], suf=(m[2]||'').toLowerCase(), q=m[3].trim().toLowerCase();
-  if(!(n>0)||!q) return null;
-  return {n, mins: suf? Math.round(suf[0]==='h'? n*60 : n) : null, q};
-}
-function qlogMatch(list, nameOf, q){
-  const lc=x=>(nameOf(x)||'').toLowerCase();
-  return list.find(x=>lc(x)===q) || list.find(x=>lc(x).startsWith(q)) || list.find(x=>lc(x).includes(q)) || null;
-}
-function qlogFlash(inp, msg){ inp.value=''; inp.placeholder=msg; clearTimeout(qlogFlash._t); qlogFlash._t=setTimeout(()=>{ inp.placeholder='⚡ 30m yoga · 2 books'; },3500); }
-function qlogSubmit(e){
-  e.preventDefault();
-  const inp=document.getElementById('qlog');
-  const p=qlogParse(inp.value);
-  if(!p){ qlogFlash(inp,'⚠ try "30m yoga" or "2 books"'); return; }
-  const now=new Date(), ym=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0'), period=periodOfDay(now.getDate());
-  const habit=qlogMatch(loadHabits().filter(h=>!h.paused&&!h.done), h=>h.n, p.q);
-  const goal=qlogMatch(loggableGoals(), g=>g.name, p.q);
-  if(p.mins!=null){ // time given → habit first, else a time-mapped goal
-    if(habit){
-      const all=loadEntries();
-      all.push({id:eid(), ym, period, type:'project', task:habit.n, cat:habit.cat||'', mins:p.mins, times:0, extra:p.mins});
-      saveEntries(all); logSel=`${ym}-${period}`;
-      qlogFlash(inp,`✓ ${habit.n} +${fmtShort(p.mins)}`);
-    } else if(goal && goalMinPer(goal)>0){
-      const g=loadGoals(), x=g.find(o=>o.id===goal.id); if(!x) return;
-      const amt=+(p.mins/goalMinPer(x)).toFixed(2);
-      if(amt<=0){ qlogFlash(inp,'⚠ amount too small'); return; }
-      addGoalProgress(g, x, amt, ym, period);
-      qlogFlash(inp,`✓ ${x.name} +${amt} ${x.unit||''}`);
-    } else { qlogFlash(inp,`⚠ no habit matched "${p.q}"`); return; }
-  } else { // bare number → goal units first, else habit times-done
-    if(goal){
-      const g=loadGoals(), x=g.find(o=>o.id===goal.id); if(!x) return;
-      const mins=addGoalProgress(g, x, p.n, ym, period);
-      qlogFlash(inp,`✓ ${x.name} +${p.n} ${x.unit||''}${mins>0?' · '+fmtShort(mins):''}`);
-    } else if(habit){
-      const mins=Math.round(p.n*(+habit.m||0));
-      if(mins<=0){ qlogFlash(inp,'⚠ that habit has no min/day — use "30m ..."'); return; }
-      const all=loadEntries();
-      all.push({id:eid(), ym, period, type:'project', task:habit.n, cat:habit.cat||'', mins, times:p.n, extra:0});
-      saveEntries(all); logSel=`${ym}-${period}`;
-      qlogFlash(inp,`✓ ${habit.n} ×${p.n} · ${fmtShort(mins)}`);
-    } else { qlogFlash(inp,`⚠ nothing matched "${p.q}"`); return; }
-  }
-  renderGoals(); if(document.getElementById('entryTable')) renderLog();
 }
 function flash(msg, err){ const el=document.getElementById('formMsg'); el.textContent=msg; el.style.color=err?'#dc2626':'#16a34a'; }
 function refreshCatOptions(){
@@ -2321,7 +2260,7 @@ function minisOf(id){ return goalsLive().filter(g=>g.parentId===id); }
 function goalMiniTgt(g){ return (+g.target>0)?`${g.target} ${g.unit||''}`.trimEnd()+' ':''; }
 function goalLabel(g){ if(!g.parentId) return g.name; const p=loadGoals().find(o=>o.id===g.parentId); return p?`${goalMiniTgt(g)}closer to ${p.name}`:g.name; }
 // Short stable per-goal reference tag (#xxxx) — hash of the goal id, base36, so the same goal reads the same on every device. No stored state.
-function goalTag(g){ let h=0; const s=String((g&&g.id)||''); for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0; return h.toString(36).slice(-4).padStart(4,'0'); }
+function goalTag(g){ let h=0; const s=String((g&&g.id)||''); for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0; return h.toString(36).slice(-5).padStart(5,'0'); }
 function goalTagHtml(g){ return `<span class="gid">#${goalTag(g)}</span>`; }
 function goalLabelHtml(g){ if(!g.parentId) return `${escHtml(g.name)} ${goalTagHtml(g)}`; const p=loadGoals().find(o=>o.id===g.parentId); if(!p) return `${escHtml(g.name)} ${goalTagHtml(g)}`; return `<span class="mini-goto">${escHtml(goalMiniTgt(g))}closer to</span><span class="mini-par">${escHtml(p.name)} ${goalTagHtml(g)}</span>`; }
 // A time entry's task label: minis have no name ('mini') — resolve to the nugget label so the Log list is readable.
