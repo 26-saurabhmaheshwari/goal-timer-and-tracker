@@ -2692,9 +2692,9 @@ function paceVerdictHTML(avail, need){
   const f=n=>Number.isInteger(n)?n:Math.round(n*10)/10;
   const slack=avail-need; let col,txt;
   if(need<=0){ col='#34a853'; txt=`All goal hours done — nothing left to catch up on.`; }
-  else if(slack>=need*0.15){ col='#34a853'; txt=`On pace 🎯 — ${f(avail)}h of time left, goals need ${f(need)}h. ${f(slack)}h to spare.`; }
-  else if(slack>=0){ col='#f9a825'; txt=`Cutting it close ⏳ — ${f(avail)}h left vs ${f(need)}h needed. Only ${f(slack)}h buffer.`; }
-  else { col='#ea4335'; txt=`Behind ⚠️ — goals need ${f(need)}h but only ${f(avail)}h left. Short by ${f(-slack)}h.`; }
+  else if(slack>=need*0.15){ col='#34a853'; txt=`On pace 🎯 — ${f(slack)}h to spare (${f(avail)}h time vs ${f(need)}h work)`; }
+  else if(slack>=0){ col='#f9a825'; txt=`Tight ⏳ — ${f(slack)}h buffer (${f(avail)}h time vs ${f(need)}h work)`; }
+  else { col='#ea4335'; txt=`Behind ⚠️ — ${f(-slack)}h short (${f(avail)}h time vs ${f(need)}h work)`; }
   return `<span style="font-weight:600;color:${col};text-align:right;padding-left:16px">${txt}</span>`;
 }
 function renderTierBars(){
