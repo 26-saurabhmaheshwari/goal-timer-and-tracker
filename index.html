@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
   FILE MAP - grep these exact tags to jump (line numbers drift, names don't)
-  HTML views:   /viewOverview (contains ovYear/ovMonthly/ovPot sub-tabs)  /viewLog (+viewAudit below it)  /viewGoals  /viewPlanning  /viewReports  /viewMethod (static scheduling reference)  /viewSettings (FAQ = setFaq sidebar section)  (each closes with a div comment)
+  HTML views:   /viewOverview (contains ovYear/ovMonthly/ovPot sub-tabs)  /viewLog (+viewAudit below it)  /viewGoals  /viewPlanning  /viewReports  /viewSettings (FAQ = setFaq sidebar section)  (each closes with a div comment)
   JS sections:  "===== LOG VIEW"  "category management (Settings)"  "===== ONLINE / OFFLINE"
                 "===== LIFE BAR"  "===== GOALS"  "===== TIME PLANNING"  "===== AUDIT"  "===== ARCHIVE"
   Data/state:   LS_GOALS / SEED_GOALS . LS_HABITS / SEED_HABITS / loadHabits / groupHabits . LS_ICONS / SEED_ICONS / ICONS / iconFor (category icons, Settings-managed)
@@ -536,7 +536,6 @@ if(!window.Chart){
     <button data-v="planning"><span class="sb-ic">▦</span><span class="sb-lab">Planning</span></button>
     <button data-v="log"><span class="sb-ic">✎</span><span class="sb-lab">Log Data</span></button>
     <button data-v="reports"><span class="sb-ic">▤</span><span class="sb-lab">Reports</span></button>
-    <button data-v="method"><span class="sb-ic">◷</span><span class="sb-lab">Method</span></button>
     <button data-v="settings"><span class="sb-ic">⚙</span><span class="sb-lab">Settings</span></button>
   </nav>
 </aside>
@@ -1083,80 +1082,6 @@ if(!window.Chart){
    </div>
   </div>
 </div><!-- /viewSettings -->
-
-<div id="viewMethod" hidden>
-  <div style="max-width:820px;display:flex;flex-direction:column;gap:16px">
-
-    <div class="card">
-      <h2 style="margin-top:0">Shape a day — the honest version</h2>
-      <div class="hint" style="margin-bottom:14px">A rhythm you can actually hold, not an hour-by-hour contract. A few fixed anchors; the rest stays loose.</div>
-      <div class="icard" style="border-left-color:#b04a3a">
-        <b>Base first, or none of this works.</b> A schedule multiplies focus you already have — it can't create it from empty. If sleep is late and movement is near zero, fix that first: a 15-min walk in the morning (feet outside before screen) and a fixed laptop-close time at night. Layer the shape below only once mornings feel lighter. Running the full plan on a tired base is just the next thing you "tried and failed".
-      </div>
-    </div>
-
-    <div class="card">
-      <h2 style="margin-top:0">The 3 anchors <span class="muted-sm">— fixed, non-negotiable</span></h2>
-      <div class="hint">Lock these three. Everything else flexes around them. Times are yours; the order is the point.</div>
-      <div style="display:flex;flex-direction:column;gap:10px">
-        <div class="icard"><b>Morning walk, before the laptop.</b> 15 min outside within an hour of waking. Resets your body clock, lifts energy, quiets a racing mind. Feet outside <b>before</b> screen.</div>
-        <div class="icard"><b>One family block, lid closed.</b> A real window (e.g. an evening slot), not leftover time. When your kid talks, the laptop closes — that's the anchor, not a nice-to-have.</div>
-        <div class="icard"><b>Night hard-stop.</b> Laptop closes at a set time — your personal-time appointment. Pick one you can actually hold. Work compresses to fit it.</div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2 style="margin-top:0">The 3 zones <span class="muted-sm">— theme the day, don't micromanage it</span></h2>
-      <div class="hint">Group work by <i>kind</i> so you stop switching all day. One rule: deep zone = door closed, reactive zone = door open.</div>
-      <div style="display:flex;flex-direction:column;gap:10px">
-        <div class="icard" style="border-left-color:#3d5266">
-          <b>🔵 Deep zone — morning.</b> Your best brain, so the important work lives here.<br>
-          · Start with your <b>MIT</b> (Most Important Task): the one thing that makes the day a win.<br>
-          · <b>Long Pomodoros: 50–90 min</b> — long enough to reach flow (where work gets fun).<br>
-          · <b>Pings OFF.</b> Only true alerts break through; the world waits till afternoon.
-        </div>
-        <div class="icard" style="border-left-color:#c8853a">
-          <b>🟠 Reactive zone — afternoon.</b> Now you let the world in, on purpose.<br>
-          · All pings, Slack, meetings, ops, admin — herded here.<br>
-          · <b>Short Pomodoros: 15–25 min</b>, batched by type (all messages one box, all admin another).<br>
-          · Being reactive here is fine — it's the designated slot, so it stops bleeding into everything.
-        </div>
-        <div class="icard" style="border-left-color:#6a9a4c">
-          <b>🟢 Wind-down zone — evening.</b> After the hard-stop: family block + personal time. No laptop. This is what the hard-stop protects.
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2 style="margin-top:0">How the hard-stop buys personal time</h2>
-      <div class="hint">Work expands to fill whatever time you give it. So the end has to be real.</div>
-      <div style="font-size:14px;line-height:1.9;color:#3a362c">
-        Book personal time <b>first</b> → work fits before it. Not "finish, then relax" — that "then" never arrives.<br>
-        When the hard-stop nears and something's unfinished, it goes to <b>tomorrow's deep zone</b>. It does <b>not</b> eat your night.<br>
-        Miss this one rule and the whole thing reverts to urgency mode.
-      </div>
-    </div>
-
-    <div class="card">
-      <h2 style="margin-top:0">Make it fun · hit deadlines</h2>
-      <div style="display:flex;flex-direction:column;gap:10px">
-        <div class="icard"><b>Eat the frog, then dessert.</b> Hardest thing in your first box; interesting/creative work as the reward box after. The day gets <i>easier</i> as it goes, not more dreaded.</div>
-        <div class="icard"><b>Reward-pair each box.</b> After a box, a real micro-break you enjoy — music, snack, step outside. The cycle itself becomes pleasant.</div>
-        <div class="icard"><b>Race the timer.</b> For boring tasks, set the box short and try to beat it. Turns admin into a game.</div>
-        <div class="icard"><b>Backward from the deadline.</b> Estimate the boxes a task needs, <b>add 50%</b> (everyone underestimates), then place them on days <i>before</i> it's due. Pre-placed work hits deadlines without the last-minute cram.</div>
-        <div class="icard"><b>Buffer between boxes (10–15 min).</b> This is where "task-switching ate half my day" dies. Build the gap in. Fill only ~60% of each zone with planned boxes — the rest absorbs overruns and the inevitable ping fire.</div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2 style="margin-top:0">If it still won't budge</h2>
-      <div style="font-size:14px;line-height:1.9;color:#3a362c">
-        Racing thoughts, can't wake, low energy from morning, urgency, no drive to move — if the base (walk + sleep) doesn't shift that in <b>3–4 weeks</b>, stop grinding on productivity systems. That cluster is also the profile of burnout, anxiety, or attention issues — a doctor beats any technique there. No shame in it; it's just the right tool for the job.
-      </div>
-    </div>
-
-  </div>
-</div><!-- /viewMethod -->
 
 <script>
 // ---- DATA (minutes) ----
@@ -3315,23 +3240,21 @@ function setView(v){
   if(v==='faq') v='settings'; // FAQ folded into Settings sidebar
   if(v==='pot'){ ovTab='pot'; v='overview'; } // Pot folded into Overview as a sub-tab
   if(v==='planning' && !loadFeatures().planning) v='overview'; // Planning hidden by feature toggle
-  if(!['overview','log','goals','planning','reports','method','settings'].includes(v)) v='overview';
+  if(!['overview','log','goals','planning','reports','settings'].includes(v)) v='overview';
   document.getElementById('viewOverview').hidden = v!=='overview';
   document.getElementById('viewLog').hidden = v!=='log';
   document.getElementById('viewGoals').hidden = v!=='goals';
   document.getElementById('viewPlanning').hidden = v!=='planning';
   document.getElementById('viewAudit').hidden = v!=='log';
   document.getElementById('viewReports').hidden = v!=='reports';
-  document.getElementById('viewMethod').hidden = v!=='method';
   document.getElementById('viewSettings').hidden = v!=='settings';
   document.getElementById('lifeBar').hidden = v!=='overview' || !SHOW_LIFEBAR;
   const subs={overview:'your finite hours, on purpose', log:'log time, goals & screen use · saved on this device',
     goals:'targets vs what you actually did', planning:'daily habits vs goal-based time',
     reports:'compare tracked hours across periods',
-    method:'how to shape a day — the honest version',
     settings:'manage categories & preferences'};
   document.getElementById('sub').textContent = subs[v];
-  const titles={overview:'Overview', log:'Log Data', goals:'Goals', planning:'Time Planning', reports:'Reports', method:'Time Method', settings:'Settings'};
+  const titles={overview:'Overview', log:'Log Data', goals:'Goals', planning:'Time Planning', reports:'Reports', settings:'Settings'};
   document.getElementById('pgTitle').textContent = titles[v];
   document.getElementById('hdYr').textContent = CUR_YM.slice(0,4);
   document.querySelectorAll('#viewNav button').forEach(b=>b.classList.toggle('active', b.dataset.v===v));
