@@ -830,7 +830,7 @@ if(!window.Chart){
   <div class="gwrap">
   <aside class="gside" id="gFilter"></aside>
   <div class="gmain">
-  <div class="card gsec"><h2>Live Nuggets <span id="nugCount" class="seccap"></span></h2><div class="hint">Your top few focus goals — the <b>only</b> ones that count toward your daily/period target. <span id="nugQuota"></span></div><div id="nugBar"></div><div id="secActive"></div></div>
+  <div class="card gsec"><h2>Live Nuggets <span id="nugCount" class="seccap"></span><button id="nugLockBtn" type="button" class="btn-sm" onclick="toggleNugLock()" style="float:right"></button></h2><div class="hint">Your top few focus goals — the <b>only</b> ones that count toward your daily/period target. <span id="nugQuota"></span></div><div id="nugBar"></div><div id="secActive"></div></div>
   <div class="card gsec"><h2>Yearly <span id="yCount" class="seccap"></span></h2><div class="hint">This year's aims — the whole year, this quarter included. Loggable, but not counted in daily/period pace.</div><div id="yBar"></div>
     <div id="secThisQWrap" class="subsec" hidden><h3>🗓 This Quarter</h3><div class="hint">Due this quarter — the near-term slice of your year.</div><div id="secProgress"></div></div>
     <div id="secRecurringWrap" class="subsec" hidden><h3>🔁 Recurring <span id="recurShare" style="font-size:10.5px;font-weight:400;color:var(--muted);letter-spacing:0"></span></h3><div class="hint">Ongoing habit-style goals — no real finish line.</div><div id="secRecurring"></div></div>
@@ -2441,6 +2441,13 @@ function initGoals(){
     const willMini = goalEdit ? ('parentId' in o ? !!o.parentId : !!(g.find(x=>x.id===goalEdit)||{}).parentId) : !!goalMiniParent;
     if(willMini){ o.sec='active'; o.recur=false; } // minis are always Live Nuggets, never recurring
     if(willMini && document.getElementById('gPeriodWrap').style.display!=='none'){ o.start=document.getElementById('gPeriod').value||periodStartISO(); o.by=''; } // minis: window = the picked period
+    // Nugget lock: once the 10-day plan is locked, no NEW nugget (top-level or mini) can be added — finish the round first.
+    if(o.sec==='active' && loadLimits().nugLock){
+      const prevSec = goalEdit ? ((g.find(x=>x.id===goalEdit)||{}).sec||'active') : null;
+      if(!goalEdit || prevSec!=='active'){ // brand-new nugget, or converting an existing goal into one
+        const m=document.getElementById('goalMsg'); m.textContent='🔒 Nuggets are locked. Finish all current nuggets, then unlock (in the Live Nuggets header) to plan the next round.'; m.style.color='#ef4444'; return;
+      }
+    }
     // Nuggets must be time-based so they count toward the hours budget (minis inherit their parent's mapping).
     if(!willMini && (o.sec||'active')==='active' && goalMinPer(o)<=0){
       const m=document.getElementById('goalMsg'); m.textContent='Nuggets must be time-based — set “minutes per unit” (e.g. 1 unit = 60 min).'; m.style.color='#ef4444'; return;
@@ -2669,12 +2676,12 @@ function renderGoalFilter(){
 // --- Tier caps: Live Nuggets 7 / Quarterly 11 / Yearly 21 (top-level goals only; minis ride a parent) ---
 // ---- Configurable limits (Settings→Limits): nugget cap + recurring % of Yearly hours. ----
 const LS_LIMITS='ptd_limits_v1';
-const SEED_LIMITS={nugCap:9, recurPct:80, nugBudget:12, enforceNug:true};
+const SEED_LIMITS={nugCap:9, recurPct:80, nugBudget:12, enforceNug:true, nugLock:false};
 function loadLimits(){ try{ const v=JSON.parse(localStorage.getItem(LS_LIMITS)); const o={...SEED_LIMITS, ...(v&&typeof v==='object'&&!Array.isArray(v)?v:{})};
   o.nugCap=Math.min(15,Math.max(1,Math.round(+o.nugCap||SEED_LIMITS.nugCap)));
   o.recurPct=Math.min(100,Math.max(10,Math.round(+o.recurPct||SEED_LIMITS.recurPct)));
   o.nugBudget=Math.min(200,Math.max(1,Math.round((+o.nugBudget||SEED_LIMITS.nugBudget)*2)/2));
-  o.enforceNug=o.enforceNug!==false; return o; }catch(e){ return {...SEED_LIMITS}; } }
+  o.enforceNug=o.enforceNug!==false; o.nugLock=!!o.nugLock; return o; }catch(e){ return {...SEED_LIMITS}; } }
 function saveLimits(o){ const m={...loadLimits(),...o}; localStorage.setItem(LS_LIMITS, JSON.stringify(m)); SEC_CAP.active=m.nugCap; NUGGET_BUDGET=m.nugBudget; fbSyncPush(); }
 const SEC_CAP={active:loadLimits().nugCap, progress:11, yearly:21};
 let NUGGET_BUDGET=loadLimits().nugBudget; // hours per 10-day period for Live Nuggets (configurable in Settings→Limits; hard-blocks the mix when enforceNug is on)
@@ -2683,6 +2690,17 @@ function secOfGoal(g){ const s=(g.sec||'active'); return (s==='active'||s==='pro
 function secCount(sec, exceptId){ if(sec==='active') return loggableGoals().filter(g=>g.id!==exceptId).length; // nuggets include active minis
   return goalsLive().filter(g=>!g.done && !g.parentId && g.id!==exceptId && secOfGoal(g)===sec).length; }
 function secCapMsg(sec){ const c=SEC_CAP[sec]; return c?`${SEC_LAB[sec]} is capped at ${c}. Remove or move one before adding another.`:''; }
+// A nugget counts as finished once it's flagged done OR has hit its target. loggableGoals() already drops done goals.
+function nugDone(g){ return g.done || (g.target>0 && g.cur>=g.target); }
+function nugAllDone(){ return loggableGoals().every(nugDone); } // empty set → vacuously true
+// Lock/unlock the current nugget plan. Locking blocks new nuggets; unlocking is allowed only when every nugget is finished.
+function toggleNugLock(){
+  if(loadLimits().nugLock){
+    if(!nugAllDone()){ const a=loggableGoals(); alert(`🔒 Locked until every nugget hits its target — ${a.filter(nugDone).length}/${a.length} done. Finish the rest, then unlock to plan the next round.`); return; }
+    saveLimits({nugLock:false});
+  } else saveLimits({nugLock:true});
+  renderGoals();
+}
 // Live Nuggets composition tracker (per-category HOURS plan out of the period budget; soft warning only).
 function nuggetQuotaHTML(){
   const q=loadQuota();
@@ -2740,6 +2758,12 @@ function renderTierBars(){
 function renderSecCaps(){
   const set=(id,sec)=>{ const el=document.getElementById(id); if(el) el.textContent=`${secCount(sec)}/${SEC_CAP[sec]}`; };
   set('nugCount','active');
+  const lb=document.getElementById('nugLockBtn');
+  if(lb){ const locked=loadLimits().nugLock, all=nugAllDone();
+    lb.textContent = locked ? (all?'🔓 Unlock plan':'🔒 Locked') : '🔒 Lock plan';
+    lb.title = locked ? (all?'All nuggets finished — unlock to plan the next round':'Locked until every nugget hits its target') : 'Lock this plan — no new nuggets until all are finished';
+    lb.style.opacity = (locked && !all) ? '0.6' : '1';
+  }
   const yEl=document.getElementById('yCount'); if(yEl) yEl.textContent=`${secCount('yearly')+secCount('progress')}/${SEC_CAP.yearly}`;
   const nq=document.getElementById('nugQuota'); if(nq) nq.innerHTML=nuggetQuotaHTML();
   renderTierBars();
