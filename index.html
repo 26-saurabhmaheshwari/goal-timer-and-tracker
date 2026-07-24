@@ -2441,11 +2441,12 @@ function initGoals(){
     const willMini = goalEdit ? ('parentId' in o ? !!o.parentId : !!(g.find(x=>x.id===goalEdit)||{}).parentId) : !!goalMiniParent;
     if(willMini){ o.sec='active'; o.recur=false; } // minis are always Live Nuggets, never recurring
     if(willMini && document.getElementById('gPeriodWrap').style.display!=='none'){ o.start=document.getElementById('gPeriod').value||periodStartISO(); o.by=''; } // minis: window = the picked period
-    // Nugget lock: once the 10-day plan is locked, no NEW nugget (top-level or mini) can be added — finish the round first.
-    if(o.sec==='active' && loadLimits().nugLock){
-      const prevSec = goalEdit ? ((g.find(x=>x.id===goalEdit)||{}).sec||'active') : null;
-      if(!goalEdit || prevSec!=='active'){ // brand-new nugget, or converting an existing goal into one
-        const m=document.getElementById('goalMsg'); m.textContent='🔒 Nuggets are locked. Finish all current nuggets, then unlock (in the Live Nuggets header) to plan the next round.'; m.style.color='#ef4444'; return;
+    // Nugget lock: once the plan is locked you can ONLY log time on a nugget — no adding, editing target, moving, or deleting.
+    if(loadLimits().nugLock){
+      const prev = goalEdit ? g.find(x=>x.id===goalEdit) : null;
+      const wasNug = prev && !prev.done && (prev.sec||'active')==='active'; // editing a currently-locked nugget
+      if(wasNug || o.sec==='active'){ // frozen nugget, new nugget, or converting a goal into one
+        const m=document.getElementById('goalMsg'); m.textContent=NUG_LOCK_MSG; m.style.color='#ef4444'; return;
       }
     }
     // Nuggets must be time-based so they count toward the hours budget (minis inherit their parent's mapping).
@@ -2693,6 +2694,9 @@ function secCapMsg(sec){ const c=SEC_CAP[sec]; return c?`${SEC_LAB[sec]} is capp
 // A nugget counts as finished once it's flagged done OR has hit its target. loggableGoals() already drops done goals.
 function nugDone(g){ return g.done || (g.target>0 && g.cur>=g.target); }
 function nugAllDone(){ return loggableGoals().every(nugDone); } // empty set → vacuously true
+// A goal frozen by the plan lock: an active (not-done) nugget while the lock is on. Only logging time is allowed on it.
+function isLockedNug(g){ return loadLimits().nugLock && !!g && !g.done && (g.sec||'active')==='active'; }
+const NUG_LOCK_MSG='🔒 Nuggets are locked — you can only log time. Unlock (Live Nuggets header) once every nugget hits its target.';
 // Lock/unlock the current nugget plan. Locking blocks new nuggets; unlocking is allowed only when every nugget is finished.
 function toggleNugLock(){
   if(loadLimits().nugLock){
@@ -2881,6 +2885,7 @@ window.goalEditStart=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x
   gd.onclick=()=>{ goalFormReset(); document.getElementById('goalMsg').textContent=''; window.goalToggleDone(id); };
   updGoalTier(); };
 window.goalToggleDone=function(id){ const g=loadGoals(); const x=g.find(o=>o.id===id); if(!x) return;
+  if(isLockedNug(x)){ alert('🔒 Locked — finish this nugget by logging time to its target, not by marking it complete.'); return; }
   x.done=!x.done; saveGoals(g); renderGoals(); if(document.getElementById('entryTable')) renderLog(); };
 // Collapse one card: hide its detail rows + mini block, reset the caret.
 function closeCard(c){ c.classList.remove('gcard-open'); const d=c.querySelector('.gcard-det'); if(d) d.hidden=true; const m=c.querySelector('.gminis'); if(m) m.hidden=true; const b=c.querySelector('.gdet-btn'); if(b) b.textContent='▾'; }
@@ -2906,7 +2911,9 @@ window.goalLogShow=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x) 
   document.getElementById('logModal').hidden=false; document.body.style.overflow='hidden'; };
 function logModalHide(){ document.getElementById('logModal').hidden=true; document.body.style.overflow=''; }
 // Soft-delete: move to Trash. Tracked time entries are KEPT so nothing is lost; restore or purge from the Trash section.
-window.goalDel=function(id){ const g=loadGoals(); const x=g.find(o=>o.id===id); if(!x||!confirm(`Move "${x.name}" to Trash? Its tracked time is kept — you can restore it or delete it forever from the Trash section.`)) return;
+window.goalDel=function(id){ const g=loadGoals(); const x=g.find(o=>o.id===id); if(!x) return;
+  if(isLockedNug(x)){ alert(NUG_LOCK_MSG); return; }
+  if(!confirm(`Move "${x.name}" to Trash? Its tracked time is kept — you can restore it or delete it forever from the Trash section.`)) return;
   x.deleted=true; x.deletedAt=new Date().toISOString();
   g.forEach(k=>{ if(k.parentId===id){ k.deleted=true; k.deletedAt=x.deletedAt; } }); // minis follow their parent
   saveGoals(g);
