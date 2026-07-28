@@ -2727,7 +2727,7 @@ function tierBarHTML(sec, grey){
   const h=tierHours(sec), pct=h.t>0?Math.min(100,Math.round(h.d/h.t*100)):0;
   const f=n=>Number.isInteger(n)?n:Math.round(n*10)/10;
   return `<div style="margin:8px 0 2px">
-    <div class="hint" style="margin:0 0 5px;font-style:italic">${grey}</div>
+    <div class="hint" style="margin:0 0 5px;font-style:italic;display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px"><span>${grey}</span><span style="font-style:normal;font-weight:600;opacity:.8">${pct}%</span></div>
     <div style="height:8px;border-radius:5px;background:var(--line);overflow:hidden"><i style="display:block;height:100%;width:${pct}%;background:#34a853"></i></div>
     <div style="display:flex;gap:16px;margin-top:5px;font-size:12px;color:var(--muted)"><span style="font-weight:600;opacity:.8">Goal hours:</span><span>need <b>${f(h.t)}h</b></span><span>done <b>${f(h.d)}h</b></span><span>left <b>${f(h.l)}h</b></span></div>
   </div>`;
@@ -2756,8 +2756,7 @@ function renderTierBars(){
   set('nugBar','active',`Plan ~${NUGGET_BUDGET} hrs per period across your ${SEC_CAP.active} nuggets`);
   set('yBar','yearly',`≈ ${yL*12}h left this year · ${yL} period${yL>1?'s':''} × 12h`);
   const hint=document.querySelector('#yBar .hint');
-  if(hint){ hint.style.display='flex'; hint.style.justifyContent='space-between'; hint.style.alignItems='baseline'; hint.style.flexWrap='wrap';
-    hint.insertAdjacentHTML('beforeend', paceVerdictHTML(yL*12, tierHours('yearly').l)); }
+  if(hint&&hint.firstElementChild){ hint.firstElementChild.insertAdjacentHTML('afterend', paceVerdictHTML(yL*12, tierHours('yearly').l)); }
 }
 function renderSecCaps(){
   const set=(id,sec)=>{ const el=document.getElementById(id); if(el) el.textContent=`${secCount(sec)}/${SEC_CAP[sec]}`; };
