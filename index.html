@@ -2854,7 +2854,9 @@ window.goalAdd=function(id){
   addFormShow(true); document.getElementById('aAmt').focus();
 };
 function flashGoalLog(name,mins){ const el=document.getElementById('goalStats'); if(!el) return; const n=document.createElement('div'); n.className='hint'; n.style.color='#16a34a'; n.textContent=`Logged ${fmtShort(mins)} of ${name} as tracked time ✓`; el.parentNode.insertBefore(n, el.nextSibling); setTimeout(()=>n.remove(), 4000); }
-window.goalEditStart=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x) return; goalEdit=id; goalFormShow(true);
+window.goalEditStart=function(id){ const x=loadGoals().find(o=>o.id===id); if(!x) return;
+  if(isLockedNug(x)){ alert(NUG_LOCK_MSG); return; }
+  goalEdit=id; goalFormShow(true);
   document.getElementById('gName').value=x.name; document.getElementById('gCat').value=x.cat;
   document.getElementById('gCur').value=x.cur; document.getElementById('gTarget').value=x.target;
   document.getElementById('gUnit').value=x.unit; document.getElementById('gStart').value=x.start||''; document.getElementById('gBy').value=x.by||'';
