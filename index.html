@@ -2587,7 +2587,7 @@ function goalCard(x){
       <div class="gcard-acts">
         ${!x.done?(x.parentId?`<button title="Log entry" onclick="goalAdd('${x.id}')">＋</button>`:`<button title="Carve nugget" onclick="startMiniCreate('${x.id}')">💎</button>`):''}
         ${logs.length?`<button title="Log (${logs.length})" onclick="goalLogShow('${x.id}')">📜</button>`:''}
-        <button title="Edit" onclick="goalEditStart('${x.id}')">✎</button>
+        ${isLockedNug(x)?'':`<button title="Edit" onclick="goalEditStart('${x.id}')">✎</button>`}
         ${det?`<button type="button" class="gdet-btn" title="Details" onclick="goalFlip('${x.id}')">▾</button>`:''}
       </div>
     </div>
