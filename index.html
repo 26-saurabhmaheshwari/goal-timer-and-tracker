@@ -778,7 +778,7 @@ if(!window.Chart){
       <div class="frow" id="gPeriodWrap" style="display:none">
         <label>Period <select id="gPeriod"></select></label>
       </div>
-      <label id="gTagWrap">Tag <input id="gTag" placeholder="optional — e.g. spanish (groups this goal across years, even after it's completed/deleted)"></label>
+      <label id="gTagWrap">Tag <input id="gTag" required placeholder="required — e.g. spanish (groups this goal across years, even after it's completed/deleted)"></label>
       <div class="gmap" id="gMapWrap">
         <div class="gmap-lab">Time mapping</div>
         <div class="gmap-row">1 <b id="gUnitLab">unit</b> = <input id="gMinPer" type="number" min="0" step="any" placeholder="e.g. 1.5"> min</div>
@@ -2440,6 +2440,7 @@ function initGoals(){
     // Tier caps (top-level goals only; minis ride a parent and don't occupy a slot).
     const willMini = goalEdit ? ('parentId' in o ? !!o.parentId : !!(g.find(x=>x.id===goalEdit)||{}).parentId) : !!goalMiniParent;
     if(willMini){ o.sec='active'; o.recur=false; } // minis are always Live Nuggets, never recurring
+    if(!willMini && !o.tag){ const m=document.getElementById('goalMsg'); m.textContent='Tag is required — every goal needs a tag.'; m.style.color='#ef4444'; return; }
     if(willMini && document.getElementById('gPeriodWrap').style.display!=='none'){ o.start=document.getElementById('gPeriod').value||periodStartISO(); o.by=''; } // minis: window = the picked period
     // Nugget lock: once the plan is locked you can ONLY log time on a nugget — no adding, editing target, moving, or deleting.
     if(loadLimits().nugLock){
