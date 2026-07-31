@@ -1163,7 +1163,7 @@ function renderYearDonut(){
   const cfg={type:'doughnut',
     data:{labels,datasets:[{data,backgroundColor:cols,borderWidth:1,borderColor:'#fff',borderAlign:'inner',hoverOffset:6}]},
     options:{cutout:'68%',plugins:{legend:{display:false},
-      tooltip:{callbacks:{label:c=>` ${c.label}: ${fmtShort(c.raw)} (${Math.round(c.raw/tot*100)}%)`}}}}};
+      tooltip:{callbacks:{label:c=>{const t=c.dataset.data.reduce((a,b)=>a+b,0); return ` ${c.label}: ${fmtShort(c.raw)} (${t?Math.round(c.raw/t*100):0}%)`;}}}}}};
   if(yearDonutChart){yearDonutChart.data=cfg.data;yearDonutChart.update();}
   else yearDonutChart=new Chart(document.getElementById('yearDonut'),cfg);
 }
@@ -1184,7 +1184,7 @@ function donutCfg(cats){
   const {labels,data,cols,tot}=catsParts(cats);
   return {type:'doughnut',data:{labels,datasets:[{data,backgroundColor:cols,borderWidth:3,borderColor:'#fff',hoverOffset:6}]},
     options:{cutout:'68%',plugins:{legend:{display:false},
-      tooltip:{callbacks:{label:c=>` ${c.label}: ${fmtShort(c.raw)} (${tot?Math.round(c.raw/tot*100):0}%)`}}}}};
+      tooltip:{callbacks:{label:c=>{const t=c.dataset.data.reduce((a,b)=>a+b,0); return ` ${c.label}: ${fmtShort(c.raw)} (${t?Math.round(c.raw/t*100):0}%)`;}}}}}};
 }
 function legendRows(cats){
   const {labels,data,tot}=catsParts(cats);
@@ -2037,7 +2037,7 @@ function renderLog(){
      <span class="meta">${fmtShort(v)} · ${Math.round(v/tot*100)}%</span></div>`).join('');
   const dcfg={type:'doughnut',data:{labels:ent.map(e=>e[0]),datasets:[{data:ent.map(e=>e[1]),
     backgroundColor:ent.map(e=>colorFor(e[0])),borderWidth:3,borderColor:'#fff',hoverOffset:6}]},
-    options:{cutout:'68%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.label}: ${fmtShort(c.raw)} (${Math.round(c.raw/tot*100)}%)`}}}}};
+    options:{cutout:'68%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{const t=c.dataset.data.reduce((a,b)=>a+b,0); return ` ${c.label}: ${fmtShort(c.raw)} (${t?Math.round(c.raw/t*100):0}%)`;}}}}}};
   if(logDonutChart){logDonutChart.data=dcfg.data;logDonutChart.update();} else logDonutChart=new Chart(document.getElementById('logDonut'),dcfg);
 
   // period trend (all periods)
