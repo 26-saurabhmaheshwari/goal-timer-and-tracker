@@ -442,7 +442,16 @@ if(!window.Chart){
   .rw-warn.calm{background:var(--panel);border-color:var(--line);color:var(--muted)}
   .rw-warn.amber{background:#fdf6e3;border-color:#e6d5a0;color:#8a6a17}
   .rw-warn.red{background:#fbeae8;border-color:#eec3bd;color:#9c2b1c}
-  #rwKpis .kpi .val{font-family:var(--serif)}
+  /* Two balance blocks, one per currency: money left, free time right. Each is a headline
+     available-now figure over a small breakdown table. Replaced the 4 mixed KPI cards. */
+  #rwKpis{grid-template-columns:1fr 1fr}
+  #rwKpis .kpi .val{font-family:var(--serif);font-size:32px}
+  .rwbal .cur{font-size:12px;color:var(--muted);font-weight:600;margin-top:3px}
+  .rwbal table{width:100%;border-collapse:collapse;font-size:13px;margin-top:14px}
+  .rwbal td{padding:7px 0;border-top:1px solid var(--line)}
+  .rwbal td.k{color:var(--muted);font-weight:600}
+  .rwbal td.n{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+  .rwbal td.n.zero{color:var(--muted);font-weight:600}
   .rwscroll{overflow-x:auto}
   .rwtab{width:100%;border-collapse:collapse;font-size:13.5px}
   .rwtab th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:700;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
@@ -469,7 +478,7 @@ if(!window.Chart){
   #pdfReport .pdf-img{max-width:100%;height:auto;display:block}
   #pdfReport canvas{display:none}
   @media print{
-    body.pdf-print .wrap, body.pdf-print #potPopup{display:none!important}
+    body.pdf-print .wrap{display:none!important}
     body.pdf-print #pdfReport{display:block!important}
     #pdfReport .pdf-sec{break-inside:auto}
     #pdfReport .card{break-inside:avoid;page-break-inside:avoid}
@@ -482,6 +491,7 @@ if(!window.Chart){
     /* one-column grids */
     .grid,.grid3,.pgrid,.ibox,.frow{grid-template-columns:1fr!important}
     .kpis{grid-template-columns:1fr 1fr!important}
+    #rwKpis{grid-template-columns:1fr!important}   /* the two balance blocks stack, tables need the width */
     /* inline 4-up stat rows (planning / audit) drop to 2-up */
     [style*="repeat(4,1fr)"]{grid-template-columns:1fr 1fr!important}
     #repGrid{grid-template-columns:1fr!important}
@@ -913,7 +923,8 @@ if(!window.Chart){
   <div id="rwEarned">
     <div class="card">
       <h2>What each period paid</h2>
-      <div class="hint">Earnings are worked out from your logged entries every time this page opens, so fixing an old entry re-prices it. A green period pays the bonus multiplier on both money and free time. Green means you logged at least 80% of the period plan &mdash; your habit minutes per day, plus the Live Nuggets budget set in <b>Settings &rsaquo; Limits</b>.</div>
+      <div class="hint">Earnings are worked out from your logged entries every time this page opens, so fixing an old entry re-prices it. A green period pays the bonus multiplier on both money and free time.</div>
+      <div class="hint" id="rwLegend" style="margin-top:8px"></div>
       <div id="rwPeriods" style="margin-top:12px"></div>
     </div>
 
@@ -3284,12 +3295,23 @@ function renderRewards(){
   }
   warn.className='rw-warn '+cls; warn.textContent=txt;
 
-  document.getElementById('rwKpis').innerHTML=[
-    ['Available now',        money(m.avail,s),   `${rwHrs(t.avail)} free time · ${dayw(dLeft)} left`],
-    ['Earned this quarter',  money(m.earned,s),  `${rwHrs(t.earned)} free time · ${(qMins/60).toFixed(1)} hrs logged`],
-    ['Used this quarter',    money(m.spent,s),   `${rwHrs(t.spent)} free time · ${L.spends.length} thing${L.spends.length===1?'':'s'} enjoyed`],
-    ['Carried in',           money(m.carryIn,s), `${rwHrs(t.carryIn)} free time · ${soon?'still unspent':'all of it used'}`]
-  ].map(r=>`<div class="kpi"><div class="label">${r[0]}</div><div class="val">${r[1]}</div><div class="delta" style="color:var(--muted)">${r[2]}</div></div>`).join('');
+  // Two blocks, one per currency - the four old cards each mixed money and time, which made
+  // neither balance readable. fmt is the currency's own formatter so the same rows serve both.
+  const balBlock=(label, head, fmt, c, foot)=>{
+    const row=(k,v,note)=>`<tr><td class="k">${k}${note?` <span style="font-weight:600;opacity:.75">· ${note}</span>`:''}</td>`
+      + `<td class="n${v>0?'':' zero'}">${fmt(v)}</td></tr>`;
+    return `<div class="kpi rwbal"><div class="label">${label}</div><div class="val">${fmt(c.avail)}</div>`
+      + `<div class="cur">${head}</div><table><tbody>`
+      + row('Carried in', c.carryIn, c.expSoon>=1?'expires '+rwDstr(L.qEnd):'')   // per-currency: one can be spent out while the other still expires
+      + row('Earned this quarter', c.earned)
+      + row('Used this quarter', c.spent, L.spends.length?L.spends.length+' thing'+(L.spends.length===1?'':'s'):'')
+      + `</tbody></table><div class="cur" style="margin-top:10px">${foot}</div></div>`;
+  };
+  document.getElementById('rwKpis').innerHTML =
+      balBlock('💰 Money available', `${dayw(dLeft)} left in ${qLabel(L.curQ)}`, v=>money(v,s), m,
+               `Rate ${money(R.rate,s)} per hour logged, ${R.bonus}× on a green period.`)
+    + balBlock('🏖 Free time available', `${(qMins/60).toFixed(1)} hrs logged this quarter`, rwHrs, t,
+               `Rate ${rwHrs(R.trate)} per hour logged, ${R.tbonus}× on a green period.`);
 
   // --- what you used this quarter ---
   document.getElementById('rwSpendList').innerHTML = L.spends.length
@@ -3338,6 +3360,19 @@ function renderRewards(){
     : 'Nothing has lapsed yet. Keep it that way.';
 
   renderRwTabs(); setRwTab(rwTab);
+  // Legend: the green/amber/red bar in plain hours. Quoted for a flat 10-day period - P3 runs a day
+  // or two longer and scales the habit half, but the round number is what the user reasons with.
+  const lg=document.getElementById('rwLegend');
+  if(lg){
+    const pdm=loadHabits().filter(x=>!x.paused&&!x.done).reduce((a,x)=>a+(+x.m||0),0);
+    const nb=+loadLimits().nugBudget||0, plan=(pdm*10)/60+nb;
+    const hh=v=>v.toFixed(1)+'h';
+    lg.innerHTML = plan>0
+      ? `Plan for a 10-day period: ${pdm} min/day of habits \u00d7 10 days + ${nb}h of nuggets = <b>${hh(plan)}</b>. `
+        + `\uD83D\uDFE2 green from ${hh(plan*0.8)} \u00b7 \uD83D\uDFE1 amber ${hh(plan*0.4)} to ${hh(plan*0.8)} \u00b7 \uD83D\uDD34 red under ${hh(plan*0.4)}. `
+        + `Change either half in <b>Settings \u203a Habits</b> (min/day) or <b>Settings \u203a Limits</b> (nugget budget).`
+      : `No habit minutes and no nugget budget are set, so there is no bar to hit \u2014 every period just pays the base rate.`;
+  }
   const dt=document.getElementById('rwDate'); if(!dt.value) dt.value=new Date().toISOString().slice(0,10);
 }
 
@@ -4436,25 +4471,10 @@ function archiveOldEntries(){
 try{ archiveOldEntries(); }catch(e){}
 applyFeatures(); // hide toggled-off sections before first paint
 (function(){ try{ const sv=localStorage.getItem(LS_VIEW); if(sv&&sv!=='overview') setView(sv); }catch(e){} })();
-// ---- Pot popup (shown once per 10-day period on first open — matches the once-per-period ritual, not daily nagging) ----
-function closePotPopup(){ const p=document.getElementById('potPopup'); if(p) p.hidden=true; }
-function showPotPopup(){ const p=document.getElementById('potPopup'); if(!p) return; try{ renderPot('potPopupBox'); }catch(e){ return; } p.hidden=false; }
-(function(){ try{
-  const c=document.getElementById('potPopupClose'); if(c) c.onclick=closePotPopup;
-  const ov=document.getElementById('potPopup'); if(ov) ov.addEventListener('click',e=>{ if(e.target===ov) closePotPopup(); });
-  document.addEventListener('keydown',e=>{ if(e.key==='Escape') closePotPopup(); });
-  const curPeriod = CUR_YM + '-' + periodOfDay(new Date().getDate());
-  if(localStorage.getItem('potPopupShown')!==curPeriod){ localStorage.setItem('potPopupShown',curPeriod); setTimeout(showPotPopup,350); }
-}catch(e){} })();
+// The pot popup that auto-opened once per 10-day period was removed 2026-09-07 - the pot still
+// lives in Overview > Pot, which the user opens on purpose. Its 'potPopupShown' localStorage key
+// is orphaned and harmless (never synced).
 </script>
-<div id="potPopup" hidden style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:32px 14px">
-  <div class="card" style="max-width:920px;width:100%;position:relative;margin:auto">
-    <button id="potPopupClose" aria-label="Close" title="Close" style="position:absolute;top:8px;right:10px;width:28px;height:28px;border-radius:50%;border:1px solid var(--line);background:var(--card,#fff);font-size:17px;line-height:1;cursor:pointer;color:var(--muted);display:flex;align-items:center;justify-content:center">✕</button>
-    <h2 style="text-align:center;margin:2px 0 2px">Your year in a pot</h2>
-    <div class="hint" style="text-align:center">Capacity = your yearly hour target. Water = hours you've actually filled, coloured by category.</div>
-    <div id="potPopupBox" style="margin-top:14px"></div>
-  </div>
-</div>
 </div><!-- /.wrap -->
 <div id="pdfReport"></div>
 </body>
