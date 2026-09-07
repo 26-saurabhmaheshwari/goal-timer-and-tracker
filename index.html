@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
   FILE MAP - grep these exact tags to jump (line numbers drift, names don't)
-  HTML views:   /viewOverview (contains ovYear/ovMonthly/ovPot sub-tabs)  /viewLog (+viewAudit below it)  /viewGoals  /viewPlanning  /viewReports  /viewRewards  /viewSettings (sidebar sections: setPersonal setCats setHabits setLimits setRewards setFaq)  (each closes with a div comment)
+  HTML views:   /viewOverview (contains ovYear/ovMonthly/ovPot sub-tabs)  /viewLog (+viewAudit below it)  /viewGoals  /viewPlanning  /viewReports  /viewRewards (contains rwEarned/rwSpend sub-tabs)  /viewSettings (sidebar sections: setPersonal setCats setHabits setLimits setRewards setFaq)  (each closes with a div comment)
   JS sections:  "===== LOG VIEW"  "category management (Settings)"  "===== ONLINE / OFFLINE"
                 "===== LIFE BAR"  "===== GOALS"  "===== TIME PLANNING"  "===== AUDIT"  "===== ARCHIVE"
   Data/state:   LS_GOALS / SEED_GOALS . LS_HABITS / SEED_HABITS / loadHabits / groupHabits . LS_ICONS / SEED_ICONS / ICONS / iconFor (category icons, Settings-managed)
@@ -908,49 +908,54 @@ if(!window.Chart){
 <div id="viewRewards" hidden>
   <div id="rwWarn" class="rw-warn calm"></div>
   <div class="kpis" id="rwKpis"></div>
+  <div class="tabs noprint" id="rwTabs" style="margin:18px 0"></div>
 
-  <div class="card">
-    <h2>Spend it</h2>
-    <div class="hint">Every hour you log pays you twice: money, and free hours you are allowed to waste guilt-free. Book what you actually used here &mdash; money, time off, or both. Carried-over balance is always spent first, because that is the part about to expire.</div>
-    <form id="rwSpendForm" class="form" style="margin-top:14px" onsubmit="addSpend(event)">
-      <div class="frow" style="grid-template-columns:120px 120px 1fr 150px auto;align-items:end">
-        <label>Money <input id="rwAmt" type="number" min="0" step="1" placeholder="0"></label>
-        <label>Free hours <input id="rwHrsIn" type="number" min="0" step="0.5" placeholder="0"></label>
-        <label>What for <input id="rwNote" type="text" placeholder="Weekend trip"></label>
-        <label>Date <input id="rwDate" type="date"></label>
-        <button class="btn" type="submit">Log it</button>
-      </div>
-      <div class="hint" id="rwMsg" style="margin-top:10px"></div>
-    </form>
-    <div id="rwSpendList" style="margin-top:16px"></div>
+  <div id="rwEarned">
+    <div class="card">
+      <h2>What each period paid</h2>
+      <div class="hint">Earnings are worked out from your logged entries every time this page opens, so fixing an old entry re-prices it. A green period pays the bonus multiplier on both money and free time. Green means you logged at least 80% of the period plan &mdash; your habit minutes per day, plus the Live Nuggets budget set in <b>Settings &rsaquo; Limits</b>.</div>
+      <div id="rwPeriods" style="margin-top:12px"></div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h2>Quarter ledger</h2>
+      <div class="hint">What you earn in a quarter is yours to use that quarter. Whatever is left crosses into the next quarter at the carry rate, and it has to be used there. Nothing lives longer than two quarters. Money on the top line, free time under it.</div>
+      <div id="rwQuarters" style="margin-top:12px"></div>
+      <div class="hint" id="rwLapsed" style="margin-top:10px"></div>
+      <div class="hint" style="margin-top:8px">Rates, bonus and carry % are set in <b>Settings &rsaquo; Rewards</b>.</div>
+    </div>
   </div>
 
-  <div class="card" style="margin-top:16px">
-    <h2>Wishlist</h2>
-    <div class="hint">Price the things you actually want &mdash; in money, in days off, or both. Each one shows how many 10-day periods away it is at the pace you are already keeping. A thing costing both is only yours when both balances cover it.</div>
-    <form id="rwWishForm" class="form" style="margin-top:14px" onsubmit="addWish(event)">
-      <div class="frow" style="grid-template-columns:1fr 140px 140px auto;align-items:end">
-        <label>Thing <input id="rwWName" type="text" placeholder="Trip to the mountains"></label>
-        <label>Money <input id="rwWPrice" type="number" min="0" step="1"></label>
-        <label>Free hours <input id="rwWHrs" type="number" min="0" step="0.5"></label>
-        <button class="btn-sm" type="submit">Add</button>
-      </div>
-    </form>
-    <div id="rwWishList" style="margin-top:16px"></div>
-  </div>
+  <div id="rwSpend" hidden>
+    <div class="card">
+      <h2>Spend it</h2>
+      <div class="hint">Every hour you log pays you twice: money, and free hours you are allowed to waste guilt-free. Book what you actually used here &mdash; money, time off, or both. Carried-over balance is always spent first, because that is the part about to expire.</div>
+      <form id="rwSpendForm" class="form" style="margin-top:14px" onsubmit="addSpend(event)">
+        <div class="frow" style="grid-template-columns:120px 120px 1fr 150px auto;align-items:end">
+          <label>Money <input id="rwAmt" type="number" min="0" step="1" placeholder="0"></label>
+          <label>Free hours <input id="rwHrsIn" type="number" min="0" step="0.5" placeholder="0"></label>
+          <label>What for <input id="rwNote" type="text" placeholder="Weekend trip"></label>
+          <label>Date <input id="rwDate" type="date"></label>
+          <button class="btn" type="submit">Log it</button>
+        </div>
+        <div class="hint" id="rwMsg" style="margin-top:10px"></div>
+      </form>
+      <div id="rwSpendList" style="margin-top:16px"></div>
+    </div>
 
-  <div class="card" style="margin-top:16px">
-    <h2>What each period paid</h2>
-    <div class="hint">Earnings are worked out from your logged entries every time this page opens, so fixing an old entry re-prices it. A green period pays the bonus multiplier on both money and free time.</div>
-    <div id="rwPeriods" style="margin-top:12px"></div>
-  </div>
-
-  <div class="card" style="margin-top:16px">
-    <h2>Quarter ledger</h2>
-    <div class="hint">What you earn in a quarter is yours to use that quarter. Whatever is left crosses into the next quarter at the carry rate, and it has to be used there. Nothing lives longer than two quarters. Money on the top line, free time under it.</div>
-    <div id="rwQuarters" style="margin-top:12px"></div>
-    <div class="hint" id="rwLapsed" style="margin-top:10px"></div>
-    <div class="hint" style="margin-top:8px">Rates, bonus and carry % are set in <b>Settings &rsaquo; Rewards</b>.</div>
+    <div class="card" style="margin-top:16px">
+      <h2>Wishlist</h2>
+      <div class="hint">Price the things you actually want &mdash; in money, in days off, or both. Each one shows how many 10-day periods away it is at the pace you are already keeping. A thing costing both is only yours when both balances cover it.</div>
+      <form id="rwWishForm" class="form" style="margin-top:14px" onsubmit="addWish(event)">
+        <div class="frow" style="grid-template-columns:1fr 140px 140px auto;align-items:end">
+          <label>Thing <input id="rwWName" type="text" placeholder="Trip to the mountains"></label>
+          <label>Money <input id="rwWPrice" type="number" min="0" step="1"></label>
+          <label>Free hours <input id="rwWHrs" type="number" min="0" step="0.5"></label>
+          <button class="btn-sm" type="submit">Add</button>
+        </div>
+      </form>
+      <div id="rwWishList" style="margin-top:16px"></div>
+    </div>
   </div>
 
 </div><!-- /viewRewards -->
@@ -1649,9 +1654,14 @@ function printPlanCard(){
   if(!w){ const msg=document.getElementById('peMsg'); msg.style.color='#dc2626'; msg.textContent='Pop-up blocked — allow pop-ups to print the card.'; return; }
   w.document.write(html); w.document.close();
 }
-// Verdict for one period vs the fixed-habit plan. Returns hit/partial/miss for
-// elapsed periods, 'future' for ones not yet finished (no logs), 'none' if no plan.
-// perDay = total habit minutes/day; passed in so the 36-cell poster loop stays cheap.
+// Verdict for one period vs the plan. The plan is fixed habits (perDay x days) PLUS the Live
+// Nuggets budget, because the logged side has always counted nugget time too - counting it on
+// one side only let nugget hours clear a bar they never raised (2026-09-07). Returns
+// hit/partial/miss for elapsed periods, 'future' for ones not yet finished (no logs), 'none' if
+// no plan. perDay = total habit minutes/day; passed in so the 36-cell poster loop stays cheap.
+// The nugget budget (Settings > Limits) is hours per 10-day period, so it is added flat, not
+// per-day. Read via loadLimits() on purpose: the NUGGET_BUDGET module var is `let`-declared
+// ~1300 lines below this, and saveLimits() only refreshes that var.
 function periodVerdict(ym, period, ents, perDay){
   ents = ents || loadEntries();
   if(perDay==null) perDay = loadHabits().filter(h=>!h.paused&&!h.done).reduce((a,h)=>a+(+h.m||0),0);
@@ -1660,7 +1670,7 @@ function periodVerdict(ym, period, ents, perDay){
   const logged=ents.filter(e=>pkey(e)===key).reduce((a,e)=>a+(+e.mins||0),0);
   const end=new Date(pd.y, pd.m-1, pd.end, 23,59,59);
   if(end>new Date() && logged<=0) return 'future';
-  const plan=perDay*(pd.end-pd.start+1);
+  const plan=perDay*(pd.end-pd.start+1) + (+loadLimits().nugBudget||0)*60;
   if(plan<=0) return logged>0?'hit':'none';
   const r=logged/plan;
   return r>=0.8?'hit':r>=0.4?'partial':'miss';
@@ -3209,6 +3219,19 @@ function addWish(ev){
   renderRewards();
 }
 function delWish(id){ const R=loadRewards(); R.wish=R.wish.filter(w=>w.id!==id); saveRewards(R); renderRewards(); }
+// ---- Rewards sub-tabs: Earned (what the hours paid) vs Spend (booking it + wishlist) ----
+let rwTab='earned';
+const RW_TABS=[['earned','Earned'],['spend','Spend']];
+function renderRwTabs(){
+  const t=document.getElementById('rwTabs'); if(!t) return;
+  t.innerHTML=RW_TABS.map(([k,l])=>`<button data-r="${k}" class="${rwTab===k?'active':''}">${l}</button>`).join('');
+  t.querySelectorAll('button').forEach(b=>b.onclick=()=>{ setRwTab(b.dataset.r); renderRwTabs(); });
+}
+function setRwTab(t){
+  rwTab=t;
+  document.getElementById('rwEarned').hidden = t!=='earned';
+  document.getElementById('rwSpend').hidden  = t!=='spend';
+}
 // Earning rules live on Settings > Rewards; the balances they price live on the Rewards tab.
 function renderRewardRules(){
   if(!document.getElementById('rwRate')) return;
@@ -3314,6 +3337,7 @@ function renderRewards(){
     ? `${pair(lostM>=1?money(lostM,s):'', lostT>=1?rwHrs(lostT)+' of free time':'')} has lapsed so far — hours you worked and never cashed in.`
     : 'Nothing has lapsed yet. Keep it that way.';
 
+  renderRwTabs(); setRwTab(rwTab);
   const dt=document.getElementById('rwDate'); if(!dt.value) dt.value=new Date().toISOString().slice(0,10);
 }
 
