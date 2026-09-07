@@ -452,6 +452,15 @@ if(!window.Chart){
   .rwbal td.k{color:var(--muted);font-weight:600}
   .rwbal td.n{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
   .rwbal td.n.zero{color:var(--muted);font-weight:600}
+  /* Quarter-ledger column tints, same muted ink family as the .rw-warn banners: earned green,
+     used accent (spending it is the point), rolled-on amber (survived but expires next quarter),
+     lapsed red. Only applied when the value is non-zero - a red 0 is noise. .tint drags the
+     free-time second line along at lower opacity so the cell reads as one figure. */
+  .rwtab td.tint .rw-t{color:inherit;opacity:.7}
+  .rwtab td.good{color:#2f6b46}
+  .rwtab td.mid{color:var(--accent)}
+  .rwtab td.warn{color:#8a6a17}
+  .rwtab td.bad{color:#9c2b1c}
   .rwscroll{overflow-x:auto}
   .rwtab{width:100%;border-collapse:collapse;font-size:13.5px}
   .rwtab th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:700;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
@@ -3348,10 +3357,11 @@ function renderRewards(){
   document.getElementById('rwQuarters').innerHTML =
     `<div class="rwscroll"><table class="rwtab"><thead><tr><th>Quarter</th><th class="num">Hours logged</th><th class="num">Carried in</th><th class="num">Earned</th><th class="num">Used</th><th class="num">Left</th><th class="num">Rolled on</th><th class="num">Lapsed</th></tr></thead><tbody>`
     + L.M.hist.map((x,i)=>{ const y=L.T.hist[i]||{};
-        const cell=(a,b)=>`<td class="num">${rwBoth(a,b,s)}</td>`;
+        // tone tints the whole cell (see .rwtab td.tint) - skipped on zero so the row stays quiet
+        const cell=(a,b,tone)=>`<td class="num${tone&&((+a||0)>=1||(+b||0)>=1)?' tint '+tone:''}">${rwBoth(a,b,s)}</td>`;
         return `<tr class="${x.open?'now':''}"><td class="nm">${qLabel(x.q)}${x.open?' (now)':''}</td><td class="num">${((L.minsQ[x.q]||0)/60).toFixed(1)}</td>`
-          + cell(x.carryIn,y.carryIn) + cell(x.earned,y.earned) + cell(x.spent,y.spent) + cell(x.left,y.left)
-          + (x.open?'<td class="num">—</td><td class="num">—</td>' : cell(x.carried,y.carried)+cell(x.lapsed,y.lapsed))
+          + cell(x.carryIn,y.carryIn) + cell(x.earned,y.earned,'good') + cell(x.spent,y.spent,'mid') + cell(x.left,y.left)
+          + (x.open?'<td class="num">—</td><td class="num">—</td>' : cell(x.carried,y.carried,'warn')+cell(x.lapsed,y.lapsed,'bad'))
           + `</tr>`; }).join('')
     + `</tbody></table></div>`;
   const lostM=L.M.lapsedTotal, lostT=L.T.lapsedTotal;
@@ -3369,8 +3379,7 @@ function renderRewards(){
     const hh=v=>v.toFixed(1)+'h';
     lg.innerHTML = plan>0
       ? `Plan for a 10-day period: ${pdm} min/day of habits \u00d7 10 days + ${nb}h of nuggets = <b>${hh(plan)}</b>. `
-        + `\uD83D\uDFE2 green from ${hh(plan*0.8)} \u00b7 \uD83D\uDFE1 amber ${hh(plan*0.4)} to ${hh(plan*0.8)} \u00b7 \uD83D\uDD34 red under ${hh(plan*0.4)}. `
-        + `Change either half in <b>Settings \u203a Habits</b> (min/day) or <b>Settings \u203a Limits</b> (nugget budget).`
+        + `\uD83D\uDFE2 green from ${hh(plan*0.8)} \u00b7 \uD83D\uDFE1 amber ${hh(plan*0.4)} to ${hh(plan*0.8)} \u00b7 \uD83D\uDD34 red under ${hh(plan*0.4)}.`
       : `No habit minutes and no nugget budget are set, so there is no bar to hit \u2014 every period just pays the base rate.`;
   }
   const dt=document.getElementById('rwDate'); if(!dt.value) dt.value=new Date().toISOString().slice(0,10);
