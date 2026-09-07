@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
   FILE MAP - grep these exact tags to jump (line numbers drift, names don't)
-  HTML views:   /viewOverview (contains ovYear/ovMonthly/ovPot sub-tabs)  /viewLog (+viewAudit below it)  /viewGoals  /viewPlanning  /viewReports  /viewRewards  /viewSettings (FAQ = setFaq sidebar section)  (each closes with a div comment)
+  HTML views:   /viewOverview (contains ovYear/ovMonthly/ovPot sub-tabs)  /viewLog (+viewAudit below it)  /viewGoals  /viewPlanning  /viewReports  /viewRewards  /viewSettings (sidebar sections: setPersonal setCats setHabits setLimits setRewards setFaq)  (each closes with a div comment)
   JS sections:  "===== LOG VIEW"  "category management (Settings)"  "===== ONLINE / OFFLINE"
                 "===== LIFE BAR"  "===== GOALS"  "===== TIME PLANNING"  "===== AUDIT"  "===== ARCHIVE"
   Data/state:   LS_GOALS / SEED_GOALS . LS_HABITS / SEED_HABITS / loadHabits / groupHabits . LS_ICONS / SEED_ICONS / ICONS / iconFor (category icons, Settings-managed)
@@ -950,25 +950,9 @@ if(!window.Chart){
     <div class="hint">What you earn in a quarter is yours to use that quarter. Whatever is left crosses into the next quarter at the carry rate, and it has to be used there. Nothing lives longer than two quarters. Money on the top line, free time under it.</div>
     <div id="rwQuarters" style="margin-top:12px"></div>
     <div class="hint" id="rwLapsed" style="margin-top:10px"></div>
+    <div class="hint" style="margin-top:8px">Rates, bonus and carry % are set in <b>Settings &rsaquo; Rewards</b>.</div>
   </div>
 
-  <div class="card" style="margin-top:16px">
-    <h2>Earning rules</h2>
-    <div class="hint">Set your own exchange rate. Nothing is stored per entry, so changing a rate re-prices your whole history at once.</div>
-    <form id="rwRuleForm" class="form" style="margin-top:14px" onsubmit="saveRewardRules(event)">
-      <div class="frow" style="grid-template-columns:repeat(5,1fr)">
-        <label>Money per hour <input id="rwRate" type="number" min="0" step="10"></label>
-        <label>Currency symbol <input id="rwSym" type="text" maxlength="3"></label>
-        <label>Free minutes per hour <input id="rwTrate" type="number" min="0" max="240" step="5"></label>
-        <label>Green-period bonus (&times;) <input id="rwBonus" type="number" min="1" max="5" step="0.1"></label>
-        <label>Carry into next quarter (%) <input id="rwLapse" type="number" min="0" max="100" step="5"></label>
-      </div>
-      <div style="margin-top:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-        <button class="btn" type="submit">Save rules</button>
-        <span class="hint" id="rwRuleMsg"></span>
-      </div>
-    </form>
-  </div>
 </div><!-- /viewRewards -->
 
 <div id="viewSettings" hidden>
@@ -978,6 +962,7 @@ if(!window.Chart){
       <button data-s="cats">Categories</button>
       <button data-s="habits">Habits</button>
       <button data-s="limits">Limits</button>
+      <button data-s="rewards">Rewards</button>
       <button data-s="faq">FAQ</button>
     </div>
     <div class="tipmain">
@@ -1087,6 +1072,25 @@ if(!window.Chart){
       <div class="gform-foot">
         <button type="submit" class="btn">Save</button>
         <span id="limitsMsg" class="fmsg"></span>
+      </div>
+    </form>
+  </div>
+
+  <div class="card" id="setRewards" hidden>
+    <h2>Reward earning rules</h2>
+    <div class="hint">What one logged hour pays you. Nothing is stored per entry, so changing a rate re-prices your whole history at once. The balances themselves live on the <b>Rewards</b> tab.</div>
+    <form id="rwRuleForm" class="form" style="margin-top:14px" onsubmit="saveRewardRules(event)">
+      <div class="frow" style="grid-template-columns:repeat(3,1fr)">
+        <label>Money per hour <input id="rwRate" type="number" min="0" step="10"></label>
+        <label>Currency symbol <input id="rwSym" type="text" maxlength="3"></label>
+        <label>Free minutes per hour <input id="rwTrate" type="number" min="0" max="240" step="5"></label>
+        <label>Green bonus on money (&times;) <input id="rwBonus" type="number" min="1" max="5" step="0.1"></label>
+        <label>Green bonus on time (&times;) <input id="rwTbonus" type="number" min="1" max="5" step="0.1"></label>
+        <label>Carry into next quarter (%) <input id="rwLapse" type="number" min="0" max="100" step="5"></label>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <button class="btn" type="submit">Save rules</button>
+        <span class="hint" id="rwRuleMsg"></span>
       </div>
     </form>
   </div>
@@ -1515,7 +1519,7 @@ function savePeriodEntry(){
   const VW={hit:'🟢 GREEN (hit the plan)',partial:'🟡 AMBER (partway)',miss:'🔴 RED (missed)'};
   const tail = VW[v] ? ` — colour this cell on your wall poster: ${VW[v]}` : '';
   const pe=periodEarned(ym, period, all);   // rewards teaser: what this period is worth so far
-  const cash = (pe.rate>0||pe.trate>0) ? ` · 💰 ${[pe.rate>0?money(pe.amt,pe.sym):'', pe.trate>0?rwHrs(pe.tmin)+' off':''].filter(Boolean).join(' + ')} earned this period${v==='hit'?` (${pe.bonus}× green bonus)`:''} — use it in Rewards` : '';
+  const cash = (pe.rate>0||pe.trate>0) ? ` · 💰 ${[pe.rate>0?money(pe.amt,pe.sym):'', pe.trate>0?rwHrs(pe.tmin)+' off':''].filter(Boolean).join(' + ')} earned this period${v==='hit'?' (green bonus applied)':''} — use it in Rewards` : '';
   flash(`Logged ${added} item${added>1?'s':''} for ${plabel(`${ym}-${period}`)}${tail}${cash}${dropMsg?` · ⚠ ${dropMsg}`:''}`, dropped.length>0);
   openCommitStep(ym, period);
 }
@@ -1914,11 +1918,13 @@ function setSettab(s){
   document.getElementById('setHabits').hidden = s!=='habits';
   document.getElementById('setHabitsDone').hidden = true;
   document.getElementById('setLimits').hidden = s!=='limits';
+  document.getElementById('setRewards').hidden = s!=='rewards';
   document.getElementById('setFaq').hidden = s!=='faq';
   document.querySelectorAll('#setSide button').forEach(b=>b.classList.toggle('active', b.dataset.s===s));
   if(s==='personal') renderPersonalSettings();
   if(s==='habits') renderHabitsSettings();
   if(s==='limits') renderLimitsSettings();
+  if(s==='rewards') renderRewardRules();
 }
 function habitCatOpts(c){ return ALLCATS.map(x=>`<option value="${escHtml(x)}"${x===c?' selected':''}>${escHtml(x)}</option>`).join(''); }
 // --- habit adherence: "hit plan N of last M periods" (pure derived, no new state) ---
@@ -3071,13 +3077,14 @@ function groupHabits(flat){ const o=[]; flat.forEach(i=>{ let g=o.find(x=>x.cat=
 //   Spending draws from carried balance FIRST - that is the part about to expire.
 //   Nothing survives two quarter-ends, so the wallet can never quietly become a hoard.
 const LS_REWARDS='ptd_rewards_v1';
-const SEED_REWARDS={rate:100, sym:'₹', trate:15, bonus:1.5, lapse:0.5, spends:[], wish:[]};
+const SEED_REWARDS={rate:100, sym:'₹', trate:15, bonus:1.5, tbonus:1.5, lapse:0.5, spends:[], wish:[]};
 function loadRewards(){
   const o={...SEED_REWARDS, ...loadObj(LS_REWARDS,{})};
   o.rate=Math.max(0,+o.rate||0);
   o.sym=String(o.sym||'₹').slice(0,3)||'₹';
   o.trate=Math.min(240,Math.max(0, o.trate==null?15:+o.trate||0));
   o.bonus=Math.min(5,Math.max(1,+o.bonus||1));
+  o.tbonus=Math.min(5,Math.max(1,+o.tbonus||1));
   o.lapse=Math.min(1,Math.max(0, o.lapse==null?0.5:+o.lapse||0));
   o.spends=Array.isArray(o.spends)?o.spends:[];
   o.wish=Array.isArray(o.wish)?o.wish:[];
@@ -3122,9 +3129,9 @@ function rewardLedger(){
   Object.keys(mins).sort().forEach(k=>{
     const ym=k.slice(0,7), pr=k.slice(8);
     const v=periodVerdict(ym, pr, ents, perDay);
-    const mult = v==='hit' ? R.bonus : 1;
-    const hrs=mins[k]/60, amt=hrs*R.rate*mult, tmin=hrs*R.trate*mult;
-    rows.push({key:k, ym, mins:mins[k], verdict:v, mult, amt, tmin});
+    const mult = v==='hit' ? R.bonus : 1, tmult = v==='hit' ? R.tbonus : 1;
+    const hrs=mins[k]/60, amt=hrs*R.rate*mult, tmin=hrs*R.trate*tmult;
+    rows.push({key:k, ym, mins:mins[k], verdict:v, mult, tmult, amt, tmin});
     const q=qOf(ym); if(q){ earnQ[q]=(earnQ[q]||0)+amt; tearnQ[q]=(tearnQ[q]||0)+tmin; }
   });
   const spendQ={}, tspendQ={}, spendRows={};
@@ -3152,8 +3159,8 @@ function periodEarned(ym, period, ents){
   const key=`${ym}-${period}`;
   const m=ents.filter(e=>pkey(e)===key).reduce((a,e)=>a+(+e.mins||0),0);
   const v=periodVerdict(ym, period, ents, perDay);
-  const mult = v==='hit' ? R.bonus : 1;
-  return {amt:(m/60)*R.rate*mult, tmin:(m/60)*R.trate*mult, verdict:v, sym:R.sym, rate:R.rate, trate:R.trate, bonus:R.bonus};
+  const mult = v==='hit' ? R.bonus : 1, tmult = v==='hit' ? R.tbonus : 1;
+  return {amt:(m/60)*R.rate*mult, tmin:(m/60)*R.trate*tmult, verdict:v, sym:R.sym, rate:R.rate, trate:R.trate, bonus:R.bonus, tbonus:R.tbonus};
 }
 function addSpend(ev){
   ev.preventDefault();
@@ -3191,6 +3198,17 @@ function addWish(ev){
   renderRewards();
 }
 function delWish(id){ const R=loadRewards(); R.wish=R.wish.filter(w=>w.id!==id); saveRewards(R); renderRewards(); }
+// Earning rules live on Settings > Rewards; the balances they price live on the Rewards tab.
+function renderRewardRules(){
+  if(!document.getElementById('rwRate')) return;
+  const R=loadRewards();
+  document.getElementById('rwRate').value=R.rate;
+  document.getElementById('rwSym').value=R.sym;
+  document.getElementById('rwTrate').value=R.trate;
+  document.getElementById('rwBonus').value=R.bonus;
+  document.getElementById('rwTbonus').value=R.tbonus;
+  document.getElementById('rwLapse').value=Math.round(R.lapse*100);
+}
 function saveRewardRules(ev){
   ev.preventDefault();
   const R=loadRewards();
@@ -3198,9 +3216,11 @@ function saveRewardRules(ev){
   R.sym=String(document.getElementById('rwSym').value||'').trim().slice(0,3)||'₹';
   R.trate=Math.min(240,Math.max(0,+document.getElementById('rwTrate').value||0));
   R.bonus=Math.min(5,Math.max(1,+document.getElementById('rwBonus').value||1));
+  R.tbonus=Math.min(5,Math.max(1,+document.getElementById('rwTbonus').value||1));
   R.lapse=Math.min(100,Math.max(0,+document.getElementById('rwLapse').value||0))/100;
   saveRewards(R);
   document.getElementById('rwRuleMsg').textContent='Saved. Your whole history is re-priced at the new rates.';
+  renderRewardRules();
   renderRewards();
 }
 const RW_VERD={hit:'🟢 green', partial:'🟡 amber', miss:'🔴 red', future:'⏳ open', none:'logged'};
@@ -3225,7 +3245,7 @@ function renderRewards(){
     txt = `🎁 ${have} is yours to use in ${qLabel(L.curQ)}. Unused by ${rwDstr(L.qEnd)}, only ${Math.round(R.lapse*100)}% crosses into next quarter, and that has to be used by ${rwDstr(L.nextQEnd)}.`;
   } else {
     txt = (R.rate>0||R.trate>0)
-      ? `Nothing banked in ${qLabel(L.curQ)} yet. Every hour you log pays ${pair(R.rate>0?money(R.rate,s):'', R.trate>0?rwHrs(R.trate)+' off':'')}, and a green period pays ${R.bonus}× that.`
+      ? `Nothing banked in ${qLabel(L.curQ)} yet. Every hour you log pays ${pair(R.rate>0?money(R.rate,s):'', R.trate>0?rwHrs(R.trate)+' off':'')}, and a green period pays ${pair(R.rate>0?R.bonus+'× on money':'', R.trate>0?R.tbonus+'× on time':'')}.`
       : 'Set your rates in Earning rules below, and your logged hours start paying.';
   }
   warn.className='rw-warn '+cls; warn.textContent=txt;
@@ -3263,8 +3283,8 @@ function renderRewards(){
   // --- last 12 periods, newest first ---
   const pr=L.rows.slice().reverse().slice(0,12);
   document.getElementById('rwPeriods').innerHTML = pr.length
-    ? `<div class="rwscroll"><table class="rwtab"><thead><tr><th>Period</th><th class="num">Hours logged</th><th>Verdict</th><th class="num">Rate</th><th class="num">Money</th><th class="num">Free time</th></tr></thead><tbody>`
-      + pr.map(r=>`<tr><td class="nm">${escHtml(plabel(r.key))}</td><td class="num">${(r.mins/60).toFixed(1)}</td><td>${RW_VERD[r.verdict]||r.verdict}</td><td class="num">${r.mult>1?r.mult+'×':'1×'}</td><td class="num">${money(r.amt,s)}</td><td class="num">${rwHrs(r.tmin)}</td></tr>`).join('')
+    ? `<div class="rwscroll"><table class="rwtab"><thead><tr><th>Period</th><th class="num">Hours logged</th><th>Verdict</th><th class="num">Bonus</th><th class="num">Money</th><th class="num">Free time</th></tr></thead><tbody>`
+      + pr.map(r=>`<tr><td class="nm">${escHtml(plabel(r.key))}</td><td class="num">${(r.mins/60).toFixed(1)}</td><td>${RW_VERD[r.verdict]||r.verdict}</td><td class="num">${r.mult===r.tmult?r.mult+'×':r.mult+'× / '+r.tmult+'×'}</td><td class="num">${money(r.amt,s)}</td><td class="num">${rwHrs(r.tmin)}</td></tr>`).join('')
       + `</tbody></table></div>`
     : '<div class="empty">No logged time yet. Log a period and it starts paying.</div>';
 
@@ -3283,12 +3303,6 @@ function renderRewards(){
     ? `${pair(lostM>=1?money(lostM,s):'', lostT>=1?rwHrs(lostT)+' of free time':'')} has lapsed so far — hours you worked and never cashed in.`
     : 'Nothing has lapsed yet. Keep it that way.';
 
-  // --- rules form ---
-  document.getElementById('rwRate').value=R.rate;
-  document.getElementById('rwSym').value=R.sym;
-  document.getElementById('rwTrate').value=R.trate;
-  document.getElementById('rwBonus').value=R.bonus;
-  document.getElementById('rwLapse').value=Math.round(R.lapse*100);
   const dt=document.getElementById('rwDate'); if(!dt.value) dt.value=new Date().toISOString().slice(0,10);
 }
 
