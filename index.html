@@ -1385,8 +1385,10 @@ let logDonutChart, logTrendChart, logSel=null;
 
 function loadEntries(){ try{return JSON.parse(localStorage.getItem(LS_KEY))||[];}catch(e){return[];} }
 function saveEntries(a){ localStorage.setItem(LS_KEY, JSON.stringify(a)); fbSyncPush(); }
-// permanent monthly per-metric rollup (written at archive time; preserves goal/habit/cat
-// monthly totals after raw entries are purged at 3 months). Shape: { '2026-03': {g:{goalId:mins}, h:{habitName:mins}, c:{cat:mins}} }
+// permanent monthly per-metric rollup, written for months older than 3 months as a backstop.
+// Raw entries are NEVER purged any more (2026-09-07) - they are tiny and the wallet/reports need
+// their period detail forever. The rollup still covers months purged BEFORE that change.
+// Shape: { '2026-03': {g:{goalId:mins}, h:{habitName:mins}, c:{cat:mins}} }
 const LS_ROLLUP='ptd_rollup_v1';
 function loadRollup(){ try{ const v=JSON.parse(localStorage.getItem(LS_ROLLUP)); return (v&&typeof v==='object'&&!Array.isArray(v))?v:{}; }catch(e){ return {}; } }
 function saveRollup(r){ localStorage.setItem(LS_ROLLUP, JSON.stringify(r)); }
@@ -3126,13 +3128,22 @@ function rewardLedger(){
   const perDay=loadHabits().filter(h=>!h.paused&&!h.done).reduce((a,h)=>a+(+h.m||0),0);
   const mins={}; ents.forEach(e=>{ const k=pkey(e); mins[k]=(mins[k]||0)+(+e.mins||0); });
   const rows=[], earnQ={}, tearnQ={}, minsQ={};
-  Object.keys(mins).sort().forEach(k=>{
-    const ym=k.slice(0,7), pr=k.slice(8);
-    const v=periodVerdict(ym, pr, ents, perDay);
+  const units=Object.keys(mins).sort().map(k=>({key:k, ym:k.slice(0,7), mins:mins[k], arch:false}));
+  // Months purged by the old 3-month cleanup survive only as monthly category snapshots, so they
+  // have no 10-day period detail - periodVerdict() can't run and no green bonus can be proven.
+  // They pay the base rate, one synthetic row per month. Nothing is purged any more, so this set
+  // only ever shrinks. A ym present in raw entries is never taken from the snapshot.
+  const haveYm=new Set(units.map(u=>u.ym));
+  loadMonths().forEach(M=>{ const ym=ymOf(M.m); if(haveYm.has(ym)) return;
+    const m=total(M.cats||{}); if(m>0) units.push({key:ym+'-P0', ym, mins:m, arch:true}); });
+  units.sort((a,b)=>a.key<b.key?-1:1);
+  units.forEach(u=>{
+    const v = u.arch ? 'archived' : periodVerdict(u.ym, u.key.slice(8), ents, perDay);
     const mult = v==='hit' ? R.bonus : 1, tmult = v==='hit' ? R.tbonus : 1;
-    const hrs=mins[k]/60, amt=hrs*R.rate*mult, tmin=hrs*R.trate*tmult;
-    rows.push({key:k, ym, mins:mins[k], verdict:v, mult, tmult, amt, tmin});
-    const q=qOf(ym); if(q){ earnQ[q]=(earnQ[q]||0)+amt; tearnQ[q]=(tearnQ[q]||0)+tmin; minsQ[q]=(minsQ[q]||0)+mins[k]; }
+    const hrs=u.mins/60, amt=hrs*R.rate*mult, tmin=hrs*R.trate*tmult;
+    rows.push({key:u.key, ym:u.ym, mins:u.mins, verdict:v, mult, tmult, amt, tmin,
+               label:u.arch ? ymLabel(u.ym)+' (whole month)' : plabel(u.key)});
+    const q=qOf(u.ym); if(q){ earnQ[q]=(earnQ[q]||0)+amt; tearnQ[q]=(tearnQ[q]||0)+tmin; minsQ[q]=(minsQ[q]||0)+u.mins; }
   });
   const spendQ={}, tspendQ={}, spendRows={};
   R.spends.forEach(s=>{ const q=qOf(String(s.date||'').slice(0,7)); if(!q) return;
@@ -3144,7 +3155,7 @@ function rewardLedger(){
   const first=(known[0] && known[0]<curQ) ? known[0] : curQ;
   const M=rwWalk(earnQ,  spendQ,  first, curQ, R.lapse);   // money
   const T=rwWalk(tearnQ, tspendQ, first, curQ, R.lapse);   // free time, in minutes
-  const done=rows.filter(r=>r.verdict!=='future');
+  const done=rows.filter(r=>r.verdict!=='future' && r.verdict!=='archived');
   const avg=f=>done.length ? done.reduce((a,r)=>a+f(r),0)/done.length : 0;
   return {R, rows, M, T, curQ, minsQ,
     spends:(spendRows[curQ]||[]).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))),
@@ -3223,7 +3234,7 @@ function saveRewardRules(ev){
   renderRewardRules();
   renderRewards();
 }
-const RW_VERD={hit:'🟢 green', partial:'🟡 amber', miss:'🔴 red', future:'⏳ open', none:'logged'};
+const RW_VERD={hit:'🟢 green', partial:'🟡 amber', miss:'🔴 red', future:'⏳ open', none:'logged', archived:'📦 no period detail'};
 function renderRewards(){
   if(!document.getElementById('rwKpis')) return;
   const L=rewardLedger(), R=L.R, s=R.sym, m=L.M.cur, t=L.T.cur;
@@ -3284,7 +3295,7 @@ function renderRewards(){
   const pr=L.rows.slice().reverse().slice(0,12);
   document.getElementById('rwPeriods').innerHTML = pr.length
     ? `<div class="rwscroll"><table class="rwtab"><thead><tr><th>Period</th><th class="num">Hours logged</th><th>Verdict</th><th class="num">Bonus</th><th class="num">Money</th><th class="num">Free time</th></tr></thead><tbody>`
-      + pr.map(r=>`<tr><td class="nm">${escHtml(plabel(r.key))}</td><td class="num">${(r.mins/60).toFixed(1)}</td><td>${RW_VERD[r.verdict]||r.verdict}</td><td class="num">${r.mult===r.tmult?r.mult+'×':r.mult+'× / '+r.tmult+'×'}</td><td class="num">${money(r.amt,s)}</td><td class="num">${rwHrs(r.tmin)}</td></tr>`).join('')
+      + pr.map(r=>`<tr><td class="nm">${escHtml(r.label||plabel(r.key))}</td><td class="num">${(r.mins/60).toFixed(1)}</td><td>${RW_VERD[r.verdict]||r.verdict}</td><td class="num">${r.mult===r.tmult?r.mult+'×':r.mult+'× / '+r.tmult+'×'}</td><td class="num">${money(r.amt,s)}</td><td class="num">${rwHrs(r.tmin)}</td></tr>`).join('')
       + `</tbody></table></div>`
     : '<div class="empty">No logged time yet. Log a period and it starts paying.</div>';
 
@@ -3740,7 +3751,7 @@ function renderReports(){
   }).join('');
   const subjDrop=`<details class="repdrop" ${repDropOpen?'open':''}><summary>Drill down · ${repSel.size} selected</summary><div class="repdrop-panel">${opts}</div></details>`;
   const periodNote = repGran==='period' && Object.keys(loadRollup()).length
-    ? `<div class="hint" style="margin-top:10px">Period view shows only the last ~3 months — older data is kept as monthly totals (no period detail).</div>` : '';
+    ? `<div class="hint" style="margin-top:10px">Some older data is kept as monthly totals only, with no period detail. Everything logged from now on keeps its period detail.</div>` : '';
   document.getElementById('repControls').innerHTML =
     `<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">`
     +`<label style="font-size:12px;color:var(--muted);font-weight:700;display:inline-flex;align-items:center;gap:8px">Group by ${granSel}</label>`
@@ -4369,6 +4380,9 @@ function renderAudit(){
     </tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 // ================= ARCHIVE (keep raw log to last 3 months; roll older into summaries) =================
+// Summarises months older than 3 months into MONTHS + the rollup. It no longer deletes the raw
+// entries (that purge cost the Rewards wallet and period-level reports their history) - the
+// snapshots are just a backstop now, and monthCats()/reports prefer live entries anyway.
 function archiveOldEntries(){
   const keep=new Set(), d=new Date();
   for(let i=0;i<3;i++){ const dt=new Date(d.getFullYear(),d.getMonth()-i,1); keep.add(`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`); }
@@ -4392,7 +4406,7 @@ function archiveOldEntries(){
     saveRollup(roll);
     localStorage.setItem(LS_MONTHS, JSON.stringify(months.filter(x=>ymOf(x.m)!==CUR_YM)));
     MONTHS=loadMonths();
-    saveEntries(all.filter(e=>!archived.has(e.ym)));  // triggers one fbSyncPush incl. rollup
+    fbSyncPush();                                     // raw entries stay put; push the new snapshots
   }
 }
 try{ archiveOldEntries(); }catch(e){}
