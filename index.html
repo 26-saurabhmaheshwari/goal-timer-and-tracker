@@ -486,6 +486,28 @@ if(!window.Chart){
   #pdfReport .pdf-sub{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:14px 0 6px}
   #pdfReport .pdf-img{max-width:100%;height:auto;display:block}
   #pdfReport canvas{display:none}
+  /* One-month report (Reports > Export). Print-only, so flat ink on white - no shadows, no fills
+     that eat toner. Lives under #pdfReport, which only becomes visible in body.pdf-print. */
+  #pdfReport .mr-head{border-bottom:3px solid var(--ink2);padding-bottom:8px;margin-bottom:16px}
+  #pdfReport .mr-t{font-family:var(--serif);font-size:30px;line-height:1.1;color:var(--ink2)}
+  #pdfReport .mr-who{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-top:5px}
+  #pdfReport .mr-big{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
+  #pdfReport .mr-big>div{border:1px solid var(--line);padding:10px 12px}
+  #pdfReport .mr-big .l{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700}
+  #pdfReport .mr-big .v{font-family:var(--serif);font-size:26px;line-height:1.15;margin-top:3px;color:var(--ink2)}
+  #pdfReport .mr-big .s{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.35}
+  #pdfReport .mr-note{font-size:12px;color:var(--ink);line-height:1.45;margin:8px 0 4px}
+  #pdfReport table.mr{width:100%;border-collapse:collapse;font-size:12.5px}
+  #pdfReport table.mr th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700;border-bottom:1.5px solid var(--ink2);padding:5px 7px;white-space:nowrap}
+  #pdfReport table.mr td{padding:6px 7px;border-bottom:1px solid var(--line);vertical-align:middle}
+  #pdfReport table.mr th.n,#pdfReport table.mr td.n{text-align:right;font-variant-numeric:tabular-nums}
+  #pdfReport table.mr .s{font-size:10.5px;color:var(--muted)}
+  #pdfReport .mr-bar{height:7px;background:var(--line);min-width:60px}
+  #pdfReport .mr-bar i{display:block;height:7px;background:var(--accent)}
+  /* Hand-written section: ruled lines are the reason to print at all. */
+  #pdfReport .mr-brk{break-before:page;page-break-before:always;padding-top:6px}
+  #pdfReport .mr-rl{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:14px 0 10px}
+  #pdfReport .mr-rule{border-bottom:1px solid var(--muted);height:26px}
   @media print{
     body.pdf-print .wrap{display:none!important}
     body.pdf-print #pdfReport{display:block!important}
@@ -595,7 +617,7 @@ if(!window.Chart){
         <span class="gc-plus">＋</span>
         <span class="gc-lab">New goal</span>
       </button>
-      <button id="pgPdfBtn" class="btn pgact" hidden onclick="document.getElementById('repPdfBtn').click()">⤓ Export PDF</button>
+      <button id="pgPdfBtn" class="btn pgact" hidden onclick="document.getElementById('repPdfBtn').click()">⤓ Export</button>
       <span id="fbWho"></span>
       <button id="fbBtn" onclick="fbToggle()">Sign in to sync</button>
     </div>
@@ -912,8 +934,9 @@ if(!window.Chart){
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
       <h2 style="margin:0">Reports</h2>
-      <div class="noprint" style="display:flex;gap:8px">
-        <button id="repPdfBtn" class="btn-sm">⤓ Export PDF</button>
+      <div class="noprint" style="display:flex;gap:8px;align-items:center">
+        <select id="repMonth" class="btn-sm" style="padding:6px 10px"></select>
+        <button id="repPdfBtn" class="btn-sm">⤓ Export</button>
       </div>
     </div>
     <div class="hint">Compare tracked hours over time. Pick a time grouping, then one or more subjects — each gets its own bar chart. Based on logged entries.</div>
@@ -3439,6 +3462,164 @@ function pdfClone(srcEl){            // deep-clone a rendered node, swapping eac
 function pdfSec(title){ const d=document.createElement('div'); d.className='pdf-sec';
   if(title){ const h=document.createElement('div'); h.className='pdf-h'; h.textContent=title; d.appendChild(h); } return d; }
 function pdfSub(text){ const d=document.createElement('div'); d.className='pdf-sub'; d.textContent=text; return d; }
+// ---- Reports → Export: a one-month hard copy ------------------------------------------------
+// Month-scoped on purpose. A year-wide dump is a data dump; one month fits on paper, can be
+// pinned up, and is short enough to actually read. Order is deliberate: the score first (hours,
+// money, free time), then the three period verdicts that produced it, then where the hours went,
+// then what moved because of them, and last two ruled lines to write the month's verdict by hand
+// — the pen is the part that makes a printout stick.
+function monthsLogged(){
+  const s=new Set();
+  loadEntries().forEach(e=>{ if(e.ym) s.add(e.ym); });
+  loadMonths().forEach(M=>{ const y=ymOf(M.m); if(y && total(M.cats||{})>0) s.add(y); });
+  return [...s].sort().reverse();
+}
+function monthMins(ym){
+  const live=loadEntries().filter(e=>e.ym===ym).reduce((a,e)=>a+(+e.mins||0),0);
+  if(live>0) return live;                                    // live entries always win
+  const M=loadMonths().find(x=>ymOf(x.m)===ym);              // pre-2026-09 purged months
+  return M?total(M.cats||{}):0;
+}
+function prevYm(ym){ let [y,m]=ym.split('-').map(Number); m--; if(m<1){m=12;y--;} return `${y}-${String(m).padStart(2,'0')}`; }
+function daysInYm(ym){ const [y,m]=ym.split('-').map(Number); return new Date(y,m,0).getDate(); }
+function mrH(mins){ return ((+mins||0)/60).toFixed(1)+'h'; }
+function mrBar(pct){ return `<div class="mr-bar"><i style="width:${Math.max(0,Math.min(100,pct)).toFixed(0)}%"></i></div>`; }
+
+function monthReportHTML(ym){
+  const L=rewardLedger(), R=L.R, s=R.sym;
+  const ents=loadEntries().filter(e=>e.ym===ym);
+  const mins=monthMins(ym), dim=daysInYm(ym);
+  const perDay=loadHabits().filter(h=>!h.paused&&!h.done).reduce((a,h)=>a+(+h.m||0),0);
+  const nugB=(+loadLimits().nugBudget||0)*60;
+  const rows=L.rows.filter(r=>r.ym===ym && r.verdict!=='archived');
+  const paidM=rows.reduce((a,r)=>a+r.amt,0), paidT=rows.reduce((a,r)=>a+r.tmin,0);
+  const greens=rows.filter(r=>r.verdict==='hit').length;
+  const prev=monthMins(prevYm(ym)), diff=prev>0?((mins-prev)/prev*100):null;
+  const all=monthsLogged().map(k=>({k, m:monthMins(k)})).filter(x=>x.m>0).sort((a,b)=>b.m-a.m);
+  const rank=all.findIndex(x=>x.k===ym)+1, best=all[0];
+  const out=[];
+
+  // --- header + the three headline numbers ---
+  const who=loadName();
+  out.push(`<div class="mr-head"><div class="mr-t">${escHtml(ymLabel(ym))}</div>`
+    + `<div class="mr-who">Tenfold month report${who?' · '+escHtml(who):''} · printed ${rwDstr(new Date())}</div></div>`);
+  out.push(`<div class="mr-big">`
+    + `<div><div class="l">Hours logged</div><div class="v">${mrH(mins)}</div><div class="s">${(mins/60/dim).toFixed(1)}h a day across ${dim} days`
+      + `${diff==null?'':` · ${diff>=0?'+':''}${diff.toFixed(0)}% vs ${MONTH_NAMES[+prevYm(ym).slice(5,7)-1]}`}</div></div>`
+    + `<div><div class="l">Money earned</div><div class="v">${money(paidM,s)}</div><div class="s">at ${money(R.rate,s)} an hour, ${R.bonus}× on a green period</div></div>`
+    + `<div><div class="l">Free time earned</div><div class="v">${rwHrs(paidT)}</div><div class="s">guilt-free hours you are allowed to waste</div></div>`
+    + `</div>`);
+  out.push(`<div class="mr-note">${greens} of ${rows.length||3} periods came in green.`
+    + `${rank?` This was your <b>${rank===1?'best':rank+(rank===2?'nd':rank===3?'rd':'th')+' biggest'}</b> month of the ${all.length} you have logged`:''}`
+    + `${best&&rank>1?` — the record is ${escHtml(ymLabel(best.k))} at ${mrH(best.m)}`:''}.`
+    + ` Wallet right now: <b>${money(L.M.cur.avail,s)}</b> and <b>${rwHrs(L.T.cur.avail)}</b> of free time available in ${qLabel(L.curQ)}.</div>`);
+
+  // --- the three periods: the actual scoreboard ---
+  out.push(`<div class="pdf-sub">The three periods</div>`);
+  out.push(`<table class="mr"><thead><tr><th>Period</th><th class="n">Logged</th><th class="n">Plan</th><th>Against plan</th><th>Verdict</th><th class="n">Paid</th></tr></thead><tbody>`
+    + ['P1','P2','P3'].map(p=>{
+        const pd=periodDays(ym,p), days=pd.end-pd.start+1;
+        const plan=perDay*days+nugB;
+        const lg=ents.filter(e=>e.period===p).reduce((a,e)=>a+(+e.mins||0),0);
+        const r=rows.find(x=>x.key===`${ym}-${p}`);
+        const pct=plan>0?lg/plan*100:0;
+        return `<tr><td>${escHtml(PERIOD_LABEL[p])} <span class="s">(${days} days)</span></td>`
+          + `<td class="n">${mrH(lg)}</td><td class="n">${mrH(plan)}</td>`
+          + `<td>${mrBar(pct)}<span class="s">${pct.toFixed(0)}%</span></td>`
+          + `<td>${RW_VERD[r?r.verdict:'none']||''}${r&&r.mult>1?` · ${r.mult}×`:''}</td>`
+          + `<td class="n">${r?money(r.amt,s)+' + '+rwHrs(r.tmin):'—'}</td></tr>`;
+      }).join('')
+    + `</tbody></table>`);
+  out.push(`<div class="mr-note">Plan = ${perDay} min/day of habits over the period's days, plus the ${(nugB/60).toFixed(0)}h Live Nuggets budget. Green needs 80% of it, amber 40%.</div>`);
+
+  // --- where the hours went ---
+  const cats=Object.entries(entryCats(ym)).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  out.push(`<div class="pdf-sub">Where the hours went</div>`);
+  out.push(cats.length
+    ? `<table class="mr"><thead><tr><th>Category</th><th class="n">Hours</th><th class="n">Share</th><th>&nbsp;</th></tr></thead><tbody>`
+      + cats.map(([c,v])=>`<tr><td>${iconFor(c)} ${escHtml(c)}</td><td class="n">${mrH(v)}</td>`
+          + `<td class="n">${(v/mins*100).toFixed(0)}%</td><td>${mrBar(v/cats[0][1]*100)}</td></tr>`).join('')
+      + `</tbody></table>`
+    : `<div class="mr-note">No entries in this month.</div>`);
+
+  // --- habits: the part that is supposed to be boring and daily ---
+  const habs=loadHabits().filter(h=>!h.done&&!h.paused);
+  if(habs.length){
+    out.push(`<div class="pdf-sub">Habits</div>`);
+    out.push(`<table class="mr"><thead><tr><th>Habit</th><th class="n">Target</th><th class="n">Logged</th><th class="n">Kept</th><th>1–10</th><th>11–20</th><th>21–end</th></tr></thead><tbody>`
+      + habs.map(h=>{
+          const tgt=(+h.m||0)*dim;
+          const got=ents.filter(e=>e.type==='project'&&e.task===h.n).reduce((a,e)=>a+(+e.mins||0),0);
+          const mark=p=>{ const pd=periodDays(ym,p), plan=(+h.m||0)*(pd.end-pd.start+1);
+            const lg=ents.filter(e=>e.type==='project'&&e.task===h.n&&e.period===p).reduce((a,e)=>a+(+e.mins||0),0);
+            if(plan<=0) return '—';
+            return lg>=HABIT_HIT*plan?'✓':(lg>0?'·':'✕'); };
+          return `<tr><td>${iconFor(h.cat)} ${escHtml(h.n)}</td><td class="n">${h.m}m/day</td>`
+            + `<td class="n">${mrH(got)}</td><td class="n">${tgt>0?(got/tgt*100).toFixed(0)+'%':'—'}</td>`
+            + `<td>${mark('P1')}</td><td>${mark('P2')}</td><td>${mark('P3')}</td></tr>`;
+        }).join('')
+      + `</tbody></table>`);
+    out.push(`<div class="mr-note">✓ kept 80% of that habit's plan for the period · · partly · ✕ nothing logged.</div>`);
+  }
+
+  // --- goals moved this month (mini echo rows carry `via`, so skip them or the parent doubles) ---
+  const moved=goalsLive().map(g=>{
+      const lg=(g.logs||[]).filter(l=>l.ym===ym && !l.via);
+      const amt=lg.reduce((a,l)=>a+(+l.amt||0),0);
+      const mn=ents.filter(e=>e.type==='goal'&&e.goalId===g.id).reduce((a,e)=>a+(+e.mins||0),0);
+      return {g, amt, mn};
+    }).filter(x=>x.amt>0||x.mn>0).sort((a,b)=>b.mn-a.mn);
+  if(moved.length){
+    out.push(`<div class="pdf-sub">Goals that moved</div>`);
+    out.push(`<table class="mr"><thead><tr><th>Goal</th><th class="n">Added</th><th class="n">Hours</th><th class="n">Now at</th><th>&nbsp;</th></tr></thead><tbody>`
+      + moved.map(x=>{ const t=+x.g.target||0, pct=t>0?(+x.g.cur||0)/t*100:0;
+          return `<tr><td>${iconFor(x.g.cat)} ${escHtml(x.g.name)}</td>`
+            + `<td class="n">+${x.amt} ${escHtml(x.g.unit||'')}</td><td class="n">${mrH(x.mn)}</td>`
+            + `<td class="n">${(+x.g.cur||0)}${t?' / '+t:''}</td><td>${t?mrBar(pct):''}</td></tr>`; }).join('')
+      + `</tbody></table>`);
+  }
+
+  // --- top tasks: the honest list of what actually ate the month ---
+  const byTask={}; ents.forEach(e=>{ const k=e.task||'(untitled)'; byTask[k]=(byTask[k]||0)+(+e.mins||0); });
+  const tops=Object.entries(byTask).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  if(tops.length){
+    out.push(`<div class="pdf-sub">Biggest single things</div>`);
+    out.push(`<table class="mr"><tbody>`
+      + tops.map(([t,v],i)=>`<tr><td class="n" style="width:26px;color:var(--muted)">${i+1}</td><td>${escHtml(t)}</td>`
+          + `<td class="n">${mrH(v)}</td><td style="width:35%">${mrBar(v/tops[0][1]*100)}</td></tr>`).join('')
+      + `</tbody></table>`);
+  }
+
+  // --- by hand. The whole point of a hard copy: somewhere to write, and a signature. ---
+  out.push(`<div class="mr-brk"><div class="pdf-sub">By hand</div>`
+    + `<div class="mr-note">Fill these in with a pen before you file it. A month you never judged is a month you cannot repeat.</div>`
+    + ['The one thing I am proud of','The one thing I am fixing next month','Next month I am aiming for'].map(l=>
+        `<div class="mr-rl">${l}</div><div class="mr-rule"></div><div class="mr-rule"></div>`).join('')
+    + `<div style="display:flex;gap:24px;margin-top:22px">`
+    + `<div style="flex:2"><div class="mr-rule"></div><div class="mr-rl">Signed</div></div>`
+    + `<div style="flex:1"><div class="mr-rule"></div><div class="mr-rl">Date</div></div></div></div>`);
+
+  return out.join('');
+}
+function exportMonthPdf(){
+  const sel=document.getElementById('repMonth');
+  const ym=(sel&&sel.value)||CUR_YM;
+  const rep=document.getElementById('pdfReport');
+  rep.innerHTML=`<div class="pdf-sec mrep">${monthReportHTML(ym)}</div>`;
+  document.body.classList.add('pdf-print');
+  const done=()=>{ document.body.classList.remove('pdf-print'); rep.innerHTML=''; window.removeEventListener('afterprint',done); };
+  window.addEventListener('afterprint',done);
+  setTimeout(()=>window.print(),60);
+}
+function renderRepMonths(){
+  const sel=document.getElementById('repMonth'); if(!sel) return;
+  const ms=monthsLogged(); if(!ms.includes(CUR_YM)) ms.unshift(CUR_YM);
+  const keep=sel.value;
+  // Last option keeps the old year-wide chart dump reachable without a second export button.
+  sel.innerHTML=ms.map(k=>`<option value="${k}">${escHtml(ymLabel(k))}</option>`).join('')
+    + `<option value="__year">Whole year (charts)</option>`;
+  sel.value=(keep&&(keep==='__year'||ms.includes(keep)))?keep:ms[0];
+}
 function exportReportPdf(){
   const rep=document.getElementById('pdfReport'); rep.innerHTML='';
   // Source canvases live in [hidden] views (display:none → 0×0), so Chart.js would
@@ -3928,7 +4109,11 @@ function renderReports(){
   document.getElementById('repGranSel').onchange=e=>{ repGran=e.target.value; renderReports(); };
   const dd=document.querySelector('#repControls .repdrop'); if(dd) dd.addEventListener('toggle',()=>{ repDropOpen=dd.open; });
   document.querySelectorAll('#repControls input[data-k]').forEach(cb=>cb.onchange=()=>{ const k=cb.dataset.k; cb.checked?repSel.add(k):repSel.delete(k); repDropOpen=true; renderReports(); });
-  document.getElementById('repPdfBtn').onclick=exportReportPdf;
+  renderRepMonths();
+  document.getElementById('repPdfBtn').onclick=()=>{
+    const v=document.getElementById('repMonth').value;
+    v==='__year' ? exportReportPdf() : exportMonthPdf();
+  };
 }
 
 // --- Firebase sync glue ---
