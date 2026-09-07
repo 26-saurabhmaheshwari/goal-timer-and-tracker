@@ -3481,6 +3481,7 @@ function monthMins(ym){
   return M?total(M.cats||{}):0;
 }
 function prevYm(ym){ let [y,m]=ym.split('-').map(Number); m--; if(m<1){m=12;y--;} return `${y}-${String(m).padStart(2,'0')}`; }
+function nextYm(ym){ let [y,m]=ym.split('-').map(Number); m++; if(m>12){m=1;y++;} return `${y}-${String(m).padStart(2,'0')}`; }
 function daysInYm(ym){ const [y,m]=ym.split('-').map(Number); return new Date(y,m,0).getDate(); }
 function mrH(mins){ return ((+mins||0)/60).toFixed(1)+'h'; }
 function mrBar(pct){ return `<div class="mr-bar"><i style="width:${Math.max(0,Math.min(100,pct)).toFixed(0)}%"></i></div>`; }
@@ -3495,7 +3496,10 @@ function monthReportHTML(ym){
   const paidM=rows.reduce((a,r)=>a+r.amt,0), paidT=rows.reduce((a,r)=>a+r.tmin,0);
   const greens=rows.filter(r=>r.verdict==='hit').length;
   const prev=monthMins(prevYm(ym)), diff=prev>0?((mins-prev)/prev*100):null;
-  const all=monthsLogged().map(k=>({k, m:monthMins(k)})).filter(x=>x.m>0).sort((a,b)=>b.m-a.m);
+  const hist=monthsLogged().map(k=>({k, m:monthMins(k)})).filter(x=>x.m>0);   // newest first
+  const all=hist.slice().sort((a,b)=>b.m-a.m);
+  const scored=L.rows.filter(r=>r.verdict!=='future'&&r.verdict!=='archived');
+  let streak=0; for(let i=scored.length-1;i>=0;i--){ if(scored[i].verdict==='hit') streak++; else break; }
   const rank=all.findIndex(x=>x.k===ym)+1, best=all[0];
   const out=[];
 
@@ -3512,7 +3516,7 @@ function monthReportHTML(ym){
   out.push(`<div class="mr-note">${greens} of ${rows.length||3} periods came in green.`
     + `${rank?` This was your <b>${rank===1?'best':rank+(rank===2?'nd':rank===3?'rd':'th')+' biggest'}</b> month of the ${all.length} you have logged`:''}`
     + `${best&&rank>1?` — the record is ${escHtml(ymLabel(best.k))} at ${mrH(best.m)}`:''}.`
-    + ` Wallet right now: <b>${money(L.M.cur.avail,s)}</b> and <b>${rwHrs(L.T.cur.avail)}</b> of free time available in ${qLabel(L.curQ)}.</div>`);
+    + `${streak>1?` You are on a run of <b>${streak} green periods</b> — don't be the one who breaks it.`:''} Wallet right now: <b>${money(L.M.cur.avail,s)}</b> and <b>${rwHrs(L.T.cur.avail)}</b> of free time available in ${qLabel(L.curQ)}.</div>`);
 
   // --- the three periods: the actual scoreboard ---
   out.push(`<div class="pdf-sub">The three periods</div>`);
@@ -3562,19 +3566,28 @@ function monthReportHTML(ym){
     out.push(`<div class="mr-note">✓ kept 80% of that habit's plan for the period · · partly · ✕ nothing logged.</div>`);
   }
 
-  // --- goals moved this month (mini echo rows carry `via`, so skip them or the parent doubles) ---
-  const moved=goalsLive().map(g=>{
-      const lg=(g.logs||[]).filter(l=>l.ym===ym && !l.via);
-      const amt=lg.reduce((a,l)=>a+(+l.amt||0),0);
-      const mn=ents.filter(e=>e.type==='goal'&&e.goalId===g.id).reduce((a,e)=>a+(+e.mins||0),0);
-      return {g, amt, mn};
-    }).filter(x=>x.amt>0||x.mn>0).sort((a,b)=>b.mn-a.mn);
+  // --- goals moved this month, rolled up to the parent -----------------------------------------
+  // A mini is never shown by its own name anywhere in the app (it reads "N units closer to <parent>"),
+  // so a row saying "mini +80 Minutes" is useless on paper. Each mini's progress is folded into its
+  // parent. The parent's echo rows carry `via` and are skipped, so summing the minis' own rows plus
+  // the parent's direct rows counts every unit exactly once.
+  const gAll=loadGoals(), topOf=g=>(g.parentId&&gAll.find(o=>o.id===g.parentId))||g;
+  const mv={};
+  goalsLive().forEach(g=>{
+    const amt=(g.logs||[]).filter(l=>l.ym===ym&&!l.via).reduce((a,l)=>a+(+l.amt||0),0);
+    const mn=ents.filter(e=>e.type==='goal'&&e.goalId===g.id).reduce((a,e)=>a+(+e.mins||0),0);
+    if(amt<=0&&mn<=0) return;
+    const t=topOf(g), r=mv[t.id]=mv[t.id]||{g:t, amt:0, mn:0, steps:0};
+    r.amt+=amt; r.mn+=mn; if(g.parentId) r.steps++;
+  });
+  const moved=Object.values(mv).sort((a,b)=>b.mn-a.mn);
   if(moved.length){
     out.push(`<div class="pdf-sub">Goals that moved</div>`);
     out.push(`<table class="mr"><thead><tr><th>Goal</th><th class="n">Added</th><th class="n">Hours</th><th class="n">Now at</th><th>&nbsp;</th></tr></thead><tbody>`
       + moved.map(x=>{ const t=+x.g.target||0, pct=t>0?(+x.g.cur||0)/t*100:0;
-          return `<tr><td>${iconFor(x.g.cat)} ${escHtml(x.g.name)}</td>`
-            + `<td class="n">+${x.amt} ${escHtml(x.g.unit||'')}</td><td class="n">${mrH(x.mn)}</td>`
+          return `<tr><td>${iconFor(x.g.cat)} ${escHtml(x.g.name)}`
+            + `${x.steps?` <span class="s">· ${x.steps} step${x.steps===1?'':'s'}</span>`:''}</td>`
+            + `<td class="n">+${+x.amt.toFixed(2)} ${escHtml(x.g.unit||'')}</td><td class="n">${mrH(x.mn)}</td>`
             + `<td class="n">${(+x.g.cur||0)}${t?' / '+t:''}</td><td>${t?mrBar(pct):''}</td></tr>`; }).join('')
       + `</tbody></table>`);
   }
@@ -3589,6 +3602,52 @@ function monthReportHTML(ym){
           + `<td class="n">${mrH(v)}</td><td style="width:35%">${mrBar(v/tops[0][1]*100)}</td></tr>`).join('')
       + `</tbody></table>`);
   }
+
+  // --- the year so far: the one chart that matters on paper, drawn with divs ---------------------
+  const yr=hist.filter(x=>x.k<=ym).slice(0,12).reverse();
+  if(yr.length>1){
+    const top=Math.max(...yr.map(x=>x.m));
+    out.push(`<div class="pdf-sub">The last ${yr.length} months</div>`);
+    out.push(`<table class="mr"><tbody>`
+      + yr.map(x=>{ const g=L.rows.filter(r=>r.ym===x.k&&r.verdict==='hit').length;
+          return `<tr${x.k===ym?' style="font-weight:700"':''}><td style="width:22%">${escHtml(ymLabel(x.k))}</td>`
+            + `<td class="n" style="width:12%">${mrH(x.m)}</td>`
+            + `<td style="width:14%" class="s">${g?'🟢'.repeat(g):'—'}</td>`
+            + `<td>${mrBar(x.m/top*100)}</td></tr>`; }).join('')
+      + `</tbody></table>`);
+    out.push(`<div class="mr-note">One 🟢 per green period. Bars are relative to your best month in this stretch.</div>`);
+  }
+
+  // --- the other half of the wallet: what you actually enjoyed, and what is about to rot ---------
+  const sp=(R.spends||[]).filter(x=>String(x.date||'').slice(0,7)===ym)
+                         .sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
+  out.push(`<div class="pdf-sub">What you cashed in</div>`);
+  out.push(sp.length
+    ? `<table class="mr"><thead><tr><th>Date</th><th>What for</th><th class="n">Money</th><th class="n">Free time</th></tr></thead><tbody>`
+      + sp.map(x=>`<tr><td>${escHtml(String(x.date||''))}</td><td>${escHtml(x.note||'—')}</td>`
+          + `<td class="n">${money(+x.amt||0,s)}</td><td class="n">${rwHrs(+x.mins||0)}</td></tr>`).join('')
+      + `</tbody></table>`
+    : `<div class="mr-note">Nothing booked this month. Earning it and never spending it is the failure mode this whole thing exists to stop.</div>`);
+
+  const eM=L.M.cur.expSoon, eT=L.T.cur.expSoon;
+  if(eM>=1||eT>=1) out.push(`<div class="mr-note"><b>Expiring ${rwDstr(L.qEnd)}:</b> ${money(eM,s)} and ${rwHrs(eT)} of free time`
+    + ` carried in from last quarter. Unspent by that date it is gone in full — carried-in balance gets no second carry.</div>`);
+
+  const wish=(R.wish||[]).slice().sort((a,b)=>(+a.price||0)-(+b.price||0))
+    .find(w=>(+w.price||0)>L.M.cur.avail || (+w.mins||0)>L.T.cur.avail);
+  if(wish){
+    const gapM=Math.max(0,(+wish.price||0)-L.M.cur.avail), gapT=Math.max(0,(+wish.mins||0)-L.T.cur.avail);
+    const pM=L.perPeriod>0?gapM/L.perPeriod:0, pT=L.perPeriodT>0?gapT/L.perPeriodT:0;
+    const per=Math.ceil(Math.max(pM,pT));
+    out.push(`<div class="mr-note"><b>Next up:</b> ${escHtml(wish.name||'')} — short by ${money(gapM,s)} and ${rwHrs(gapT)}.`
+      + `${per>0?` About ${per} more period${per===1?'':'s'} at the pace you have been keeping.`:''}</div>`);
+  }
+
+  // --- what next month asks for, in one number --------------------------------------------------
+  const nx=nextYm(ym), nxd=daysInYm(nx);
+  const nxPlan=perDay*nxd+nugB*3;
+  if(nxPlan>0) out.push(`<div class="mr-note"><b>${escHtml(ymLabel(nx))} asks for ${mrH(nxPlan*0.8)}</b> to come in green in all three periods`
+    + ` — ${(nxPlan*0.8/60/nxd).toFixed(1)}h a day. Full plan is ${mrH(nxPlan)}.</div>`);
 
   // --- by hand. The whole point of a hard copy: somewhere to write, and a signature. ---
   out.push(`<div class="mr-brk"><div class="pdf-sub">By hand</div>`
