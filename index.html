@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
   FILE MAP - grep these exact tags to jump (line numbers drift, names don't)
-  HTML views:   /viewOverview (contains ovYear/ovMonthly/ovPot sub-tabs)  /viewLog (+viewAudit below it)  /viewGoals  /viewPlanning  /viewReports  /viewSettings (FAQ = setFaq sidebar section)  (each closes with a div comment)
+  HTML views:   /viewOverview (contains ovYear/ovMonthly/ovPot sub-tabs)  /viewLog (+viewAudit below it)  /viewGoals  /viewPlanning  /viewReports  /viewRewards  /viewSettings (FAQ = setFaq sidebar section)  (each closes with a div comment)
   JS sections:  "===== LOG VIEW"  "category management (Settings)"  "===== ONLINE / OFFLINE"
                 "===== LIFE BAR"  "===== GOALS"  "===== TIME PLANNING"  "===== AUDIT"  "===== ARCHIVE"
   Data/state:   LS_GOALS / SEED_GOALS . LS_HABITS / SEED_HABITS / loadHabits / groupHabits . LS_ICONS / SEED_ICONS / ICONS / iconFor (category icons, Settings-managed)
@@ -436,6 +436,31 @@ if(!window.Chart){
   .repopt input{cursor:pointer}
   #repGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));gap:16px}
   .repcard canvas{max-height:230px}
+  /* ---- Rewards wallet (logged hours -> spendable money + earned free time, per quarter) ---- */
+  #viewRewards{max-width:1040px;margin:0 auto}
+  .rw-warn{border-radius:12px;padding:13px 16px;font-size:13.5px;font-weight:600;margin-bottom:16px;border:1px solid;line-height:1.55}
+  .rw-warn.calm{background:var(--panel);border-color:var(--line);color:var(--muted)}
+  .rw-warn.amber{background:#fdf6e3;border-color:#e6d5a0;color:#8a6a17}
+  .rw-warn.red{background:#fbeae8;border-color:#eec3bd;color:#9c2b1c}
+  #rwKpis .kpi .val{font-family:var(--serif)}
+  .rwscroll{overflow-x:auto}
+  .rwtab{width:100%;border-collapse:collapse;font-size:13.5px}
+  .rwtab th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:700;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+  .rwtab td{padding:9px 8px;border-bottom:1px solid var(--line)}
+  .rwtab tr:last-child td{border-bottom:0}
+  .rwtab th.num,.rwtab td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .rwtab tr.now td{background:var(--panel);font-weight:700}
+  .rwtab td.nm{font-weight:600;color:var(--ink2)}
+  .rw-t{display:block;font-size:11.5px;font-weight:600;color:var(--muted);margin-top:2px}
+  .rwdel{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:15px;padding:2px 6px;border-radius:6px}
+  .rwdel:hover{color:#9c2b1c;background:rgba(156,43,28,.08)}
+  .rw-ok{color:#2f7a45;font-weight:600}
+  .rw-no{color:#9c2b1c;font-weight:600}
+  .rw-far{color:var(--muted);font-weight:600}
+  @media(max-width:640px){
+    #rwSpendForm .frow,#rwWishForm .frow,#rwRuleForm .frow{grid-template-columns:1fr 1fr!important}
+    #rwSpendForm .frow button,#rwWishForm .frow button,#rwRuleForm .frow label:last-child{grid-column:1/-1}
+  }
   @media print{ #repGrid{display:grid;grid-template-columns:1fr 1fr} .repcard{page-break-inside:avoid} }
   #pdfReport{display:none}
   #pdfReport .pdf-sec{margin-bottom:22px}
@@ -533,6 +558,7 @@ if(!window.Chart){
   <nav id="viewNav">
     <button data-v="overview" class="active"><span class="sb-ic">⌂</span><span class="sb-lab">Overview</span></button>
     <button data-v="goals"><span class="sb-ic">◎</span><span class="sb-lab">Goals</span></button>
+    <button data-v="rewards"><span class="sb-ic">◈</span><span class="sb-lab">Rewards</span></button>
     <button data-v="planning"><span class="sb-ic">▦</span><span class="sb-lab">Planning</span></button>
     <button data-v="log"><span class="sb-ic">✎</span><span class="sb-lab">Log Data</span></button>
     <button data-v="reports"><span class="sb-ic">▤</span><span class="sb-lab">Reports</span></button>
@@ -878,6 +904,72 @@ if(!window.Chart){
   <div id="repTags" style="margin-top:16px"></div>
   <div id="repProgress" style="margin-top:16px"></div>
 </div><!-- /viewReports -->
+
+<div id="viewRewards" hidden>
+  <div id="rwWarn" class="rw-warn calm"></div>
+  <div class="kpis" id="rwKpis"></div>
+
+  <div class="card">
+    <h2>Spend it</h2>
+    <div class="hint">Every hour you log pays you twice: money, and free hours you are allowed to waste guilt-free. Book what you actually used here &mdash; money, time off, or both. Carried-over balance is always spent first, because that is the part about to expire.</div>
+    <form id="rwSpendForm" class="form" style="margin-top:14px" onsubmit="addSpend(event)">
+      <div class="frow" style="grid-template-columns:120px 120px 1fr 150px auto;align-items:end">
+        <label>Money <input id="rwAmt" type="number" min="0" step="1" placeholder="0"></label>
+        <label>Free hours <input id="rwHrsIn" type="number" min="0" step="0.5" placeholder="0"></label>
+        <label>What for <input id="rwNote" type="text" placeholder="Weekend trip"></label>
+        <label>Date <input id="rwDate" type="date"></label>
+        <button class="btn" type="submit">Log it</button>
+      </div>
+      <div class="hint" id="rwMsg" style="margin-top:10px"></div>
+    </form>
+    <div id="rwSpendList" style="margin-top:16px"></div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h2>Wishlist</h2>
+    <div class="hint">Price the things you actually want &mdash; in money, in days off, or both. Each one shows how many 10-day periods away it is at the pace you are already keeping. A thing costing both is only yours when both balances cover it.</div>
+    <form id="rwWishForm" class="form" style="margin-top:14px" onsubmit="addWish(event)">
+      <div class="frow" style="grid-template-columns:1fr 140px 140px auto;align-items:end">
+        <label>Thing <input id="rwWName" type="text" placeholder="Trip to the mountains"></label>
+        <label>Money <input id="rwWPrice" type="number" min="0" step="1"></label>
+        <label>Free hours <input id="rwWHrs" type="number" min="0" step="0.5"></label>
+        <button class="btn-sm" type="submit">Add</button>
+      </div>
+    </form>
+    <div id="rwWishList" style="margin-top:16px"></div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h2>What each period paid</h2>
+    <div class="hint">Earnings are worked out from your logged entries every time this page opens, so fixing an old entry re-prices it. A green period pays the bonus multiplier on both money and free time.</div>
+    <div id="rwPeriods" style="margin-top:12px"></div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h2>Quarter ledger</h2>
+    <div class="hint">What you earn in a quarter is yours to use that quarter. Whatever is left crosses into the next quarter at the carry rate, and it has to be used there. Nothing lives longer than two quarters. Money on the top line, free time under it.</div>
+    <div id="rwQuarters" style="margin-top:12px"></div>
+    <div class="hint" id="rwLapsed" style="margin-top:10px"></div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h2>Earning rules</h2>
+    <div class="hint">Set your own exchange rate. Nothing is stored per entry, so changing a rate re-prices your whole history at once.</div>
+    <form id="rwRuleForm" class="form" style="margin-top:14px" onsubmit="saveRewardRules(event)">
+      <div class="frow" style="grid-template-columns:repeat(5,1fr)">
+        <label>Money per hour <input id="rwRate" type="number" min="0" step="10"></label>
+        <label>Currency symbol <input id="rwSym" type="text" maxlength="3"></label>
+        <label>Free minutes per hour <input id="rwTrate" type="number" min="0" max="240" step="5"></label>
+        <label>Green-period bonus (&times;) <input id="rwBonus" type="number" min="1" max="5" step="0.1"></label>
+        <label>Carry into next quarter (%) <input id="rwLapse" type="number" min="0" max="100" step="5"></label>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <button class="btn" type="submit">Save rules</button>
+        <span class="hint" id="rwRuleMsg"></span>
+      </div>
+    </form>
+  </div>
+</div><!-- /viewRewards -->
 
 <div id="viewSettings" hidden>
   <div class="tipswrap">
@@ -1422,7 +1514,9 @@ function savePeriodEntry(){
   const v=periodVerdict(ym,period);
   const VW={hit:'🟢 GREEN (hit the plan)',partial:'🟡 AMBER (partway)',miss:'🔴 RED (missed)'};
   const tail = VW[v] ? ` — colour this cell on your wall poster: ${VW[v]}` : '';
-  flash(`Logged ${added} item${added>1?'s':''} for ${plabel(`${ym}-${period}`)}${tail}${dropMsg?` · ⚠ ${dropMsg}`:''}`, dropped.length>0);
+  const pe=periodEarned(ym, period, all);   // rewards teaser: what this period is worth so far
+  const cash = (pe.rate>0||pe.trate>0) ? ` · 💰 ${[pe.rate>0?money(pe.amt,pe.sym):'', pe.trate>0?rwHrs(pe.tmin)+' off':''].filter(Boolean).join(' + ')} earned this period${v==='hit'?` (${pe.bonus}× green bonus)`:''} — use it in Rewards` : '';
+  flash(`Logged ${added} item${added>1?'s':''} for ${plabel(`${ym}-${period}`)}${tail}${cash}${dropMsg?` · ⚠ ${dropMsg}`:''}`, dropped.length>0);
   openCommitStep(ym, period);
 }
 // --- Pledge the NEXT period (goal.commit={ym,period,amt}, rides LS_GOALS) ---
@@ -2964,6 +3058,240 @@ function loadHabits(){ try{ const v=JSON.parse(localStorage.getItem(LS_HABITS));
 function saveHabits(h){ localStorage.setItem(LS_HABITS, JSON.stringify(h)); fbSyncPush(); }
 function groupHabits(flat){ const o=[]; flat.forEach(i=>{ let g=o.find(x=>x.cat===i.cat); if(!g){g={cat:i.cat,items:[]};o.push(g);} g.items.push({n:i.n,m:i.m}); }); return o; }
 
+// ===== REWARDS WALLET (Rewards tab) =====
+// Logged hours pay TWO currencies at once, from the same minutes:
+//   money      = hours * rate                  (default 100/hr)
+//   free time  = hours * trate minutes         (default 15 min back per hour worked)
+// Both are PURE DERIVED from entries and never stored, so editing an old entry (or
+// changing a rate) re-prices the whole history on next paint.
+// A period whose verdict is 'hit' pays x bonus on both.
+// Quarter lifecycle (the "don't delay enjoying, don't let hard work vanish" rule):
+//   what you earn in quarter Q is spendable during Q. Whatever is unspent at the end of Q
+//   crosses into Q+1 at `lapse` (50% default) and MUST be used in Q+1 or it is gone.
+//   Spending draws from carried balance FIRST - that is the part about to expire.
+//   Nothing survives two quarter-ends, so the wallet can never quietly become a hoard.
+const LS_REWARDS='ptd_rewards_v1';
+const SEED_REWARDS={rate:100, sym:'₹', trate:15, bonus:1.5, lapse:0.5, spends:[], wish:[]};
+function loadRewards(){
+  const o={...SEED_REWARDS, ...loadObj(LS_REWARDS,{})};
+  o.rate=Math.max(0,+o.rate||0);
+  o.sym=String(o.sym||'₹').slice(0,3)||'₹';
+  o.trate=Math.min(240,Math.max(0, o.trate==null?15:+o.trate||0));
+  o.bonus=Math.min(5,Math.max(1,+o.bonus||1));
+  o.lapse=Math.min(1,Math.max(0, o.lapse==null?0.5:+o.lapse||0));
+  o.spends=Array.isArray(o.spends)?o.spends:[];
+  o.wish=Array.isArray(o.wish)?o.wish:[];
+  return o;
+}
+function saveRewards(o){ localStorage.setItem(LS_REWARDS, JSON.stringify(o)); fbSyncPush(); }
+function money(v, sym){ const s=sym||'₹', x=Math.round(+v||0);
+  return s+x.toLocaleString(s==='₹'?'en-IN':undefined); }
+function rwHrs(mins){ const m=Math.max(0,Math.round(+mins||0)); return m?fmtShort(m):'0h'; }
+// money on line 1, earned free time on a muted line 2 - used in every table cell
+function rwBoth(amt, mins, s){
+  return `${money(amt,s)}<span class="rw-t">${(+mins||0)>=1?'+ '+rwHrs(mins)+' off':'&nbsp;'}</span>`;
+}
+function qOf(ym){ const a=String(ym||'').split('-'), y=+a[0], m=+a[1];
+  if(!y||!m) return ''; return `${y}-Q${Math.floor((m-1)/3)+1}`; }
+function qNext(q){ const a=q.split('-Q'), y=+a[0], i=+a[1]; return i>=4?`${y+1}-Q1`:`${y}-Q${i+1}`; }
+function qLabel(q){ const a=q.split('-Q'); return `Q${a[1]} ${a[0]}`; }
+function qEndDate(q){ const a=q.split('-Q'); return new Date(+a[0], +a[1]*3, 0); }
+function rwDstr(d){ return `${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`; }
+// One carry/lapse engine, run once per currency. Spend hits the carried balance first.
+function rwWalk(earnQ, spendQ, first, curQ, lapse){
+  const hist=[]; let carry=0, lapsedTotal=0, cur=null;
+  for(let q=first; q<=curQ && hist.length<80; q=qNext(q)){
+    const fresh=earnQ[q]||0, spend=spendQ[q]||0, isCur=(q===curQ);
+    const fromCarry=Math.min(carry, spend);
+    const carryLeft=Math.max(0, carry-fromCarry);          // about to expire this quarter
+    const freshLeft=Math.max(0, fresh-(spend-fromCarry));  // earned here, still unspent
+    const carried = isCur ? 0 : freshLeft*lapse;
+    const lapsed  = isCur ? 0 : carryLeft + freshLeft*(1-lapse);
+    hist.push({q, carryIn:carry, earned:fresh, spent:spend, left:carryLeft+freshLeft, carried, lapsed, open:isCur});
+    if(isCur) cur={q, carryIn:carry, earned:fresh, spent:spend, expSoon:carryLeft, expLater:freshLeft, avail:carryLeft+freshLeft};
+    else { lapsedTotal+=lapsed; carry=carried; }
+  }
+  if(!cur) cur={q:curQ, carryIn:0, earned:0, spent:0, expSoon:0, expLater:0, avail:0};
+  return {hist:hist.slice().reverse(), cur, lapsedTotal};
+}
+function rewardLedger(){
+  const R=loadRewards(), ents=loadEntries();
+  const perDay=loadHabits().filter(h=>!h.paused&&!h.done).reduce((a,h)=>a+(+h.m||0),0);
+  const mins={}; ents.forEach(e=>{ const k=pkey(e); mins[k]=(mins[k]||0)+(+e.mins||0); });
+  const rows=[], earnQ={}, tearnQ={};
+  Object.keys(mins).sort().forEach(k=>{
+    const ym=k.slice(0,7), pr=k.slice(8);
+    const v=periodVerdict(ym, pr, ents, perDay);
+    const mult = v==='hit' ? R.bonus : 1;
+    const hrs=mins[k]/60, amt=hrs*R.rate*mult, tmin=hrs*R.trate*mult;
+    rows.push({key:k, ym, mins:mins[k], verdict:v, mult, amt, tmin});
+    const q=qOf(ym); if(q){ earnQ[q]=(earnQ[q]||0)+amt; tearnQ[q]=(tearnQ[q]||0)+tmin; }
+  });
+  const spendQ={}, tspendQ={}, spendRows={};
+  R.spends.forEach(s=>{ const q=qOf(String(s.date||'').slice(0,7)); if(!q) return;
+    spendQ[q]=(spendQ[q]||0)+Math.max(0,+s.amt||0);
+    tspendQ[q]=(tspendQ[q]||0)+Math.max(0,+s.mins||0);
+    (spendRows[q]=spendRows[q]||[]).push(s); });
+  const curQ=qOf(CUR_YM);
+  const known=[...new Set([...Object.keys(earnQ), ...Object.keys(spendQ), ...Object.keys(tspendQ), curQ])].filter(Boolean).sort();
+  const first=(known[0] && known[0]<curQ) ? known[0] : curQ;
+  const M=rwWalk(earnQ,  spendQ,  first, curQ, R.lapse);   // money
+  const T=rwWalk(tearnQ, tspendQ, first, curQ, R.lapse);   // free time, in minutes
+  const done=rows.filter(r=>r.verdict!=='future');
+  const avg=f=>done.length ? done.reduce((a,r)=>a+f(r),0)/done.length : 0;
+  return {R, rows, M, T, curQ,
+    spends:(spendRows[curQ]||[]).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))),
+    perPeriod:avg(r=>r.amt), perPeriodT:avg(r=>r.tmin),
+    qEnd:qEndDate(curQ), nextQEnd:qEndDate(qNext(curQ))};
+}
+// What one period is worth right now - used by the log-save flash teaser.
+function periodEarned(ym, period, ents){
+  const R=loadRewards();
+  ents=ents||loadEntries();
+  const perDay=loadHabits().filter(h=>!h.paused&&!h.done).reduce((a,h)=>a+(+h.m||0),0);
+  const key=`${ym}-${period}`;
+  const m=ents.filter(e=>pkey(e)===key).reduce((a,e)=>a+(+e.mins||0),0);
+  const v=periodVerdict(ym, period, ents, perDay);
+  const mult = v==='hit' ? R.bonus : 1;
+  return {amt:(m/60)*R.rate*mult, tmin:(m/60)*R.trate*mult, verdict:v, sym:R.sym, rate:R.rate, trate:R.trate, bonus:R.bonus};
+}
+function addSpend(ev){
+  ev.preventDefault();
+  const R=loadRewards(), msg=document.getElementById('rwMsg');
+  const bad=t=>{ msg.style.color='#9c2b1c'; msg.textContent=t; };
+  const amt=Math.round(+document.getElementById('rwAmt').value||0);
+  const tmin=Math.round((+document.getElementById('rwHrsIn').value||0)*60);
+  const note=String(document.getElementById('rwNote').value||'').trim();
+  const date=document.getElementById('rwDate').value||new Date().toISOString().slice(0,10);
+  if(amt<=0 && tmin<=0) return bad('Enter money, hours, or both.');
+  const L=rewardLedger();
+  if(qOf(date.slice(0,7))!==L.curQ)
+    return bad(`That date sits outside ${qLabel(L.curQ)} — a reward is used inside the quarter it belongs to.`);
+  if(amt>Math.round(L.M.cur.avail))
+    return bad(`Only ${money(L.M.cur.avail,R.sym)} available in ${qLabel(L.curQ)}. Log more hours, or spend less.`);
+  if(tmin>Math.round(L.T.cur.avail))
+    return bad(`Only ${rwHrs(L.T.cur.avail)} of free time available in ${qLabel(L.curQ)}. Log more hours, or take less.`);
+  R.spends.push({id:eid(), date, amt, mins:tmin, note});
+  saveRewards(R);
+  document.getElementById('rwAmt').value=''; document.getElementById('rwHrsIn').value=''; document.getElementById('rwNote').value='';
+  msg.style.color='var(--muted)';
+  msg.textContent=`Booked ${[amt>0?money(amt,R.sym):'', tmin>0?rwHrs(tmin)+' off':''].filter(Boolean).join(' + ')}. Go enjoy it — that is what the hours were for.`;
+  renderRewards();
+}
+function delSpend(id){ const R=loadRewards(); R.spends=R.spends.filter(s=>s.id!==id); saveRewards(R); renderRewards(); }
+function addWish(ev){
+  ev.preventDefault();
+  const R=loadRewards();
+  const name=String(document.getElementById('rwWName').value||'').trim();
+  const price=Math.round(+document.getElementById('rwWPrice').value||0);
+  const wmin=Math.round((+document.getElementById('rwWHrs').value||0)*60);
+  if(!name || (price<=0 && wmin<=0)) return;
+  R.wish.push({id:eid(), name, price, mins:wmin}); saveRewards(R);
+  document.getElementById('rwWName').value=''; document.getElementById('rwWPrice').value=''; document.getElementById('rwWHrs').value='';
+  renderRewards();
+}
+function delWish(id){ const R=loadRewards(); R.wish=R.wish.filter(w=>w.id!==id); saveRewards(R); renderRewards(); }
+function saveRewardRules(ev){
+  ev.preventDefault();
+  const R=loadRewards();
+  R.rate=Math.max(0,+document.getElementById('rwRate').value||0);
+  R.sym=String(document.getElementById('rwSym').value||'').trim().slice(0,3)||'₹';
+  R.trate=Math.min(240,Math.max(0,+document.getElementById('rwTrate').value||0));
+  R.bonus=Math.min(5,Math.max(1,+document.getElementById('rwBonus').value||1));
+  R.lapse=Math.min(100,Math.max(0,+document.getElementById('rwLapse').value||0))/100;
+  saveRewards(R);
+  document.getElementById('rwRuleMsg').textContent='Saved. Your whole history is re-priced at the new rates.';
+  renderRewards();
+}
+const RW_VERD={hit:'🟢 green', partial:'🟡 amber', miss:'🔴 red', future:'⏳ open', none:'logged'};
+function renderRewards(){
+  if(!document.getElementById('rwKpis')) return;
+  const L=rewardLedger(), R=L.R, s=R.sym, m=L.M.cur, t=L.T.cur;
+  const dLeft=Math.max(0, Math.ceil((L.qEnd-new Date())/86400000));
+  const dayw=k=>`${k} day${k===1?'':'s'}`;
+  const qMins=L.rows.filter(r=>qOf(r.ym)===L.curQ).reduce((a,r)=>a+r.mins,0);
+  const pair=(a,b)=>[a,b].filter(Boolean).join(' + ');
+
+  // --- the one line that matters: what expires, and when ---
+  const warn=document.getElementById('rwWarn');
+  let cls='calm', txt='';
+  const soon=pair(m.expSoon>=1?money(m.expSoon,s):'', t.expSoon>=1?rwHrs(t.expSoon)+' of free time':'');
+  const have=pair(m.avail>=1?money(m.avail,s):'', t.avail>=1?rwHrs(t.avail)+' of free time':'');
+  if(soon){
+    cls = dLeft<=10?'red':dLeft<=30?'amber':'calm';
+    txt = `⏳ ${soon} carried over from last quarter expires on ${rwDstr(L.qEnd)} — ${dayw(dLeft)} left. This half does not roll again. Use it or lose it.`;
+  } else if(have){
+    cls = dLeft<=10?'amber':'calm';
+    txt = `🎁 ${have} is yours to use in ${qLabel(L.curQ)}. Unused by ${rwDstr(L.qEnd)}, only ${Math.round(R.lapse*100)}% crosses into next quarter, and that has to be used by ${rwDstr(L.nextQEnd)}.`;
+  } else {
+    txt = (R.rate>0||R.trate>0)
+      ? `Nothing banked in ${qLabel(L.curQ)} yet. Every hour you log pays ${pair(R.rate>0?money(R.rate,s):'', R.trate>0?rwHrs(R.trate)+' off':'')}, and a green period pays ${R.bonus}× that.`
+      : 'Set your rates in Earning rules below, and your logged hours start paying.';
+  }
+  warn.className='rw-warn '+cls; warn.textContent=txt;
+
+  document.getElementById('rwKpis').innerHTML=[
+    ['Available now',        money(m.avail,s),   `${rwHrs(t.avail)} free time · ${dayw(dLeft)} left`],
+    ['Earned this quarter',  money(m.earned,s),  `${rwHrs(t.earned)} free time · ${(qMins/60).toFixed(1)} hrs logged`],
+    ['Used this quarter',    money(m.spent,s),   `${rwHrs(t.spent)} free time · ${L.spends.length} thing${L.spends.length===1?'':'s'} enjoyed`],
+    ['Carried in',           money(m.carryIn,s), `${rwHrs(t.carryIn)} free time · ${soon?'still unspent':'all of it used'}`]
+  ].map(r=>`<div class="kpi"><div class="label">${r[0]}</div><div class="val">${r[1]}</div><div class="delta" style="color:var(--muted)">${r[2]}</div></div>`).join('');
+
+  // --- what you used this quarter ---
+  document.getElementById('rwSpendList').innerHTML = L.spends.length
+    ? `<div class="rwscroll"><table class="rwtab"><thead><tr><th>Date</th><th>What for</th><th class="num">Money</th><th class="num">Free time</th><th></th></tr></thead><tbody>`
+      + L.spends.map(x=>`<tr><td>${escHtml(x.date||'')}</td><td class="nm">${escHtml(x.note||'(no note)')}</td><td class="num">${(+x.amt||0)>0?money(x.amt,s):'—'}</td><td class="num">${(+x.mins||0)>0?rwHrs(x.mins):'—'}</td><td class="num"><button class="rwdel" title="Remove" onclick="delSpend('${escHtml(x.id)}')">✕</button></td></tr>`).join('')
+      + `</tbody></table></div>`
+    : `<div class="empty">Nothing used in ${qLabel(L.curQ)} yet. That is the part you are not allowed to keep postponing.</div>`;
+
+  // --- wishlist, cheapest first; "how far" = whichever currency is the binding constraint ---
+  document.getElementById('rwWishList').innerHTML = R.wish.length
+    ? `<div class="rwscroll"><table class="rwtab"><thead><tr><th>Thing</th><th class="num">Money</th><th class="num">Free time</th><th>How far</th><th></th></tr></thead><tbody>`
+      + R.wish.slice().sort((a,b)=>(+a.price||0)-(+b.price||0)).map(w=>{
+          const needM=(+w.price||0)-m.avail, needT=(+w.mins||0)-t.avail;
+          const kM = needM<=0 ? 0 : (L.perPeriod >0 ? Math.ceil(needM/L.perPeriod ) : Infinity);
+          const kT = needT<=0 ? 0 : (L.perPeriodT>0 ? Math.ceil(needT/L.perPeriodT) : Infinity);
+          const k=Math.max(kM,kT);
+          let how;
+          if(k===0) how='<span class="rw-ok">yours right now</span>';
+          else if(!isFinite(k)) how='<span class="rw-far">log some hours to find out</span>';
+          else how=`<span class="${k<=3?'rw-ok':k<=9?'rw-far':'rw-no'}">${k} more period${k===1?'':'s'} (~${k*10} days) at your pace</span>`;
+          return `<tr><td class="nm">${escHtml(w.name)}</td><td class="num">${(+w.price||0)>0?money(w.price,s):'—'}</td><td class="num">${(+w.mins||0)>0?rwHrs(w.mins):'—'}</td><td>${how}</td><td class="num"><button class="rwdel" title="Remove" onclick="delWish('${escHtml(w.id)}')">✕</button></td></tr>`;
+        }).join('') + `</tbody></table></div>`
+    : '<div class="empty">Nothing on the list. Price one thing you want, in money or in days off — it turns hours into something you can picture.</div>';
+
+  // --- last 12 periods, newest first ---
+  const pr=L.rows.slice().reverse().slice(0,12);
+  document.getElementById('rwPeriods').innerHTML = pr.length
+    ? `<div class="rwscroll"><table class="rwtab"><thead><tr><th>Period</th><th class="num">Hours logged</th><th>Verdict</th><th class="num">Rate</th><th class="num">Money</th><th class="num">Free time</th></tr></thead><tbody>`
+      + pr.map(r=>`<tr><td class="nm">${escHtml(plabel(r.key))}</td><td class="num">${(r.mins/60).toFixed(1)}</td><td>${RW_VERD[r.verdict]||r.verdict}</td><td class="num">${r.mult>1?r.mult+'×':'1×'}</td><td class="num">${money(r.amt,s)}</td><td class="num">${rwHrs(r.tmin)}</td></tr>`).join('')
+      + `</tbody></table></div>`
+    : '<div class="empty">No logged time yet. Log a period and it starts paying.</div>';
+
+  // --- quarter ledger, newest first; money on line 1, free time under it ---
+  document.getElementById('rwQuarters').innerHTML =
+    `<div class="rwscroll"><table class="rwtab"><thead><tr><th>Quarter</th><th class="num">Carried in</th><th class="num">Earned</th><th class="num">Used</th><th class="num">Left</th><th class="num">Rolled on</th><th class="num">Lapsed</th></tr></thead><tbody>`
+    + L.M.hist.map((x,i)=>{ const y=L.T.hist[i]||{};
+        const cell=(a,b)=>`<td class="num">${rwBoth(a,b,s)}</td>`;
+        return `<tr class="${x.open?'now':''}"><td class="nm">${qLabel(x.q)}${x.open?' (now)':''}</td>`
+          + cell(x.carryIn,y.carryIn) + cell(x.earned,y.earned) + cell(x.spent,y.spent) + cell(x.left,y.left)
+          + (x.open?'<td class="num">—</td><td class="num">—</td>' : cell(x.carried,y.carried)+cell(x.lapsed,y.lapsed))
+          + `</tr>`; }).join('')
+    + `</tbody></table></div>`;
+  const lostM=L.M.lapsedTotal, lostT=L.T.lapsedTotal;
+  document.getElementById('rwLapsed').textContent = (lostM>=1||lostT>=1)
+    ? `${pair(lostM>=1?money(lostM,s):'', lostT>=1?rwHrs(lostT)+' of free time':'')} has lapsed so far — hours you worked and never cashed in.`
+    : 'Nothing has lapsed yet. Keep it that way.';
+
+  // --- rules form ---
+  document.getElementById('rwRate').value=R.rate;
+  document.getElementById('rwSym').value=R.sym;
+  document.getElementById('rwTrate').value=R.trate;
+  document.getElementById('rwBonus').value=R.bonus;
+  document.getElementById('rwLapse').value=Math.round(R.lapse*100);
+  const dt=document.getElementById('rwDate'); if(!dt.value) dt.value=new Date().toISOString().slice(0,10);
+}
+
 // ---- Feature toggles (Settings→Personal): hide Screen-time / Planning UI. Data + math untouched. ----
 const LS_FEATURES='ptd_features_v1';
 const SEED_FEATURES={screen:true, planning:true};
@@ -3273,21 +3601,23 @@ function setView(v){
   if(v==='faq') v='settings'; // FAQ folded into Settings sidebar
   if(v==='pot'){ ovTab='pot'; v='overview'; } // Pot folded into Overview as a sub-tab
   if(v==='planning' && !loadFeatures().planning) v='overview'; // Planning hidden by feature toggle
-  if(!['overview','log','goals','planning','reports','settings'].includes(v)) v='overview';
+  if(!['overview','log','goals','planning','rewards','reports','settings'].includes(v)) v='overview';
   document.getElementById('viewOverview').hidden = v!=='overview';
   document.getElementById('viewLog').hidden = v!=='log';
   document.getElementById('viewGoals').hidden = v!=='goals';
   document.getElementById('viewPlanning').hidden = v!=='planning';
   document.getElementById('viewAudit').hidden = v!=='log';
+  document.getElementById('viewRewards').hidden = v!=='rewards';
   document.getElementById('viewReports').hidden = v!=='reports';
   document.getElementById('viewSettings').hidden = v!=='settings';
   document.getElementById('lifeBar').hidden = v!=='overview' || !SHOW_LIFEBAR;
   const subs={overview:'your finite hours, on purpose', log:'log time, goals & screen use · saved on this device',
     goals:'targets vs what you actually did', planning:'daily habits vs goal-based time',
     reports:'compare tracked hours across periods',
+    rewards:'the hours you logged, paid back as money and free time',
     settings:'manage categories & preferences'};
   document.getElementById('sub').textContent = subs[v];
-  const titles={overview:'Overview', log:'Log Data', goals:'Goals', planning:'Time Planning', reports:'Reports', settings:'Settings'};
+  const titles={overview:'Overview', log:'Log Data', goals:'Goals', planning:'Time Planning', rewards:'Rewards', reports:'Reports', settings:'Settings'};
   document.getElementById('pgTitle').textContent = titles[v];
   document.getElementById('hdYr').textContent = CUR_YM.slice(0,4);
   document.querySelectorAll('#viewNav button').forEach(b=>b.classList.toggle('active', b.dataset.v===v));
@@ -3298,6 +3628,7 @@ function setView(v){
   if(v==='log') renderLog();
   if(v==='goals') renderGoals();
   if(v==='planning') renderPlanning();
+  if(v==='rewards') renderRewards();
   if(v==='reports') renderReports();
   if(v==='settings') renderSettings();
   try{ localStorage.setItem(LS_VIEW, v); }catch(e){}
@@ -3533,6 +3864,7 @@ const SYNC_FIELDS=[
   ['features', LS_FEATURES, loadFeatures,   'replace'],
   ['quota',    LS_QUOTA,    loadQuota,      'replace'],
   ['limits',   LS_LIMITS,   loadLimits,     'map'],
+  ['rewards',  LS_REWARDS,  loadRewards,    'map'],
 ];
 function mergeById(loc,cld){ const m=new Map(); (Array.isArray(loc)?loc:[]).forEach(x=>{ if(x&&x.id!=null) m.set(x.id,x); }); (Array.isArray(cld)?cld:[]).forEach(x=>{ if(x&&x.id!=null) m.set(x.id,x); }); return [...m.values()]; }
 function mergeMap(loc,cld){ return {...(loc&&typeof loc==='object'&&!Array.isArray(loc)?loc:{}), ...(cld&&typeof cld==='object'&&!Array.isArray(cld)?cld:{})}; }
