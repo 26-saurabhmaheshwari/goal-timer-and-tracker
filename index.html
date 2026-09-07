@@ -3125,14 +3125,14 @@ function rewardLedger(){
   const R=loadRewards(), ents=loadEntries();
   const perDay=loadHabits().filter(h=>!h.paused&&!h.done).reduce((a,h)=>a+(+h.m||0),0);
   const mins={}; ents.forEach(e=>{ const k=pkey(e); mins[k]=(mins[k]||0)+(+e.mins||0); });
-  const rows=[], earnQ={}, tearnQ={};
+  const rows=[], earnQ={}, tearnQ={}, minsQ={};
   Object.keys(mins).sort().forEach(k=>{
     const ym=k.slice(0,7), pr=k.slice(8);
     const v=periodVerdict(ym, pr, ents, perDay);
     const mult = v==='hit' ? R.bonus : 1, tmult = v==='hit' ? R.tbonus : 1;
     const hrs=mins[k]/60, amt=hrs*R.rate*mult, tmin=hrs*R.trate*tmult;
     rows.push({key:k, ym, mins:mins[k], verdict:v, mult, tmult, amt, tmin});
-    const q=qOf(ym); if(q){ earnQ[q]=(earnQ[q]||0)+amt; tearnQ[q]=(tearnQ[q]||0)+tmin; }
+    const q=qOf(ym); if(q){ earnQ[q]=(earnQ[q]||0)+amt; tearnQ[q]=(tearnQ[q]||0)+tmin; minsQ[q]=(minsQ[q]||0)+mins[k]; }
   });
   const spendQ={}, tspendQ={}, spendRows={};
   R.spends.forEach(s=>{ const q=qOf(String(s.date||'').slice(0,7)); if(!q) return;
@@ -3146,7 +3146,7 @@ function rewardLedger(){
   const T=rwWalk(tearnQ, tspendQ, first, curQ, R.lapse);   // free time, in minutes
   const done=rows.filter(r=>r.verdict!=='future');
   const avg=f=>done.length ? done.reduce((a,r)=>a+f(r),0)/done.length : 0;
-  return {R, rows, M, T, curQ,
+  return {R, rows, M, T, curQ, minsQ,
     spends:(spendRows[curQ]||[]).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))),
     perPeriod:avg(r=>r.amt), perPeriodT:avg(r=>r.tmin),
     qEnd:qEndDate(curQ), nextQEnd:qEndDate(qNext(curQ))};
@@ -3229,7 +3229,7 @@ function renderRewards(){
   const L=rewardLedger(), R=L.R, s=R.sym, m=L.M.cur, t=L.T.cur;
   const dLeft=Math.max(0, Math.ceil((L.qEnd-new Date())/86400000));
   const dayw=k=>`${k} day${k===1?'':'s'}`;
-  const qMins=L.rows.filter(r=>qOf(r.ym)===L.curQ).reduce((a,r)=>a+r.mins,0);
+  const qMins=L.minsQ[L.curQ]||0;
   const pair=(a,b)=>[a,b].filter(Boolean).join(' + ');
 
   // --- the one line that matters: what expires, and when ---
@@ -3290,10 +3290,10 @@ function renderRewards(){
 
   // --- quarter ledger, newest first; money on line 1, free time under it ---
   document.getElementById('rwQuarters').innerHTML =
-    `<div class="rwscroll"><table class="rwtab"><thead><tr><th>Quarter</th><th class="num">Carried in</th><th class="num">Earned</th><th class="num">Used</th><th class="num">Left</th><th class="num">Rolled on</th><th class="num">Lapsed</th></tr></thead><tbody>`
+    `<div class="rwscroll"><table class="rwtab"><thead><tr><th>Quarter</th><th class="num">Hours logged</th><th class="num">Carried in</th><th class="num">Earned</th><th class="num">Used</th><th class="num">Left</th><th class="num">Rolled on</th><th class="num">Lapsed</th></tr></thead><tbody>`
     + L.M.hist.map((x,i)=>{ const y=L.T.hist[i]||{};
         const cell=(a,b)=>`<td class="num">${rwBoth(a,b,s)}</td>`;
-        return `<tr class="${x.open?'now':''}"><td class="nm">${qLabel(x.q)}${x.open?' (now)':''}</td>`
+        return `<tr class="${x.open?'now':''}"><td class="nm">${qLabel(x.q)}${x.open?' (now)':''}</td><td class="num">${((L.minsQ[x.q]||0)/60).toFixed(1)}</td>`
           + cell(x.carryIn,y.carryIn) + cell(x.earned,y.earned) + cell(x.spent,y.spent) + cell(x.left,y.left)
           + (x.open?'<td class="num">—</td><td class="num">—</td>' : cell(x.carried,y.carried)+cell(x.lapsed,y.lapsed))
           + `</tr>`; }).join('')
