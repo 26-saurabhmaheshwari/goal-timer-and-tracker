@@ -15,7 +15,7 @@ Feature history + design decisions live in **NOTES.md** — read the relevant se
 - After any JS edit run `node test.js` (syntax + invariant guards), then tell the user to eyeball on `file://`. (Node v24 present; if shell can't find `node`, refresh PATH from Machine+User env.)
 
 ## Deploy / push dance
-Repo `goal-timer-and-tracker`, account `26-saurabhmaheshwari`, branch **`master`**. Push ONLY on explicit "push"/"psuh"/"push now". `gh auth switch` alone doesn't work (Windows Credential Manager shadows it; `gh auth setup-git` needs /dev/tty). Working sequence — commit first (plain `git commit`), then:
+Repo `goal-timer-and-tracker`, account `26-saurabhmaheshwari`, branch **`master`**. **Auto-push**: commit and push every finished change without being asked (user asked for this 2026-09-07 — they were tired of typing "push"). Still run `node test.js` first; if it fails, fix before pushing. Don't push a half-done change mid-task. `gh auth switch` alone doesn't work (Windows Credential Manager shadows it; `gh auth setup-git` needs /dev/tty). Working sequence — commit first (plain `git commit`), then:
 ```
 gh auth switch --user 26-saurabhmaheshwari
 git -C D:/goal-timer-and-tracker -c credential.helper= \
