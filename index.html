@@ -1519,7 +1519,7 @@ function savePeriodEntry(){
   const VW={hit:'🟢 GREEN (hit the plan)',partial:'🟡 AMBER (partway)',miss:'🔴 RED (missed)'};
   const tail = VW[v] ? ` — colour this cell on your wall poster: ${VW[v]}` : '';
   const pe=periodEarned(ym, period, all);   // rewards teaser: what this period is worth so far
-  const cash = (pe.rate>0||pe.trate>0) ? ` · 💰 ${[pe.rate>0?money(pe.amt,pe.sym):'', pe.trate>0?rwHrs(pe.tmin)+' off':''].filter(Boolean).join(' + ')} earned this period${v==='hit'?' (green bonus applied)':''} — use it in Rewards` : '';
+  const cash = (pe.rate>0||pe.trate>0) ? ` · 💰 ${[pe.rate>0?money(pe.amt,pe.sym):'', pe.trate>0?rwHrs(pe.tmin)+' free':''].filter(Boolean).join(' + ')} earned this period${v==='hit'?' (green bonus applied)':''} — use it in Rewards` : '';
   flash(`Logged ${added} item${added>1?'s':''} for ${plabel(`${ym}-${period}`)}${tail}${cash}${dropMsg?` · ⚠ ${dropMsg}`:''}`, dropped.length>0);
   openCommitStep(ym, period);
 }
@@ -3096,7 +3096,7 @@ function money(v, sym){ const s=sym||'₹', x=Math.round(+v||0);
 function rwHrs(mins){ const m=Math.max(0,Math.round(+mins||0)); return m?fmtShort(m):'0h'; }
 // money on line 1, earned free time on a muted line 2 - used in every table cell
 function rwBoth(amt, mins, s){
-  return `${money(amt,s)}<span class="rw-t">${(+mins||0)>=1?'+ '+rwHrs(mins)+' off':'&nbsp;'}</span>`;
+  return `${money(amt,s)}<span class="rw-t">${(+mins||0)>=1?'+ '+rwHrs(mins)+' free':'&nbsp;'}</span>`;
 }
 function qOf(ym){ const a=String(ym||'').split('-'), y=+a[0], m=+a[1];
   if(!y||!m) return ''; return `${y}-Q${Math.floor((m-1)/3)+1}`; }
@@ -3182,7 +3182,7 @@ function addSpend(ev){
   saveRewards(R);
   document.getElementById('rwAmt').value=''; document.getElementById('rwHrsIn').value=''; document.getElementById('rwNote').value='';
   msg.style.color='var(--muted)';
-  msg.textContent=`Booked ${[amt>0?money(amt,R.sym):'', tmin>0?rwHrs(tmin)+' off':''].filter(Boolean).join(' + ')}. Go enjoy it — that is what the hours were for.`;
+  msg.textContent=`Booked ${[amt>0?money(amt,R.sym):'', tmin>0?rwHrs(tmin)+' free':''].filter(Boolean).join(' + ')}. Go enjoy it — that is what the hours were for.`;
   renderRewards();
 }
 function delSpend(id){ const R=loadRewards(); R.spends=R.spends.filter(s=>s.id!==id); saveRewards(R); renderRewards(); }
@@ -3245,7 +3245,7 @@ function renderRewards(){
     txt = `🎁 ${have} is yours to use in ${qLabel(L.curQ)}. Unused by ${rwDstr(L.qEnd)}, only ${Math.round(R.lapse*100)}% crosses into next quarter, and that has to be used by ${rwDstr(L.nextQEnd)}.`;
   } else {
     txt = (R.rate>0||R.trate>0)
-      ? `Nothing banked in ${qLabel(L.curQ)} yet. Every hour you log pays ${pair(R.rate>0?money(R.rate,s):'', R.trate>0?rwHrs(R.trate)+' off':'')}, and a green period pays ${pair(R.rate>0?R.bonus+'× on money':'', R.trate>0?R.tbonus+'× on time':'')}.`
+      ? `Nothing banked in ${qLabel(L.curQ)} yet. Every hour you log pays ${pair(R.rate>0?money(R.rate,s):'', R.trate>0?rwHrs(R.trate)+' free':'')}, and a green period pays ${pair(R.rate>0?R.bonus+'× on money':'', R.trate>0?R.tbonus+'× on time':'')}.`
       : 'Set your rates in Earning rules below, and your logged hours start paying.';
   }
   warn.className='rw-warn '+cls; warn.textContent=txt;
