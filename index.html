@@ -617,7 +617,6 @@ if(!window.Chart){
         <span class="gc-plus">＋</span>
         <span class="gc-lab">New goal</span>
       </button>
-      <button id="pgPdfBtn" class="btn pgact" hidden onclick="document.getElementById('repPdfBtn').click()">⤓ Export</button>
       <span id="fbWho"></span>
       <button id="fbBtn" onclick="fbToggle()">Sign in to sync</button>
     </div>
@@ -1566,10 +1565,10 @@ function savePeriodEntry(){
   peShow(false);
   renderLog(); renderGoals();
   const v=periodVerdict(ym,period);
-  const VW={hit:'🟢 GREEN (hit the plan)',partial:'🟡 AMBER (partway)',miss:'🔴 RED (missed)'};
+  const VW={hit:'🟢 GREEN (hit the plan)',partial:'🟡 AMBER (most of it)',low:'🟠 ORANGE (partway)',miss:'🔴 RED (missed)'};
   const tail = VW[v] ? ` — colour this cell on your wall poster: ${VW[v]}` : '';
   const pe=periodEarned(ym, period, all);   // rewards teaser: what this period is worth so far
-  const cash = (pe.rate>0||pe.trate>0) ? ` · 💰 ${[pe.rate>0?money(pe.amt,pe.sym):'', pe.trate>0?rwHrs(pe.tmin)+' free':''].filter(Boolean).join(' + ')} earned this period${v==='hit'?' (green bonus applied)':''} — use it in Rewards` : '';
+  const cash = (pe.rate>0||pe.trate>0) ? ` · 💰 ${[pe.rate>0?money(pe.amt,pe.sym):'', pe.trate>0?rwHrs(pe.tmin)+' free':''].filter(Boolean).join(' + ')} earned this period${v==='hit'?' (full green bonus)':v==='partial'?' (half bonus, amber)':''} — use it in Rewards` : '';
   flash(`Logged ${added} item${added>1?'s':''} for ${plabel(`${ym}-${period}`)}${tail}${cash}${dropMsg?` · ⚠ ${dropMsg}`:''}`, dropped.length>0);
   openCommitStep(ym, period);
 }
@@ -1716,13 +1715,18 @@ function periodVerdict(ym, period, ents, perDay){
   const plan=perDay*(pd.end-pd.start+1) + (+loadLimits().nugBudget||0)*60;
   if(plan<=0) return logged>0?'hit':'none';
   const r=logged/plan;
-  return r>=0.8?'hit':r>=0.4?'partial':'miss';
+  return r>=1?'hit':r>=0.75?'partial':r>=0.4?'low':'miss';
 }
+// Bonus is a ladder, not a cliff: green pays the full bonus, amber half of it, orange and red the
+// base rate. Red still pays 1× on purpose - those hours were real work, docking them would punish
+// showing up. The amber step is derived from the user's own bonus setting so there is no second
+// number to configure (and no new sync field).
+function verdMult(v, b){ b=+b||1; return v==='hit' ? b : v==='partial' ? +(1+(b-1)/2).toFixed(2) : 1; }
 // Witness note: a plain-text 3-line summary of a period to copy + send to an accountability
 // partner. Line 1 = period + verdict, line 2 = what got done, line 3 = the next-period pledge.
 function periodWitness(ym, period){
   const key=`${ym}-${period}`;
-  const V={hit:'🟢 hit the plan', partial:'🟡 partway', miss:'🔴 missed it', future:'⏳ in progress', none:'logged'};
+  const V={hit:'🟢 hit the plan', partial:'🟡 most of the plan', low:'🟠 partway', miss:'🔴 missed it', future:'⏳ in progress', none:'logged'};
   const v=periodVerdict(ym, period);
   const l1=`📮 ${plabel(key)} — ${V[v]||'logged'}`;
   // what got done: sum goal.logs amounts matching this period
@@ -1751,7 +1755,7 @@ function printYearPoster(){
   const ents=loadEntries();
   const perDay=loadHabits().filter(h=>!h.paused&&!h.done).reduce((a,h)=>a+(+h.m||0),0);
   const COLS=[['P1','1–10'],['P2','11–20'],['P3','21–end']];
-  const VC={hit:'#16a34a',partial:'#f59e0b',miss:'#ef4444'};
+  const VC={hit:'#16a34a',partial:'#f59e0b',low:'#e2711d',miss:'#ef4444'};
   let rows='';
   for(let m=1;m<=12;m++){
     const ym=`${yr}-${String(m).padStart(2,'0')}`;
@@ -1781,7 +1785,8 @@ function printYearPoster(){
    <p class="sub">One cell per 10-day block. Pin it on the wall. After each period's save, the app tells you the colour — fill the cell in by hand.</p>
    <div class="legend">
      <span><i class="sw" style="background:#16a34a"></i> Green — hit the plan</span>
-     <span><i class="sw" style="background:#f59e0b"></i> Amber — got partway</span>
+     <span><i class="sw" style="background:#f59e0b"></i> Amber — most of the plan</span>
+     <span><i class="sw" style="background:#e2711d"></i> Orange — got partway</span>
      <span><i class="sw" style="background:#ef4444"></i> Red — missed</span>
      <span><i class="sw" style="background:#fff"></i> Blank — still ahead of you</span>
    </div>
@@ -3192,7 +3197,7 @@ function rewardLedger(){
   units.sort((a,b)=>a.key<b.key?-1:1);
   units.forEach(u=>{
     const v = u.arch ? 'archived' : periodVerdict(u.ym, u.key.slice(8), ents, perDay);
-    const mult = v==='hit' ? R.bonus : 1, tmult = v==='hit' ? R.tbonus : 1;
+    const mult = verdMult(v, R.bonus), tmult = verdMult(v, R.tbonus);
     const hrs=u.mins/60, amt=hrs*R.rate*mult, tmin=hrs*R.trate*tmult;
     rows.push({key:u.key, ym:u.ym, mins:u.mins, verdict:v, mult, tmult, amt, tmin,
                label:u.arch ? ymLabel(u.ym)+' (whole month)' : plabel(u.key)});
@@ -3223,7 +3228,7 @@ function periodEarned(ym, period, ents){
   const key=`${ym}-${period}`;
   const m=ents.filter(e=>pkey(e)===key).reduce((a,e)=>a+(+e.mins||0),0);
   const v=periodVerdict(ym, period, ents, perDay);
-  const mult = v==='hit' ? R.bonus : 1, tmult = v==='hit' ? R.tbonus : 1;
+  const mult = verdMult(v, R.bonus), tmult = verdMult(v, R.tbonus);
   return {amt:(m/60)*R.rate*mult, tmin:(m/60)*R.trate*tmult, verdict:v, sym:R.sym, rate:R.rate, trate:R.trate, bonus:R.bonus, tbonus:R.tbonus};
 }
 function addSpend(ev){
@@ -3300,7 +3305,7 @@ function saveRewardRules(ev){
   renderRewardRules();
   renderRewards();
 }
-const RW_VERD={hit:'🟢 green', partial:'🟡 amber', miss:'🔴 red', future:'⏳ open', none:'logged', archived:'📦 no period detail'};
+const RW_VERD={hit:'🟢 green', partial:'🟡 amber', low:'🟠 orange', miss:'🔴 red', future:'⏳ open', none:'logged', archived:'📦 no period detail'};
 function renderRewards(){
   if(!document.getElementById('rwKpis')) return;
   const L=rewardLedger(), R=L.R, s=R.sym, m=L.M.cur, t=L.T.cur;
@@ -3402,7 +3407,8 @@ function renderRewards(){
     const hh=v=>v.toFixed(1)+'h';
     lg.innerHTML = plan>0
       ? `Plan for a 10-day period: ${pdm} min/day of habits \u00d7 10 days + ${nb}h of nuggets = <b>${hh(plan)}</b>. `
-        + `\uD83D\uDFE2 green from ${hh(plan*0.8)} \u00b7 \uD83D\uDFE1 amber ${hh(plan*0.4)} to ${hh(plan*0.8)} \u00b7 \uD83D\uDD34 red under ${hh(plan*0.4)}.`
+        + `\uD83D\uDFE2 green from ${hh(plan)} — full bonus \u00b7 \uD83D\uDFE1 amber ${hh(plan*0.75)} to ${hh(plan)} — half bonus`
+        + ` \u00b7 \uD83D\uDFE0 orange ${hh(plan*0.4)} to ${hh(plan*0.75)} \u00b7 \uD83D\uDD34 red under ${hh(plan*0.4)} — both at base rate.`
       : `No habit minutes and no nugget budget are set, so there is no bar to hit \u2014 every period just pays the base rate.`;
   }
   const dt=document.getElementById('rwDate'); if(!dt.value) dt.value=new Date().toISOString().slice(0,10);
@@ -3534,7 +3540,7 @@ function monthReportHTML(ym){
           + `<td class="n">${r?money(r.amt,s)+' + '+rwHrs(r.tmin):'—'}</td></tr>`;
       }).join('')
     + `</tbody></table>`);
-  out.push(`<div class="mr-note">Plan = ${perDay} min/day of habits over the period's days, plus the ${(nugB/60).toFixed(0)}h Live Nuggets budget. Green needs 80% of it, amber 40%.</div>`);
+  out.push(`<div class="mr-note">Plan = ${perDay} min/day of habits over the period's days, plus the ${(nugB/60).toFixed(0)}h Live Nuggets budget. Green needs all of it, amber 75%, orange 40%. Green pays the full bonus, amber half.</div>`);
 
   // --- where the hours went ---
   const cats=Object.entries(entryCats(ym)).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
@@ -3646,8 +3652,8 @@ function monthReportHTML(ym){
   // --- what next month asks for, in one number --------------------------------------------------
   const nx=nextYm(ym), nxd=daysInYm(nx);
   const nxPlan=perDay*nxd+nugB*3;
-  if(nxPlan>0) out.push(`<div class="mr-note"><b>${escHtml(ymLabel(nx))} asks for ${mrH(nxPlan*0.8)}</b> to come in green in all three periods`
-    + ` — ${(nxPlan*0.8/60/nxd).toFixed(1)}h a day. Full plan is ${mrH(nxPlan)}.</div>`);
+  if(nxPlan>0) out.push(`<div class="mr-note"><b>${escHtml(ymLabel(nx))} asks for ${mrH(nxPlan)}</b> to come in green in all three periods`
+    + ` — ${(nxPlan/60/nxd).toFixed(1)}h a day. Amber, at half the bonus, needs ${mrH(nxPlan*0.75)}.</div>`);
 
   // --- by hand. The whole point of a hard copy: somewhere to write, and a signature. ---
   out.push(`<div class="mr-brk"><div class="pdf-sub">By hand</div>`
@@ -3956,7 +3962,6 @@ function setView(v){
   document.querySelectorAll('#viewNav button').forEach(b=>b.classList.toggle('active', b.dataset.v===v));
   // #45: per-view primary action pinned in the page header
   document.getElementById('goalCreateBtn').hidden = v!=='goals';
-  document.getElementById('pgPdfBtn').hidden = v!=='reports';
   if(v==='overview'){ renderTabs(); setOv(ovTab); maybeShowLetter(mostGoalsBehind()); }
   if(v==='log') renderLog();
   if(v==='goals') renderGoals();
@@ -4486,11 +4491,12 @@ function renderPot(boxId){
   </svg>`;
   // ---------- STONES JAR: one stone per 10-day period (36/yr), coloured by periodVerdict ----------
   const entsJ=loadEntries(), perDayJ=loadHabits().filter(h=>!h.paused&&!h.done).reduce((a,h)=>a+(+h.m||0),0);
-  const VC={hit:'#16a34a',partial:'#f59e0b',miss:'#ef4444',none:'#9aa3b5'};
+  const VC={hit:'#16a34a',partial:'#f59e0b',low:'#e2711d',miss:'#ef4444',none:'#9aa3b5'};
   const stones=[];
   for(let m=1;m<=12;m++){ const ym=`${yr}-${String(m).padStart(2,'0')}`;
     ['P1','P2','P3'].forEach(p=>stones.push({t:`${MONTH_NAMES[m-1].slice(0,3)} ${p}`, v:periodVerdict(ym,p,entsJ,perDayJ)})); }
-  const nHit=stones.filter(s=>s.v==='hit').length, nPart=stones.filter(s=>s.v==='partial').length, nMiss=stones.filter(s=>s.v==='miss').length;
+  const nHit=stones.filter(s=>s.v==='hit').length, nPart=stones.filter(s=>s.v==='partial').length,
+        nLow=stones.filter(s=>s.v==='low').length, nMiss=stones.filter(s=>s.v==='miss').length;
   const placed=stones.filter(s=>s.v!=='future').length;
   let stSvg=''; // chronological bottom-up: Jan P1 = bottom-left stone
   stones.forEach((s,i)=>{
@@ -4517,7 +4523,7 @@ function renderPot(boxId){
     <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:center;justify-content:center">
       <div style="flex:1;min-width:240px">${jar}
         <div style="margin:10px 0 0;font-size:12.5px;font-weight:700;text-align:center;color:var(--ink)">${placed} / 36 stones in the pot · 1 stone = one 10-day period</div>
-        <div style="margin:4px 0 0;font-size:12px;text-align:center;color:var(--muted)">🟢 ${nHit} hit · 🟡 ${nPart} partway · 🔴 ${nMiss} missed</div></div>
+        <div style="margin:4px 0 0;font-size:12px;text-align:center;color:var(--muted)">🟢 ${nHit} hit · 🟡 ${nPart} close · 🟠 ${nLow} partway · 🔴 ${nMiss} missed</div></div>
       <div style="flex:0 1 auto">${legend}</div>
       <div style="flex:1;min-width:230px">${orb}</div>
     </div>
