@@ -713,7 +713,7 @@ if(!window.Chart){
     </div>
     <div id="peBody"></div>
     <div class="frow noprint" style="margin-top:12px;gap:8px;flex-wrap:wrap;align-items:center">
-      <button type="button" id="pePrint" class="btn ghost" title="Print a blank sheet to fill in by hand over the 10 days">🖨️ Paper sheet</button>
+      <button type="button" id="pePrint" class="btn ghost" title="Print the 10-day sheet: habits above the rule, nuggets below, targets as squares to shade in">🖨️ 10-day sheet</button>
       <button type="button" id="pePoster" class="btn ghost" title="Print a one-page year grid of all 36 periods for the wall — colour each cell as you go">🎨 Wall poster</button>
       <button type="button" id="peCard" class="btn ghost" title="Print a tiny black-and-white card listing what's planned this period — habits + nuggets, nothing else">🃏 Plan card</button>
       <button type="button" id="peIcs" class="btn ghost" title="Add a calendar reminder to log this period">📅 Reminder</button>
@@ -1615,45 +1615,153 @@ function periodDays(ym, period){
   const r = period==='P1' ? {start:1,end:10} : period==='P2' ? {start:11,end:20} : {start:21,end:last};
   return {y, m, start:r.start, end:r.end};
 }
+// The 10-day paper sheet. The user logs on paper for nine days and types the totals in on the
+// tenth, so this page IS the daily driver - it has to carry the plan, the order (habits above the
+// rule, nuggets below) and the targets on its own, with no screen involved.
+// Everything is pre-computed from Settings: habit minutes, the nugget budget, the four verdict
+// bands, and each nugget's target. Squares already earned are pre-shaded at print time.
 function printPeriodSheet(){
   const ym=document.getElementById('peMonth').value, period=document.getElementById('pePeriod').value;
   const pd=periodDays(ym,period);
   const habits=loadHabits().filter(h=>!h.paused&&!h.done);
   const goals=loggableGoals();
   const days=[]; for(let d=pd.start;d<=pd.end;d++) days.push(d);
-  const hHead=days.map(d=>`<th>${d}</th>`).join('');
-  const hRows=habits.map(h=>`<tr><td class="nm">${escHtml(h.n)} <span class="t">${h.m}m</span></td>${days.map(()=>'<td></td>').join('')}</tr>`).join('')
-    || `<tr><td class="empty" colspan="${days.length+1}">No habits set — add some in Settings.</td></tr>`;
+  const nd=days.length;
+  const DOW='SMTWTFS';
+  const perDay=habits.reduce((a,h)=>a+(+h.m||0),0);
+  const nugB=(+loadLimits().nugBudget||0);
+  const plan=perDay*nd + nugB*60;
+  const logged=loadEntries().filter(e=>e.ym===ym&&e.period===period).reduce((a,e)=>a+(+e.mins||0),0);
+  const hm=m=>{ m=Math.round(m); const h=Math.floor(m/60), r=m%60; return h?(r?`${h}h ${r}m`:`${h}h`):`${r}m`; };
+
+  // --- the period puzzle: one square per 30 minutes of the plan. Shade one as you finish it;
+  // a full grid is green. The amber and orange cut-offs are marked inside the grid so the paper
+  // shows you where you stand without any arithmetic.
+  const TILE=30;
+  const tiles=Math.max(1, Math.round(plan/TILE));
+  const doneT=Math.max(0, Math.min(tiles, Math.floor(logged/TILE)));
+  const mkA=Math.round(tiles*0.75), mkO=Math.round(tiles*0.4);
+  let puz='';
+  for(let i=1;i<=tiles;i++){
+    const cls=['sq']; if(i<=doneT) cls.push('on');
+    if(i===mkO+1) cls.push('mo'); if(i===mkA+1) cls.push('ma');
+    puz+=`<i class="${cls.join(' ')}"></i>`;
+  }
+
+  // --- day grids. Habits carry their min/day, nuggets their unit, both get a TOTAL box at the
+  // right so the last-day transcription is one pass straight down the page.
+  const dHead=days.map(d=>{
+    const w=DOW[new Date(pd.y, pd.m-1, d).getDay()];
+    return `<th class="d"><b>${d}</b><em>${w}</em></th>`;
+  }).join('');
+  const blanks=days.map(()=>'<td></td>').join('');
+  const hRows=habits.map(h=>`<tr><td class="nm">${escHtml(h.n)}</td><td class="tg">${h.m}m</td>${blanks}<td class="tot"></td></tr>`).join('')
+    || `<tr><td class="empty" colspan="${nd+3}">No habits set - add them in Settings.</td></tr>`;
   const gRows=goals.map(g=>{
-    const c=g.commit, pl=(c&&c.ym===ym&&c.period===period&&+c.amt>0)?` <span class="t">🎯 pledged ${+c.amt}</span>`:'';
-    return `<tr><td class="nm">${escHtml(goalLabel(g))}${pl}</td><td class="line"></td><td class="u">${escHtml(g.unit||'')}</td></tr>`;
-  }).join('')
-    || `<tr><td class="empty" colspan="3">No active goals.</td></tr>`;
+    const c=g.commit, pl=(c&&c.ym===ym&&c.period===period&&+c.amt>0)?`${+c.amt} ${g.unit||''}`.trim()
+      :(+g.target>0?`${g.target} ${g.unit||''}`.trim():'-');
+    return `<tr><td class="nm">${escHtml(goalLabel(g))}</td><td class="tg">${escHtml(pl)}</td>${blanks}<td class="tot"></td></tr>`;
+  }).join('') || `<tr><td class="empty" colspan="${nd+3}">No live nuggets.</td></tr>`;
+
+  // --- one puzzle bar per nugget: boxes toward its own target, already-earned ones shaded.
+  // Big targets fold several units into one box rather than printing 400 squares.
+  const puzRows=goals.filter(g=>+g.target>0).map(g=>{
+    const tgt=+g.target, cur=Math.max(0, Math.min(tgt, +g.cur||0));
+    const per=tgt<=30?1:Math.ceil(tgt/30);
+    const boxes=Math.ceil(tgt/per), fill=Math.min(boxes, Math.floor(cur/per));
+    let bar=''; for(let i=1;i<=boxes;i++) bar+=`<i class="bx${i<=fill?' on':''}"></i>`;
+    const scale=per>1?` <span class="per">1 box = ${per} ${escHtml(g.unit||'')}</span>`:'';
+    return `<div class="pz"><span class="pn">${escHtml(goalLabel(g))}</span><span class="pb">${bar}</span>`
+      + `<span class="pc">${cur} / ${tgt} ${escHtml(g.unit||'')}${scale}</span></div>`;
+  }).join('');
+
   const title=`${ymLabel(ym)} · Days ${pd.start}–${pd.end}`;
-  const html=`<!doctype html><html><head><meta charset="utf-8"><title>${title} — paper sheet</title>
+  const html=`<!doctype html><html><head><meta charset="utf-8"><title>${title} — 10-day sheet</title>
   <style>
-   *{box-sizing:border-box} body{font:13px/1.4 -apple-system,Segoe UI,Arial,sans-serif;color:#111;margin:28px;background:#fff}
-   h1{font-size:18px;margin:0 0 2px} .sub{color:#555;margin:0 0 16px;font-size:12px}
-   h2{font-size:13px;margin:18px 0 6px;text-transform:uppercase;letter-spacing:.05em;color:#333}
-   table{border-collapse:collapse;width:100%} th,td{border:1px solid #bbb;padding:5px 6px;text-align:center}
-   th{background:#f2f2f2;font-weight:600;font-size:11px} td.nm{text-align:left;white-space:nowrap} td.nm .t{color:#888;font-size:11px}
-   td.line{width:60%} td.u{text-align:left;color:#666;width:80px;white-space:nowrap}
-   .g td{height:26px} .h td{height:24px} td.empty{color:#888;font-style:italic;text-align:left}
-   .foot{margin-top:20px;color:#555;font-size:11px;border-top:1px solid #ddd;padding-top:8px}
-   @media print{ .noprint{display:none} }
+   *{box-sizing:border-box}
+   body{font:12px/1.4 -apple-system,Segoe UI,Arial,sans-serif;color:#1c1a14;margin:0;background:#fff}
+   .pg{width:277mm;margin:0 auto;padding:10mm 12mm}
+   .hd{display:flex;align-items:flex-end;justify-content:space-between;border-bottom:2px solid #1c1a14;padding-bottom:6px}
+   .bran{font:600 10px/1 -apple-system,Segoe UI,Arial,sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#8d8676}
+   h1{font:400 26px/1.05 Constantia,Georgia,'Times New Roman',serif;margin:2px 0 0}
+   .hd .rt{text-align:right;font-size:11px;color:#5b564a;line-height:1.6}
+   .hd .rt b{font-size:15px;color:#1c1a14}
+   .bands{display:flex;gap:14px;margin:8px 0 0;font-size:10.5px;color:#5b564a;align-items:center;flex-wrap:wrap}
+   .bands i{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:4px;vertical-align:-1px}
+   h2{font:600 9.5px/1 -apple-system,Segoe UI,Arial,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#3d5266;margin:16px 0 5px}
+   h2 span{color:#8d8676;letter-spacing:.04em;text-transform:none;font-weight:400;font-size:10px;margin-left:8px}
+   .puz{display:flex;flex-wrap:wrap;gap:2.5px;max-width:100%}
+   .sq{width:13px;height:13px;border:1px solid #b8b0a0;border-radius:2px;display:block}
+   .sq.on{background:#3d5266;border-color:#3d5266}
+   .sq.mo{border-left:3px solid #e2711d;margin-left:5px}
+   .sq.ma{border-left:3px solid #f59e0b;margin-left:5px}
+   .cap{font-size:10px;color:#8d8676;margin-top:5px}
+   table{border-collapse:collapse;width:100%;margin-top:2px}
+   th,td{border:1px solid #d8d1c1;padding:0;text-align:center;height:21px}
+   th.d{background:#f6f2e8;width:26px;font-weight:600;color:#3d5266}
+   th.d b{display:block;font-size:11px;line-height:1.1}
+   th.d em{display:block;font-style:normal;font-size:8px;color:#a49c8a;line-height:1}
+   th.lb{background:#f6f2e8;text-align:left;padding:0 8px;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:#5b564a}
+   th.tg,th.tt{background:#f6f2e8;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:#5b564a}
+   th.tg{width:52px} th.tt,td.tot{width:56px;background:#faf7ef}
+   td.nm{text-align:left;padding:0 8px;white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis}
+   td.tg{color:#8d8676;font-size:10.5px;width:52px}
+   td.empty{text-align:left;padding:0 8px;color:#8d8676;font-style:italic}
+   .rule{display:flex;align-items:center;gap:10px;margin:12px 0 2px}
+   .rule .ln{flex:1;height:3px;background:#1c1a14}
+   .rule .tx{font:600 9.5px/1 -apple-system,Segoe UI,Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap}
+   .pz{display:flex;align-items:center;gap:9px;padding:3px 0;border-bottom:1px dotted #ddd6c6}
+   .pn{width:180px;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+   .pb{display:flex;flex-wrap:wrap;gap:2px;flex:1}
+   .bx{width:10px;height:10px;border:1px solid #b8b0a0;border-radius:2px;display:block}
+   .bx.on{background:#3d5266;border-color:#3d5266}
+   .pc{font-size:10px;color:#8d8676;white-space:nowrap;text-align:right}
+   .pc .per{color:#b0a894}
+   .ft{margin-top:14px;border-top:1px solid #e3dccb;padding-top:7px;font-size:10px;color:#8d8676;display:flex;justify-content:space-between;gap:20px}
+   .sec{page-break-inside:avoid}
+   @media print{ .noprint{display:none} @page{size:A4 landscape;margin:0} .pg{padding:9mm 11mm} }
   </style></head><body>
-   <button class="noprint" onclick="window.print()" style="float:right;padding:8px 14px;cursor:pointer">Print</button>
-   <h1>10-day sheet</h1>
-   <p class="sub">${title} · tick each day you did it, write goal amounts as you go.</p>
-   <h2>Habits — daily</h2>
-   <table class="h"><thead><tr><th style="text-align:left">Habit</th>${hHead}</tr></thead><tbody>${hRows}</tbody></table>
-   <h2>Goals — running total this period</h2>
-   <table class="g"><tbody>${gRows}</tbody></table>
-   <p class="foot">On the last day, open the dashboard → <b>Log the whole period</b> → transcribe these once. That's the ritual.</p>
+   <button class="noprint" onclick="window.print()" style="position:fixed;top:10px;right:14px;padding:8px 14px;cursor:pointer">Print</button>
+   <div class="pg">
+    <div class="hd">
+     <div><div class="bran">Tenfold · ten-day sheet</div><h1>${title}</h1></div>
+     <div class="rt"><b>${hm(plan)}</b> for green · ${hm(plan/nd)} a day<br>
+      ${perDay}m/day of habits × ${nd} days + ${nugB}h of nuggets</div>
+    </div>
+    <div class="bands">
+     <span><i style="background:#16a34a"></i>Green ${hm(plan)}</span>
+     <span><i style="background:#f59e0b"></i>Amber ${hm(plan*0.75)}</span>
+     <span><i style="background:#e2711d"></i>Orange ${hm(plan*0.4)}</span>
+     <span><i style="background:#ef4444"></i>Red under ${hm(plan*0.4)}</span>
+    </div>
+
+    <div class="sec">
+     <h2>The period<span>one square = 30 minutes · shade one as you finish it · a full grid is green</span></h2>
+     <div class="puz">${puz}</div>
+     <div class="cap">${doneT} of ${tiles} squares already shaded from ${hm(logged)} logged. The two coloured edges are the amber and orange lines.</div>
+    </div>
+
+    <div class="sec">
+     <h2>Habits — these first<span>write minutes in the box, total the row on the last day</span></h2>
+     <table><thead><tr><th class="lb">Habit</th><th class="tg">/day</th>${dHead}<th class="tt">Total</th></tr></thead>
+      <tbody><tr><td class="nm" style="color:#8d8676">started at</td><td class="tg"></td>${blanks}<td class="tot"></td></tr>${hRows}</tbody></table>
+    </div>
+
+    <div class="rule"><span class="tx">Habits first</span><span class="ln"></span><span class="tx">nothing below until the block above is filled</span></div>
+
+    <div class="sec">
+     <h2>Live nuggets<span>${nugB}h budget for the period</span></h2>
+     <table><thead><tr><th class="lb">Nugget</th><th class="tg">Target</th>${dHead}<th class="tt">Total</th></tr></thead><tbody>${gRows}</tbody></table>
+    </div>
+
+    ${puzRows?`<div class="sec"><h2>Nugget targets<span>shaded boxes are already earned — fill the rest by hand</span></h2>${puzRows}</div>`:''}
+
+    <div class="ft"><span>Nine days in pen. On the last day open the dashboard → Log the period → read the Total column straight down.</span><span>${title}</span></div>
+   </div>
    <script>window.onload=function(){setTimeout(function(){try{window.print()}catch(e){}},250)}<\/script>
   </body></html>`;
   const w=window.open('','_blank');
-  if(!w){ const msg=document.getElementById('peMsg'); msg.style.color='#dc2626'; msg.textContent='Pop-up blocked — allow pop-ups to print the sheet.'; return; }
+  if(!w){ const msg=document.getElementById('peMsg'); msg.style.color='#dc2626'; msg.textContent='Pop-up blocked - allow pop-ups to print the sheet.'; return; }
   w.document.write(html); w.document.close();
 }
 // Tiny B&W "what's planned" card: habits (m/day) + nuggets (period pledge, else target).

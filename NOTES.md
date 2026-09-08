@@ -103,3 +103,14 @@ Hours -> spendable money, spent inside a quarter. `LS_REWARDS='ptd_rewards_v1'` 
 - `HABIT_HIT=0.8` is untouched — it scores one habit against its own plan, not a period verdict. Don't conflate the two.
 - Caveat stated to the user: with a 22h period plan their 8 logged periods averaged 11.8h (54%), which is orange. A 100% green bar only makes sense after the plan comes down to ~12h (25 min/day habits + 8h nugget budget). Thresholds changed; the plan is still theirs to set in Settings.
 - Removed `#pgPdfBtn`, the duplicate "⤓ Export" in the page header that proxied a click to `#repPdfBtn` and sat left of the sign-in email. Reports still has its own button, so the three-export-surface rule is unaffected (this was a fourth surface in all but name).
+
+### The 10-day paper sheet, rebuilt (2026-09-08)
+- Context: the user logs on paper for nine days and types totals into the period modal on the tenth. They do not want to open the app daily, so a screen-based daily checklist was rejected. The paper IS the daily driver — it has to carry the plan, the order and the targets on its own.
+- `printPeriodSheet()` replaced wholesale. Same button (`#pePrint`, now labelled "10-day sheet"), same surface, no new export surface.
+- Order enforcement is typographic, not code: habits print above a 3px black rule reading "Habits first — nothing below until the block above is filled", nuggets below it. The app cannot verify daily behaviour (entries carry no day-of-month), so the rule on the page is the whole mechanism. Don't try to enforce it in JS.
+- Period puzzle: one 13px square per 30 minutes of the period plan (`perDay*days + nugBudget*60`), squares already earned pre-shaded from logged minutes at print time. The amber (75%) and orange (40%) cut-offs are marked as coloured left edges inside the grid, so the paper shows where you stand without arithmetic. A full grid = green.
+- Per-nugget puzzle bars: boxes toward `g.target`, `g.cur` pre-shaded. Targets over 30 fold several units into one box (`per = ceil(target/30)`) and print "1 box = N unit" rather than 400 squares.
+- Day grid gains a weekday initial under each day number and a `started at` row (the user has a physical timer — the app never runs a stopwatch, the sheet just captures the clock time).
+- Row order matches the period modal's row order so the last-day transcription is one pass down the Total column.
+- A4 landscape, `@page{size:A4 landscape;margin:0}`. Palette is the app's own (`#3d5266` accent, `#f6f2e8` header bands, `#8d8676` muted) plus the four verdict colours in the band legend only.
+- Rejected: a daily "Today" tick strip in the app with nuggets locked until habits are ticked. Correct mechanic, wrong medium — it needs a daily app visit.
