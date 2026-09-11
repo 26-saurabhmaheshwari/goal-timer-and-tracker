@@ -1655,6 +1655,13 @@ function printPeriodSheet(){
     return `<th class="d"><b>${d}</b><em>${w}</em></th>`;
   }).join('');
   const blanks=days.map(()=>'<td></td>').join('');
+  // --- THE GATE. One circle per day. You shade it only when that day's habit boxes add up to the
+  // daily habit minutes. Nothing goes in the nugget grid for a day whose circle is still empty.
+  // The same strip is reprinted at the top of the nugget table so the rule is in front of you at
+  // the moment you would break it.
+  const gateCells=days.map(()=>'<td class="gt"><i class="ci"></i></td>').join('');
+  const gateRow=`<tr class="gr"><td class="nm">Gate &mdash; day cleared</td><td class="tg">${perDay}m</td>${gateCells}<td class="tot"><span class="gtot">of ${nd}</span></td></tr>`;
+  const gateEcho=`<tr class="gr"><td class="nm">Gate &mdash; copy from above</td><td class="tg"></td>${gateCells}<td class="tot"></td></tr>`;
   const hRows=habits.map(h=>`<tr><td class="nm">${escHtml(h.n)}</td><td class="tg">${h.m}m</td>${blanks}<td class="tot"></td></tr>`).join('')
     || `<tr><td class="empty" colspan="${nd+3}">No habits set - add them in Settings.</td></tr>`;
   const gRows=goals.map(g=>{
@@ -1707,6 +1714,11 @@ function printPeriodSheet(){
    td.nm{text-align:left;padding:0 8px;white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis}
    td.tg{color:#8d8676;font-size:10.5px;width:52px}
    td.empty{text-align:left;padding:0 8px;color:#8d8676;font-style:italic}
+   tr.gr td{background:#f4f6f2;border-top:2px solid #1c1a14;border-bottom:2px solid #1c1a14}
+   tr.gr td.nm{font:600 9px/1 -apple-system,Segoe UI,Arial,sans-serif;letter-spacing:.11em;text-transform:uppercase;color:#3d5266;white-space:nowrap}
+   tr.gr td.tg{color:#3d5266;font-weight:600;font-size:10px}
+   .ci{width:12px;height:12px;border:1.6px solid #3d5266;border-radius:50%;display:inline-block;vertical-align:middle}
+   .gtot{font-size:8.5px;color:#8d8676;letter-spacing:.04em}
    .rule{display:flex;align-items:center;gap:10px;margin:12px 0 2px}
    .rule .ln{flex:1;height:3px;background:#1c1a14}
    .rule .tx{font:600 9.5px/1 -apple-system,Segoe UI,Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap}
@@ -1733,6 +1745,7 @@ function printPeriodSheet(){
      <span><i style="background:#f59e0b"></i>Amber ${hm(plan*0.75)}</span>
      <span><i style="background:#e2711d"></i>Orange ${hm(plan*0.4)}</span>
      <span><i style="background:#ef4444"></i>Red under ${hm(plan*0.4)}</span>
+     <span style="margin-left:auto;color:#3d5266"><b>Gate:</b> shade a day circle only when that day's habit boxes add up to ${perDay}m</span>
     </div>
 
     <div class="sec">
@@ -1744,19 +1757,19 @@ function printPeriodSheet(){
     <div class="sec">
      <h2>Habits — these first<span>write minutes in the box, total the row on the last day</span></h2>
      <table><thead><tr><th class="lb">Habit</th><th class="tg">/day</th>${dHead}<th class="tt">Total</th></tr></thead>
-      <tbody><tr><td class="nm" style="color:#8d8676">started at</td><td class="tg"></td>${blanks}<td class="tot"></td></tr>${hRows}</tbody></table>
+      <tbody><tr><td class="nm" style="color:#8d8676">started at</td><td class="tg"></td>${blanks}<td class="tot"></td></tr>${hRows}${gateRow}</tbody></table>
     </div>
 
-    <div class="rule"><span class="tx">Habits first</span><span class="ln"></span><span class="tx">nothing below until the block above is filled</span></div>
+    <div class="rule"><span class="tx">The gate</span><span class="ln"></span><span class="tx">a day with an empty circle gets no nugget minutes</span></div>
 
     <div class="sec">
      <h2>Live nuggets<span>${nugB}h budget for the period</span></h2>
-     <table><thead><tr><th class="lb">Nugget</th><th class="tg">Target</th>${dHead}<th class="tt">Total</th></tr></thead><tbody>${gRows}</tbody></table>
+     <table><thead><tr><th class="lb">Nugget</th><th class="tg">Target</th>${dHead}<th class="tt">Total</th></tr></thead><tbody>${gateEcho}${gRows}</tbody></table>
     </div>
 
     ${puzRows?`<div class="sec"><h2>Nugget targets<span>shaded boxes are already earned — fill the rest by hand</span></h2>${puzRows}</div>`:''}
 
-    <div class="ft"><span>Nine days in pen. On the last day open the dashboard → Log the period → read the Total column straight down.</span><span>${title}</span></div>
+    <div class="ft"><span><b>The gate:</b> no circle, no nugget minutes for that day. Nine days in pen. On the last day open the dashboard → Log the period → read the Total column straight down.</span><span>${title}</span></div>
    </div>
    <script>window.onload=function(){setTimeout(function(){try{window.print()}catch(e){}},250)}<\/script>
   </body></html>`;
