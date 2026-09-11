@@ -2966,7 +2966,7 @@ function nugAllDone(){ return loggableGoals().every(nugDone); } // empty set →
 // TEMP RECONCILE SWITCH. true = the nugget lock is suspended in code so targets can be edited and
 // nuggets added/removed, WITHOUT clearing the saved nugLock flag - flip this one const back to false
 // and the lock is exactly where it was. Every lock gate reads nugLockOn(), never loadLimits().nugLock.
-const NUG_RECONCILE=true;
+const NUG_RECONCILE=false;
 function nugLockSaved(){ return !!loadLimits().nugLock; }
 function nugLockOn(){ return nugLockSaved() && !NUG_RECONCILE; }
 // A goal frozen by the plan lock: an active (not-done) nugget while the lock is on. Only logging time is allowed on it.
