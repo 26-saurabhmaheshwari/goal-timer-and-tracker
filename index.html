@@ -2711,7 +2711,7 @@ function initGoals(){
     if(!willMini && !o.tag){ const m=document.getElementById('goalMsg'); m.textContent='Tag is required — every goal needs a tag.'; m.style.color='#ef4444'; return; }
     if(willMini && document.getElementById('gPeriodWrap').style.display!=='none'){ o.start=document.getElementById('gPeriod').value||periodStartISO(); o.by=''; } // minis: window = the picked period
     // Nugget lock: once the plan is locked you can ONLY log time on a nugget — no adding, editing target, moving, or deleting.
-    if(loadLimits().nugLock){
+    if(nugLockOn()){
       const prev = goalEdit ? g.find(x=>x.id===goalEdit) : null;
       const wasNug = prev && !prev.done && (prev.sec||'active')==='active'; // editing a currently-locked nugget
       if(wasNug || o.sec==='active'){ // frozen nugget, new nugget, or converting a goal into one
@@ -2963,11 +2963,18 @@ function secCapMsg(sec){ const c=SEC_CAP[sec]; return c?`${SEC_LAB[sec]} is capp
 // A nugget counts as finished once it's flagged done OR has hit its target. loggableGoals() already drops done goals.
 function nugDone(g){ return g.done || (g.target>0 && g.cur>=g.target); }
 function nugAllDone(){ return loggableGoals().every(nugDone); } // empty set → vacuously true
+// TEMP RECONCILE SWITCH. true = the nugget lock is suspended in code so targets can be edited and
+// nuggets added/removed, WITHOUT clearing the saved nugLock flag - flip this one const back to false
+// and the lock is exactly where it was. Every lock gate reads nugLockOn(), never loadLimits().nugLock.
+const NUG_RECONCILE=true;
+function nugLockSaved(){ return !!loadLimits().nugLock; }
+function nugLockOn(){ return nugLockSaved() && !NUG_RECONCILE; }
 // A goal frozen by the plan lock: an active (not-done) nugget while the lock is on. Only logging time is allowed on it.
-function isLockedNug(g){ return loadLimits().nugLock && !!g && !g.done && (g.sec||'active')==='active'; }
+function isLockedNug(g){ return nugLockOn() && !!g && !g.done && (g.sec||'active')==='active'; }
 const NUG_LOCK_MSG='🔒 Nuggets are locked — you can only log time. Unlock (Live Nuggets header) once every nugget hits its target.';
 // Lock/unlock the current nugget plan. Locking blocks new nuggets; unlocking is allowed only when every nugget is finished.
 function toggleNugLock(){
+  if(NUG_RECONCILE&&nugLockSaved()){ alert('🛠️ Reconcile mode is on — the lock is suspended in code, so edit what you need. The saved lock is untouched and comes back when reconcile is switched off.'); return; }
   if(loadLimits().nugLock){
     if(!nugAllDone()){ const a=loggableGoals(); alert(`🔒 Locked until every nugget hits its target — ${a.filter(nugDone).length}/${a.length} done. Finish the rest, then unlock to plan the next round.`); return; }
     saveLimits({nugLock:false});
@@ -3031,9 +3038,10 @@ function renderSecCaps(){
   const set=(id,sec)=>{ const el=document.getElementById(id); if(el) el.textContent=`${secCount(sec)}/${SEC_CAP[sec]}`; };
   set('nugCount','active');
   const lb=document.getElementById('nugLockBtn');
-  if(lb){ const locked=loadLimits().nugLock, all=nugAllDone();
-    lb.textContent = locked ? (all?'🔓 Unlock plan':'🔒 Locked') : '🔒 Lock plan';
-    lb.title = locked ? (all?'All nuggets finished — unlock to plan the next round':'Locked until every nugget hits its target') : 'Lock this plan — no new nuggets until all are finished';
+  if(lb){ const locked=nugLockOn(), all=nugAllDone(), recon=NUG_RECONCILE&&nugLockSaved();
+    lb.textContent = recon ? '🛠️ Reconciling' : locked ? (all?'🔓 Unlock plan':'🔒 Locked') : '🔒 Lock plan';
+    lb.title = recon ? 'Lock temporarily suspended for reconciling — edit targets freely, then have it switched back off'
+      : locked ? (all?'All nuggets finished — unlock to plan the next round':'Locked until every nugget hits its target') : 'Lock this plan — no new nuggets until all are finished';
     lb.style.opacity = (locked && !all) ? '0.6' : '1';
   }
   const yEl=document.getElementById('yCount'); if(yEl) yEl.textContent=`${secCount('yearly')+secCount('progress')}/${SEC_CAP.yearly}`;
