@@ -151,7 +151,7 @@ How 6 and 7 fit: kept **separate** here — little adventure (Friday) and your n
 10:00 - 10:06   Om 6 min              attached to standup, not Sundarkand now
 10:06 - 10:09   first check (3 min)
 10:09 - 11:00   SILENT WINDOW         51 min, notifications off, one thing only
-11:00 - 13:00   work chunks, checks at :00 and :30   Mon/Tue/Fri: nvs standup 11:30-12:00, skip the 11:30 check that day
+11:00 - 13:00   work chunks, checks at :00 and :30   Mon/Tue/Thu: nvs standup 11:30-12:00, skip the 11:30 check that day
 13:00 - 14:00   lunch + 10 min walk   balayam on the walk
 14:00 - 16:00   work chunks, checks at :00 and :30
 16:00 - 16:50   ADMIN BATCH           all small things, one block
