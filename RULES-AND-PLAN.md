@@ -123,6 +123,8 @@ Why it works:
 - Leftover time always becomes scrolling, because you have nothing left to decide with.
 - A planned night is the same hours with the decision already made. That is the whole difference.
 
+Week runs **Monday to Sunday**.
+
 The rules of it:
 - **One weeknight**, not a weekend. Fixed to **Tuesday, 21:00-22:00**, backup **Thursday, same time**.
 - **Chosen before the week starts**, not discovered on the day.
