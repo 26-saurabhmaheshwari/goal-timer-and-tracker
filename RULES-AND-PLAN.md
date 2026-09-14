@@ -32,11 +32,12 @@ Laura Vanderkam, 2022. Each rule was tested on ~150 real people before she publi
 ---
 
 ## Rule A — Two pillars, everything else floats
-- Pick exactly **two** times in the day that never move: **8:55am Sundarkand** and **7:00pm temple**.
+- Pick exactly **two** times in the day that never move: **9:00-9:35am Sundarkand** and **7:00pm temple**.
+- Alarm at **8:55**, start by 8:57. Your call is at 9:35 — zero buffer if you start late, so the alarm is not optional.
 - Two is the limit. A day with ten fixed things breaks by 11am, then you abandon all ten.
 - Everything else floats around the pillars — study, Om, balayam, kids.
 - If both pillars happened, the day counted. Even if nothing else did.
-- Note: 9:00-9:35 collides with work starting at 9:30. **8:55-9:30** ends exactly when work starts. A slot that overlaps work breaks every time.
+- Temple is **strict, no backup**. A miss is a miss — it does not carry to the next day, and it does not write off the week.
 
 ## Rule B — Check on the clock, not on the itch
 *(rewritten for IT DevOps — you cannot avoid pings)*
@@ -82,8 +83,8 @@ Laura Vanderkam, 2022. Each rule was tested on ~150 real people before she publi
 - Honest flag: if hours disappear even when you did not decide to open it, that is a compulsion loop, not a scheduling problem, and rules alone will not hold it. That is not a character thing — it is common and it responds well to talking to someone. Worth doing if two weeks of the box does not hold.
 
 ## Rule H — Every pillar gets a back-up slot
-- Sundarkand: primary 8:55am, backup 8:00pm.
-- Temple: primary 7:00pm, backup next morning.
+- Sundarkand: primary 9:00-9:35am, backup 8:00pm.
+- Temple: primary 7:00pm, **no backup — strict by your choice.** One miss stays one miss, it does not chain.
 - Decide the backup **now**, not on the day you miss. On the day you miss it you will not choose one, you will write the day off.
 - One miss is normal. **Two in a row is what ends a habit.** The backup exists to stop the second one.
 
@@ -144,10 +145,11 @@ How 6 and 7 fit: your little adventure can **be** the you-night. Friday planning
 # Part 4 — The day
 
 ```
-08:55 - 09:30   SUNDARKAND            pillar, phone in another room
-09:30 - 09:36   Om 6 min              attached to Sundarkand
-09:36           first check (3 min)
-09:40 - 10:00   work chunk
+08:55           ALARM                 start by 8:57
+09:00 - 09:35   SUNDARKAND            pillar, phone in another room, call joins at 9:35
+09:35 - 09:41   Om 6 min              attached to Sundarkand
+09:41           first check (3 min)
+09:45 - 10:00   work chunk
 10:00 - 11:00   SILENT WINDOW         notifications off, one thing only
 11:00 - 13:00   work chunks, checks at :00 and :30
 13:00 - 14:00   lunch + 10 min walk   balayam on the walk
@@ -156,7 +158,7 @@ How 6 and 7 fit: your little adventure can **be** the you-night. Friday planning
 16:30 - 17:15   KIDS SLOT             teaching, named, defended
 17:15 - 18:30   study / float
 18:30           CLOCK OFF             laptop closed, phone for alerts only
-19:00           TEMPLE                pillar
+19:00           TEMPLE                pillar, strict, no backup
 20:00           backup Sundarkand slot, if morning was missed
 21:00 - 21:20   effortful first       book from the reading list
 22:30           BEDTIME               alarm at 22:00 labelled "shut down"
@@ -177,8 +179,7 @@ Adjust the times, keep the shape:
 Do not start nine rules at once. That is the same all-or-nothing that broke everything before.
 
 ## Week 1 — Only the two pillars
-- Sundarkand 8:55-9:30. Temple 7pm. Nothing else changes.
-- Backup slots written down before the week starts.
+- Sundarkand 9:00-9:35 (alarm 8:55, backup 8pm). Temple 7pm (strict, no backup). Nothing else changes.
 - Success = both pillars hit 5 of 7 days. Not 7 of 7.
 - Do NOT add study, do NOT fix the timer, do NOT touch the app rule yet.
 
@@ -216,8 +217,8 @@ One card per day. Index card or half a page. Pen, not phone.
 DATE ____________            DAY ____
 
 PILLARS
-  [ ]  08:55  Sundarkand            [ ] used backup
-  [ ]  19:00  Temple                [ ] used backup
+  [ ]  09:00  Sundarkand            [ ] used 8pm backup
+  [ ]  19:00  Temple                (no backup — strict)
 
 ATTACHED
   [ ]  Om 6        [ ]  Balayam 6        [ ]  Walk 10
