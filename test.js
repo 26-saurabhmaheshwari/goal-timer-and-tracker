@@ -9,6 +9,11 @@ const cp = require('child_process');
 const path = require('path');
 
 const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+// side files pulled in by index.html with a classic <script src>. Their top-level
+// consts share the same global scope as the inline script, so LS_* declared there
+// must satisfy the SYNC_FIELDS rule too.
+const SIDE = [...html.matchAll(/<script src="([^":]+\.js)"/g)].map(m => m[1]);
+const side = SIDE.map(f => ({ f, src: fs.readFileSync(path.join(__dirname, f), 'utf8') }));
 let fails = 0;
 const ok = m => console.log('  ok  ' + m);
 const bad = m => { console.log('FAIL  ' + m); fails++; };
@@ -20,6 +25,14 @@ const tmp = path.join(require('os').tmpdir(), 'td_check.js');
 fs.writeFileSync(tmp, js);
 try { cp.execSync(`node --check ${tmp}`, { stdio: 'pipe' }); ok('JS syntax'); }
 catch (e) { bad('JS syntax:\n' + e.stderr.toString()); }
+
+// --- 1a. syntax check each side file (sanyam.js, ...) ---
+side.forEach(({ f, src }) => {
+  const t = path.join(require('os').tmpdir(), 'td_side_' + f.replace(/\W/g, '_') + '.js');
+  fs.writeFileSync(t, src);
+  try { cp.execSync(`node --check ${t}`, { stdio: 'pipe' }); ok(`JS syntax (${f})`); }
+  catch (e) { bad(`JS syntax (${f}):\n` + e.stderr.toString()); }
+});
 
 // --- 1b. syntax check the <script type="module"> block (Firebase) as ESM ---
 const modBlocks = [...html.matchAll(/<script type="module">([\s\S]*?)<\/script>/g)].map(m => m[1]);
@@ -46,7 +59,8 @@ if (!regM) bad('could not locate SYNC_FIELDS registry');
 else {
   const reg = new Set([...regM[1].matchAll(/LS_\w+/g)].map(m => m[0]));
   const exempt = new Set(['LS_DOB', 'LS_NAME', 'LS_TARGET', 'LS_PLANWIN', 'LS_LIFEBAR', 'LS_VIEW', 'LS_ONBOARDED']);
-  const declared = new Set([...html.matchAll(/(LS_\w+)\s*=\s*'/g)].map(m => m[1]));
+  const all = html + side.map(s => s.src).join('\n');
+  const declared = new Set([...all.matchAll(/(LS_\w+)\s*=\s*'/g)].map(m => m[1]));
   for (const k of declared) {
     if (reg.has(k) || exempt.has(k)) ok(`sync registry: ${k}`);
     else bad(`sync registry: ${k} declared but not in SYNC_FIELDS — it will never sync/export/import`);
@@ -57,6 +71,18 @@ else {
   }
   if (/function applyBlob\(/.test(html)) ok('applyBlob exists (shared by fb-data + import)');
   else bad('applyBlob missing — fb-data and import must share one restore path');
+}
+
+// --- 4. side files must load BEFORE the main inline script ---
+// SYNC_FIELDS names their loaders at evaluation time; load them after and the page dies
+// on a ReferenceError before anything renders.
+{
+  const mainAt = html.indexOf('const SYNC_FIELDS');
+  side.forEach(({ f }) => {
+    const at = html.indexOf(`<script src="${f}"`);
+    if (at > -1 && mainAt > -1 && at < mainAt) ok(`${f} loads before SYNC_FIELDS`);
+    else bad(`${f} must be loaded with <script src> before the script that builds SYNC_FIELDS`);
+  });
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');

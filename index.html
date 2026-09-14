@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <!--
   FILE MAP - grep these exact tags to jump (line numbers drift, names don't)
-  HTML views:   /viewOverview (contains ovYear/ovMonthly/ovPot sub-tabs)  /viewLog (+viewAudit below it)  /viewGoals  /viewPlanning  /viewReports  /viewRewards (contains rwEarned/rwSpend sub-tabs)  /viewSettings (sidebar sections: setPersonal setCats setHabits setLimits setRewards setFaq)  (each closes with a div comment)
+  HTML views:   /viewOverview (contains ovYear/ovMonthly/ovPot sub-tabs)  /viewLog (+viewAudit below it)  /viewGoals  /viewPlanning  /viewReports  /viewRewards (contains rwEarned/rwSpend sub-tabs)  /viewSanyam (empty shell - built by sanyam.js)  /viewSettings (sidebar sections: setPersonal setCats setHabits setLimits setRewards setFaq)  (each closes with a div comment)
   JS sections:  "===== LOG VIEW"  "category management (Settings)"  "===== ONLINE / OFFLINE"
                 "===== LIFE BAR"  "===== GOALS"  "===== TIME PLANNING"  "===== AUDIT"  "===== ARCHIVE"
   Data/state:   LS_GOALS / SEED_GOALS . LS_HABITS / SEED_HABITS / loadHabits / groupHabits . LS_ICONS / SEED_ICONS / ICONS / iconFor (category icons, Settings-managed)
   Sync:         fbBlob (Firestore sync shape) . fb-data listener (incoming sync)
   Key fns:      renderLog . submitProject . refreshHabitOptions . renderPlanning . renderSettings . renderHabitsSettings
+  Other files:  sanyam.js (the Sanyam tab - bad-habit tracker; classic script src, loaded BEFORE the main inline script)
 -->
 <html lang="en">
 <head>
@@ -602,6 +603,7 @@ if(!window.Chart){
     <button data-v="rewards"><span class="sb-ic">◈</span><span class="sb-lab">Rewards</span></button>
     <button data-v="planning"><span class="sb-ic">▦</span><span class="sb-lab">Planning</span></button>
     <button data-v="log"><span class="sb-ic">✎</span><span class="sb-lab">Log Data</span></button>
+    <button data-v="sanyam"><span class="sb-ic">⊘</span><span class="sb-lab">Sanyam</span></button>
     <button data-v="reports"><span class="sb-ic">▤</span><span class="sb-lab">Reports</span></button>
     <button data-v="settings"><span class="sb-ic">⚙</span><span class="sb-lab">Settings</span></button>
   </nav>
@@ -929,6 +931,9 @@ if(!window.Chart){
     <div id="auditTable" style="margin-top:12px"></div>
   </div>
 </div><!-- /viewAudit -->
+
+<div id="viewSanyam" hidden></div><!-- /viewSanyam - everything inside is built by sanyam.js -->
+
 <div id="viewReports" hidden>
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
@@ -1225,6 +1230,10 @@ if(!window.Chart){
    </div>
   </div>
 </div><!-- /viewSettings -->
+
+<!-- the Sanyam tab lives in its own file. Must load BEFORE the main script below:
+     SYNC_FIELDS reads LS_SANYAM / loadSanyam / loadSanyamCfg from it. -->
+<script src="sanyam.js"></script>
 
 <script>
 // ---- DATA (minutes) ----
@@ -4069,13 +4078,14 @@ function setView(v){
   if(v==='faq') v='settings'; // FAQ folded into Settings sidebar
   if(v==='pot'){ ovTab='pot'; v='overview'; } // Pot folded into Overview as a sub-tab
   if(v==='planning' && !loadFeatures().planning) v='overview'; // Planning hidden by feature toggle
-  if(!['overview','log','goals','planning','rewards','reports','settings'].includes(v)) v='overview';
+  if(!['overview','log','goals','planning','rewards','sanyam','reports','settings'].includes(v)) v='overview';
   document.getElementById('viewOverview').hidden = v!=='overview';
   document.getElementById('viewLog').hidden = v!=='log';
   document.getElementById('viewGoals').hidden = v!=='goals';
   document.getElementById('viewPlanning').hidden = v!=='planning';
   document.getElementById('viewAudit').hidden = v!=='log';
   document.getElementById('viewRewards').hidden = v!=='rewards';
+  document.getElementById('viewSanyam').hidden = v!=='sanyam';
   document.getElementById('viewReports').hidden = v!=='reports';
   document.getElementById('viewSettings').hidden = v!=='settings';
   document.getElementById('lifeBar').hidden = v!=='overview' || !SHOW_LIFEBAR;
@@ -4083,9 +4093,10 @@ function setView(v){
     goals:'targets vs what you actually did', planning:'daily habits vs goal-based time',
     reports:'compare tracked hours across periods',
     rewards:'the hours you logged, paid back as money and free time',
+    sanyam:'the days you stayed away · you only log the days you did not',
     settings:'manage categories & preferences'};
   document.getElementById('sub').textContent = subs[v];
-  const titles={overview:'Overview', log:'Log Data', goals:'Goals', planning:'Time Planning', rewards:'Rewards', reports:'Reports', settings:'Settings'};
+  const titles={overview:'Overview', log:'Log Data', goals:'Goals', planning:'Time Planning', rewards:'Rewards', sanyam:'Sanyam', reports:'Reports', settings:'Settings'};
   document.getElementById('pgTitle').textContent = titles[v];
   document.getElementById('hdYr').textContent = CUR_YM.slice(0,4);
   document.querySelectorAll('#viewNav button').forEach(b=>b.classList.toggle('active', b.dataset.v===v));
@@ -4096,6 +4107,7 @@ function setView(v){
   if(v==='goals') renderGoals();
   if(v==='planning') renderPlanning();
   if(v==='rewards') renderRewards();
+  if(v==='sanyam') renderSanyam();
   if(v==='reports') renderReports();
   if(v==='settings') renderSettings();
   try{ localStorage.setItem(LS_VIEW, v); }catch(e){}
@@ -4336,6 +4348,8 @@ const SYNC_FIELDS=[
   ['quota',    LS_QUOTA,    loadQuota,      'replace'],
   ['limits',   LS_LIMITS,   loadLimits,     'map'],
   ['rewards',  LS_REWARDS,  loadRewards,    'map'],
+  ['sanyam',   LS_SANYAM,   loadSanyam,     'id'],    // sanyam.js
+  ['sanyamcfg',LS_SANYAMCFG,loadSanyamCfg,  'map'],   // sanyam.js
 ];
 function mergeById(loc,cld){ const m=new Map(); (Array.isArray(loc)?loc:[]).forEach(x=>{ if(x&&x.id!=null) m.set(x.id,x); }); (Array.isArray(cld)?cld:[]).forEach(x=>{ if(x&&x.id!=null) m.set(x.id,x); }); return [...m.values()]; }
 function mergeMap(loc,cld){ return {...(loc&&typeof loc==='object'&&!Array.isArray(loc)?loc:{}), ...(cld&&typeof cld==='object'&&!Array.isArray(cld)?cld:{})}; }
