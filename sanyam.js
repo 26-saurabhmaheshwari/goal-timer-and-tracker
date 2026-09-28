@@ -216,11 +216,13 @@ function renderSanyam(){
 
   const list = S.logs.slice().reverse();
   const listCard = '<div class="card" style="margin-top:16px"><h2>Everything you logged</h2>' +
-    '<div class="hint">' + syPlural(S.slips,'slip') + ' on record. Deleting one turns that day clean again if it was the only entry.</div>' +
+    '<div class="hint">' + syPlural(S.slips,'slip') + ' on record. The note stays hidden — click the i to read it. Deleting a row turns that day clean again if it was the only entry.</div>' +
     (list.length
-      ? '<table class="sy-tbl"><tr><th>Date</th><th>Time</th><th>Money</th><th>What happened</th><th></th></tr>' +
+      ? '<table class="sy-tbl"><tr><th>Date</th><th>Time</th><th>Money</th><th>Note</th><th></th></tr>' +
         list.map(function(l){ return '<tr><td>' + syNiceDate(l.d) + '</td><td>' + syHM(l.min) + '</td><td>' + syMoney(l.money, S.cur) + '</td>' +
-          '<td>' + syEsc(l.note||'') + '</td>' +
+          '<td>' + (l.note
+            ? '<button class="sy-i" type="button" title="Show what happened" onclick="sanyamNote(this)">i</button><span class="sy-note" hidden>' + syEsc(l.note) + '</span>'
+            : '<span class="sy-none">—</span>') + '</td>' +
           '<td><button class="btn-sm" onclick="sanyamDel(&quot;' + syEsc(String(l.id)) + '&quot;)">Delete</button></td></tr>'; }).join('') +
         '</table>'
       : '<div class="hint">Nothing logged. That is the best possible state of this table.</div>') + '</div>';
@@ -257,6 +259,13 @@ function sanyamAdd(ev){
            note: (document.getElementById('syNote').value || '').trim() });
   saveSanyam(a);
   renderSanyam();
+}
+// the note is the one thing worth not having on screen by default. One click reveals one row.
+function sanyamNote(btn){
+  const s = btn.nextElementSibling; if(!s) return;
+  s.hidden = !s.hidden;
+  btn.classList.toggle('on', !s.hidden);
+  btn.title = s.hidden ? 'Show what happened' : 'Hide it again';
 }
 function sanyamDel(id){
   if(!confirm('Delete this slip?')) return;
@@ -302,6 +311,11 @@ function sanyamCfgSave(ev){
     '.sy-bar{display:inline-block;width:70px;height:6px;border-radius:3px;background:#e6dfcf;margin-right:8px;vertical-align:middle;overflow:hidden}',
     '.sy-bar>span{display:block;height:100%;background:#8DC63F}',
     '.sy-live{font-size:11px;font-weight:700;color:#4d7c1f}',
+    '.sy-i{width:18px;height:18px;padding:0;border:1px solid var(--line);border-radius:50%;background:transparent;color:var(--muted);font:italic 700 11px/16px Georgia,serif;cursor:pointer}',
+    '.sy-i:hover{border-color:var(--accent);color:var(--accent)}',
+    '.sy-i.on{background:var(--accent);border-color:var(--accent);color:#fff}',
+    '.sy-note{margin-left:8px;color:var(--ink)}',
+    '.sy-none{color:var(--muted)}',
     '@media(max-width:880px){#viewSanyam .kpis{grid-template-columns:1fr 1fr}}'
   ].join('\n');
   document.head.appendChild(s);
