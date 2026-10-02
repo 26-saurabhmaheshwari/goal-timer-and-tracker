@@ -283,7 +283,6 @@ function syListView(){
 function sySlipView(h){
   const S = sanyamStats(h.id), cfg = S.cfg;
   const cleanPct = S.days ? Math.round(S.cleanDays / S.days * 100) : 0;
-  const sinceLast = S.lastSlip ? syDiff(S.lastSlip, S.today) : null;
   const avgMin   = S.slips ? S.totMin / S.slips : 0;
   const avgMoney = S.slips ? S.totMoney / S.slips : 0;
   const perWeek  = S.days ? (S.slipDays / S.days * 7) : 0;
@@ -292,17 +291,19 @@ function sySlipView(h){
   const setup = !cfg.start ? '<div class="card sy-setup"><h2>Name it and date it</h2>' +
     '<div class="hint">Two things get this going: what you are staying away from, and the day you started counting. Set both at the bottom of this page.</div></div>' : '';
 
+  // one row of five. "Clean right now" already carries the last-slip date, so there is no
+  // separate Last slip card; slips+clean days are one card, money+time are one card.
   const kpis1 =
-    kpi('Clean right now', syPlural(S.curStreak,'day'), S.curStreak ? 'since ' + syNiceDate(syAdd(S.today, -S.curStreak)) : 'you logged it today', S.curStreak ? 'good' : 'bad') +
+    kpi('Clean right now', syPlural(S.curStreak,'day'),
+        S.curStreak ? 'last slip ' + syNiceDate(S.lastSlip) : 'you logged it today',
+        S.curStreak ? 'good' : 'bad') +
     kpi('Best run', S.best ? syPlural(S.best.len,'day') : '—', S.best ? syNiceDate(S.best.from) + ' → ' + syNiceDate(S.best.to) : 'no clean run yet') +
-    kpi('Clean days', S.cleanDays + ' / ' + S.days, cleanPct + '% of the days you tracked') +
-    kpi('Money it cost', syMoney(S.totMoney, S.cur), S.slips ? syMoney(avgMoney, S.cur) + ' a slip' : 'nothing logged yet');
-
-  const kpis2 =
-    kpi('Time it cost', syHM(S.totMin), S.slips ? syHM(avgMin) + ' a slip' : 'nothing logged yet') +
-    kpi('Slips logged', String(S.slips), syPlural(S.slipDays,'day') + ' out of ' + S.days) +
-    kpi('Last slip', sinceLast===null ? 'never' : sinceLast===0 ? 'today' : syPlural(sinceLast,'day') + ' ago', S.lastSlip ? syNiceDate(S.lastSlip) : 'clean the whole way') +
+    kpi('Slips', syPlural(S.slips,'slip'), cleanPct + '% clean of ' + syPlural(S.days,'day') + ' tracked') +
+    kpi('What it cost', syMoney(S.totMoney, S.cur) + ' with ' + syHM(S.totMin),
+        S.slips ? 'avg ' + syMoney(avgMoney, S.cur) + ' and ' + syHM(avgMin) + ' a slip' : 'nothing logged yet') +
     kpi('Rate', (Math.round(perWeek*10)/10) + ' / week', 'how often it happens on average');
+
+  const kpis2 = '';
 
   const form = '<div class="card">' +
     '<h2>Log a slip</h2>' +
@@ -371,7 +372,7 @@ function sySlipView(h){
     '</form></div>';
 
   return setup + syBack(cfg, 'counting since ' + syNiceDate(S.start)) +
-    '<div class="kpis">' + kpis1 + '</div><div class="kpis">' + kpis2 + '</div>' +
+    '<div class="kpis sy-k5">' + kpis1 + '</div>' + (kpis2 ? '<div class="kpis">' + kpis2 + '</div>' : '') +
     form + heat + runsCard + monthsCard + listCard + cfgCard;
 }
 function syNoteCell(note){
@@ -561,6 +562,7 @@ function sanyamCfgSave(ev){
     '#viewSanyam .sy-top{display:flex;align-items:center;gap:12px;margin:-4px 0 16px}',
     '#viewSanyam .sy-top .sy-head{margin:0}',
     '#viewSanyam .kpis{margin-bottom:14px}',
+    '#viewSanyam .kpis.sy-k5{grid-template-columns:repeat(5,1fr)}',
     '#viewSanyam .kpi.sy-good .val{color:#4d7c1f}',
     '#viewSanyam .kpi.sy-bad .val{color:#b3322d}',
     '#viewSanyam .sy-setup{border-left:4px solid var(--accent);margin-bottom:16px}',
@@ -600,7 +602,7 @@ function sanyamCfgSave(ev){
     '.sy-i.on{background:var(--accent);border-color:var(--accent);color:#fff}',
     '.sy-note{margin-left:8px;color:var(--ink)}',
     '.sy-none{color:var(--muted)}',
-    '@media(max-width:880px){#viewSanyam .kpis{grid-template-columns:1fr 1fr}}'
+    '@media(max-width:880px){#viewSanyam .kpis,#viewSanyam .kpis.sy-k5{grid-template-columns:1fr 1fr}}'
   ].join('\n');
   document.head.appendChild(s);
 })();
